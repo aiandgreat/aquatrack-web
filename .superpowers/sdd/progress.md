@@ -3,8 +3,8 @@
 - [x] Task 1: Project Scaffolding & Prisma PostGIS Schema Setup
 - [x] Task 2: Upstash Redis & Rate Limiter Configuration
 - [x] Task 3: Telemetry Ingestion Edge Function
-- [ ] Task 4: Citizen Complaint Route & Spatial Scan Trigger
-- [ ] Task 5: AI Triage & PostGIS Diagnostic Alert Engine
+- [x] Task 4: Citizen Complaint Route & Spatial Scan Trigger
+- [x] Task 5: AI Triage & PostGIS Diagnostic Alert Engine
 - [ ] Task 6: Resend API Notification Integration
 - [ ] Task 7: Command Center Dashboard Mapbox Layout
 - [ ] Task 8: Tremor Telemetry Sparkline Drawer
