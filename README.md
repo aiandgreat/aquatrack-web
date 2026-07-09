@@ -25,8 +25,10 @@ cd aquatrack-web
 
 ### 2. Install dependencies
 ```bash
-npm install
+npm install --legacy-peer-deps
 ```
+
+> **Note:** `--legacy-peer-deps` is required because `@tremor/react` declares a peer dependency on React 18 while this project runs React 19. The flag bypasses the strict peer resolution check — Tremor works correctly at runtime despite the version mismatch.
 
 ### 3. Environment Variables
 Create a `.env.local` file in the root directory and add the following:
