@@ -37,13 +37,9 @@ export default function Homepage() {
             <div className="flex items-center">
               {/* Logo of AquaTrack */}
               <div className="flex items-center space-x-2 cursor-pointer">
-                <svg className="w-8 h-8 text-[#00aeef]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-                  <path d="M12 22C17.5228 22 22 17.5228 22 12C22 6.5 17 2 12 2C7 2 2 6.5 2 12C2 17.5228 6.47715 22 12 22Z" />
-                  <path d="M12 18C15 18 17.5 15.5 17.5 12.5C17.5 9.5 15 6 12 6C9 6 6.5 9.5 6.5 12.5C6.5 15.5 9 18 12 18Z" fill="#00aeef" />
-                  <circle cx="12" cy="12" r="1.5" fill="#ffffff" />
-                </svg>
-                <span className="text-2xl font-extrabold tracking-tight text-[#001e66]">
-                  Aqua<span className="text-[#00aeef]">Track</span>
+                <img src="/logo.svg" alt="AquaTrack Logo" className="w-9 h-9" />
+                <span className="text-2xl font-black tracking-tight text-[#001e66]">
+                  AQ<span className="text-[#ffd800]">U</span><span className="text-[#970006]">A</span>TRACK
                 </span>
               </div>
             </div>

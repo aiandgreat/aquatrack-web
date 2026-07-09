@@ -1,0 +1,19 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" fill="none">
+  <!-- Outer glowing rings -->
+  <circle cx="50" cy="50" r="44" stroke="#00aeef" stroke-width="2" stroke-dasharray="8 6" opacity="0.6" />
+  <circle cx="50" cy="50" r="38" stroke="#001e66" stroke-width="1" opacity="0.4" />
+  
+  <!-- Wave grid lines -->
+  <path d="M15 50 Q32.5 40 50 50 T85 50" stroke="#00aeef" stroke-width="1.5" opacity="0.5" />
+  <path d="M15 58 Q32.5 48 50 58 T85 58" stroke="#001e66" stroke-width="1" opacity="0.3" />
+
+  <!-- The water drop core logo -->
+  <path d="M50 20 C50 20 70 42 70 58 C70 69.0457 61.0457 78 50 78 C38.9543 78 30 69.0457 30 58 C30 42 50 20 50 20 Z" fill="#001e66" />
+  
+  <!-- Outer accent drop -->
+  <path d="M50 26 C50 26 65 44 65 58 C65 66.2843 58.2843 73 50 73 C41.7157 73 35 66.2843 35 58 C35 44 50 26 50 26 Z" fill="#00aeef" />
+  
+  <!-- Core spark node -->
+  <circle cx="50" cy="58" r="4" fill="#ffffff" />
+  <circle cx="50" cy="58" r="8" stroke="#ffffff" stroke-width="1" opacity="0.7" />
+</svg>
