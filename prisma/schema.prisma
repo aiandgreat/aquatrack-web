@@ -1,0 +1,142 @@
+datasource db {
+  provider   = "postgresql"
+  url        = env("DATABASE_URL")
+  directUrl  = env("DIRECT_URL")
+  extensions = [postgis]
+}
+
+generator client {
+  provider        = "prisma-client-js"
+  previewFeatures = ["postgresqlExtensions"]
+}
+
+enum IssueCategory {
+  PIPELINE_BREACH_PRESSURE_DROP
+  HIGH_TURBIDITY
+  HIGH_MINERAL_CONTENT_TDS
+  UNCLASSIFIED_INFRASTRUCTURE_ANOMALY
+  CHEMICAL_DISCOLORATION_CONTAMINATION
+}
+
+enum UrgencyLevel {
+  CRITICAL
+  HIGH
+  MEDIUM
+  LOW
+}
+
+enum TicketStatus {
+  PENDING
+  INVESTIGATING
+  DISPATCHED
+  RESOLVED
+}
+
+enum NodeType {
+  PUMP_STATION
+  HOUSEHOLD_EDGE
+}
+
+enum NodeStatus {
+  ONLINE
+  OFFLINE
+  MAINTENANCE
+}
+
+enum WorkOrderStatus {
+  ASSIGNED
+  IN_PROGRESS
+  RESOLVED
+}
+
+enum UserRole {
+  ADMIN
+  FIELD_ENGINEER_TECHNICIAN
+  CONSUMER_RESIDENT
+}
+
+enum AiStatus {
+  PENDING
+  SUCCESS
+  FAILED
+}
+
+model TelemetryNode {
+  id        String             @id @default(uuid())
+  name      String
+  type      NodeType
+  latitude  Float
+  longitude Float
+  geom      Unsupported("geometry(Point, 4326)")
+  status    NodeStatus         @default(ONLINE)
+  readings  TelemetryReading[]
+  alerts    DiagnosticAlert[]
+}
+
+model TelemetryReading {
+  id        String        @id @default(uuid())
+  nodeId    String
+  node      TelemetryNode @relation(fields: [nodeId], references: [id], onDelete: Cascade)
+  ph        Float
+  turbidity Float
+  tds       Float
+  pressure  Float
+  timestamp DateTime      @default(now())
+
+  @@index([nodeId, timestamp(sort: Desc)])
+}
+
+model Complaint {
+  id             String         @id @default(uuid())
+  rawText        String
+  translatedText String?
+  summary        String?
+  category       IssueCategory?
+  urgency        UrgencyLevel?
+  status         TicketStatus   @default(PENDING)
+  aiStatus       AiStatus       @default(PENDING)
+  imageUrl       String?
+  latitude       Float
+  longitude      Float
+  geom           Unsupported("geometry(Point, 4326)")
+  createdAt      DateTime       @default(now())
+  updatedAt      DateTime       @updatedAt
+  userId         String?
+  user           User?          @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@index([status])
+}
+
+model DiagnosticAlert {
+  id             String        @id @default(uuid())
+  nodeId         String
+  node           TelemetryNode @relation(fields: [nodeId], references: [id], onDelete: Cascade)
+  complaintCount Int           @default(1)
+  geminiAnalysis Json
+  status         TicketStatus  @default(PENDING)
+  createdAt      DateTime      @default(now())
+  workOrders     WorkOrder[]
+}
+
+model WorkOrder {
+  id          String          @id @default(uuid())
+  alertId     String
+  alert       DiagnosticAlert @relation(fields: [alertId], references: [id], onDelete: Cascade)
+  engineerId  String?
+  engineer    User?           @relation(fields: [engineerId], references: [id], onDelete: SetNull)
+  status      WorkOrderStatus @default(ASSIGNED)
+  notes       String?
+  createdAt   DateTime        @default(now())
+  resolvedAt  DateTime?
+}
+
+model User {
+  id               String      @id @default(uuid())
+  name             String
+  email            String      @unique
+  role             UserRole
+  phone            String
+  serviceAccountNo String?
+  complaints       Complaint[]
+  workOrders       WorkOrder[]
+}
