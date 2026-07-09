@@ -37,7 +37,7 @@ export default function Homepage() {
             <div className="flex items-center">
               {/* Logo of AquaTrack */}
               <div className="flex items-center cursor-pointer">
-                <img src="/LOGO1.png" alt="AquaTrack Logo" className="h-14 w-auto translate-y-1" />
+                <img src="/LOGO1.png" alt="AquaTrack Logo" className="h-45 w-auto translate-y-1" />
               </div>
             </div>
 
@@ -98,20 +98,22 @@ export default function Homepage() {
         {/* 3. Bottom Fade-to-White Overlay */}
         <div className="absolute bottom-0 left-0 right-0 h-24 bg-gradient-to-t from-white/60 to-transparent pointer-events-none"></div>
 
-        <div className="relative max-w-7xl mx-auto w-full z-10">
-          <div className="max-w-2xl bg-white/80 p-8 md:p-12 rounded-2xl shadow-xl backdrop-blur-md border border-white/50">
+        <div className="relative max-w-7xl mx-auto w-full z-10 grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
+          
+          {/* Left Column: Tagline, Description, Action Buttons */}
+          <div className="flex flex-col space-y-6">
             {/* Tagline */}
-            <h1 className="text-4xl md:text-5xl font-black leading-tight text-[#001e66]">
+            <h1 className="text-4xl md:text-5xl lg:text-6xl font-black leading-tight text-[#001e66]">
               Clean Water, One <span className="bg-[#ffd800] px-2 py-0.5 rounded text-[#001e66]">Smart</span> <span className="text-[#970006]">Drop</span> at a Time.
             </h1>
             
             {/* Description */}
-            <p className="mt-6 text-base md:text-lg leading-relaxed text-[#001e66] font-medium">
+            <p className="text-base md:text-lg leading-relaxed text-[#001e66] font-medium">
               Monitor water quality in real time, report issues instantly, and stay informed about your community's water conditions — all in one intelligent platform built for the City of San Fernando, Pampanga.
             </p>
 
             {/* Portal Action Buttons */}
-            <div className="mt-8 flex flex-col sm:flex-row gap-4">
+            <div className="flex flex-col sm:flex-row gap-4 pt-4">
               <Link
                 href="/dashboard"
                 className="flex-1 bg-[#001e66] hover:bg-[#00aeef] text-white font-extrabold text-center py-3.5 px-6 rounded-xl transition-all duration-200 shadow-md hover:scale-105"
@@ -120,12 +122,62 @@ export default function Homepage() {
               </Link>
               <Link
                 href="/crew"
-                className="flex-1 bg-transparent hover:bg-slate-50 text-[#00aeef] border-2 border-[#00aeef] font-extrabold text-center py-3 px-6 rounded-xl transition-all duration-200 hover:scale-105"
+                className="flex-1 bg-white hover:bg-slate-50 text-[#00aeef] border-2 border-[#00aeef] font-extrabold text-center py-3 px-6 rounded-xl transition-all duration-200 hover:scale-105"
               >
                 Register Account
               </Link>
             </div>
           </div>
+
+          {/* Right Column: Main Features of AquaTrack */}
+          <div className="bg-white/80 p-8 md:p-10 rounded-3xl shadow-2xl border border-white/50 backdrop-blur-md space-y-6">
+            <h2 className="text-2xl font-black text-[#001e66] border-b border-slate-200 pb-3">Main Features</h2>
+            
+            <div className="space-y-6">
+              
+              {/* Feature 1 */}
+              <div className="flex items-start space-x-4">
+                <div className="w-10 h-10 bg-[#00aeef]/10 rounded-lg flex items-center justify-center text-[#00aeef] flex-shrink-0">
+                  <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01" />
+                  </svg>
+                </div>
+                <div>
+                  <h3 className="font-bold text-sm text-[#001e66]">Real-Time Complaint Tracking</h3>
+                  <p className="text-xs text-slate-600 mt-1 leading-relaxed">Submit and track water-related concerns anytime.</p>
+                </div>
+              </div>
+
+              {/* Feature 2 */}
+              <div className="flex items-start space-x-4">
+                <div className="w-10 h-10 bg-[#ffd800]/10 rounded-lg flex items-center justify-center text-[#001e66] flex-shrink-0">
+                  <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
+                  </svg>
+                </div>
+                <div>
+                  <h3 className="font-bold text-sm text-[#001e66]">AI-Assisted Report Classification</h3>
+                  <p className="text-xs text-slate-600 mt-1 leading-relaxed">Supports native Tagalog or Kapampangan report descriptions and automated report classification.</p>
+                </div>
+              </div>
+
+              {/* Feature 3 */}
+              <div className="flex items-start space-x-4">
+                <div className="w-10 h-10 bg-[#970006]/10 rounded-lg flex items-center justify-center text-[#970006] flex-shrink-0">
+                  <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+                  </svg>
+                </div>
+                <div>
+                  <h3 className="font-bold text-sm text-[#001e66]">Geospatial Mapping and Location Pinning</h3>
+                  <p className="text-xs text-slate-600 mt-1 leading-relaxed">Precise and automated GPS pinning of exact locations of water service-related complaints.</p>
+                </div>
+              </div>
+
+            </div>
+          </div>
+
         </div>
       </section>
 
@@ -138,45 +190,6 @@ export default function Homepage() {
             <p className="mt-4 text-slate-600 leading-relaxed text-sm">
               AquaTrack bridges the gap between resident observers and water system operators in Pampanga. By correlating real-time sensor node alerts with geolocated citizen feedback, we maintain optimal pressure systems and pure water delivery across San Fernando.
             </p>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8 mt-12">
-            <div className="bg-white p-6 rounded-xl border border-slate-200/60 shadow-sm hover:border-[#00aeef] transition-all">
-              <div className="w-12 h-12 bg-[#00aeef]/10 rounded-lg flex items-center justify-center text-[#00aeef] mb-4">
-                <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 002 2h2a2 2 0 002-2z" />
-                </svg>
-              </div>
-              <h3 className="font-bold text-lg">Real-Time Ingestion</h3>
-              <p className="text-xs text-slate-500 mt-2 leading-relaxed">
-                IoT telemetry streams pH, pressure, and turbidity limits directly to our analytics system for instant warning dispatching.
-              </p>
-            </div>
-
-            <div className="bg-white p-6 rounded-xl border border-slate-200/60 shadow-sm hover:border-[#00aeef] transition-all">
-              <div className="w-12 h-12 bg-[#970006]/10 rounded-lg flex items-center justify-center text-[#970006] mb-4">
-                <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19.428 15.428a2 2 0 00-1.022-.547l-2.387-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 9.172V5L8 4z" />
-                </svg>
-              </div>
-              <h3 className="font-bold text-lg">Gemini Triage</h3>
-              <p className="text-xs text-slate-500 mt-2 leading-relaxed">
-                Native translations from Tagalog and Kapampangan to English allow our diagnostic engine to categorize issues in milliseconds.
-              </p>
-            </div>
-
-            <div className="bg-white p-6 rounded-xl border border-slate-200/60 shadow-sm hover:border-[#00aeef] transition-all">
-              <div className="w-12 h-12 bg-[#ffd800]/10 rounded-lg flex items-center justify-center text-[#001e66] mb-4">
-                <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
-                </svg>
-              </div>
-              <h3 className="font-bold text-lg">PostGIS Matching</h3>
-              <p className="text-xs text-slate-500 mt-2 leading-relaxed">
-                Automated 500-meter proximity calculations pair citizen reports with adjacent offline nodes to output direct recommended actions.
-              </p>
-            </div>
           </div>
         </div>
       </section>
