@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from "react";
 import Link from "next/link";
+import Navbar from "../components/Navbar";
 
 function AnimatedCounter({ value, duration = 2000, suffix = "" }: { value: number; duration?: number; suffix?: string }) {
   const [count, setCount] = useState(0);
@@ -40,8 +41,6 @@ function AnimatedCounter({ value, duration = 2000, suffix = "" }: { value: numbe
 }
 
 export default function Homepage() {
-  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-
   // Custom Colors Mapping:
   // Dark Blue: #001e66
   // Vivid Azure: #00aeef
@@ -107,53 +106,7 @@ export default function Homepage() {
 
   return (
     <div className="min-h-screen bg-white text-[#001e66] font-sans flex flex-col">
-      {/* 1. Header/Navbar Section */}
-      <nav className="bg-white border-b border-slate-200 sticky top-0 z-50 shadow-sm">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between h-20">
-            <div className="flex items-center">
-              {/* Logo of AquaTrack */}
-              <div className="flex items-center cursor-pointer">
-                <img src="/LOGO2.png" alt="AquaTrack Logo" className="h-25 w-auto translate-y-1" />
-              </div>
-            </div>
-
-            {/* Desktop Navigation Links */}
-            <div className="hidden md:flex items-center space-x-8 text-sm font-bold">
-              <a href="#home" className="text-[#00aeef] transition-colors">Home</a>
-              <a href="#about" className="hover:text-[#00aeef] transition-colors">About Us</a>
-              <a href="#offices" className="hover:text-[#00aeef] transition-colors">District Offices</a>
-              <a href="#announcements" className="hover:text-[#00aeef] transition-colors">Advisories &amp; Announcements</a>
-            </div>
-
-            {/* Mobile menu button */}
-            <div className="flex items-center md:hidden">
-              <button
-                onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-                className="text-[#001e66] hover:text-[#00aeef] p-2 focus:outline-none"
-              >
-                <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  {mobileMenuOpen ? (
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
-                  ) : (
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 6h16M4 12h16M4 18h16" />
-                  )}
-                </svg>
-              </button>
-            </div>
-          </div>
-        </div>
-
-        {/* Mobile Navigation Links */}
-        {mobileMenuOpen && (
-          <div className="md:hidden border-t border-slate-100 px-4 pt-2 pb-4 space-y-2 bg-white font-bold text-sm">
-            <a href="#home" className="block py-2 text-[#00aeef]" onClick={() => setMobileMenuOpen(false)}>Home</a>
-            <a href="#about" className="block py-2 hover:text-[#00aeef]" onClick={() => setMobileMenuOpen(false)}>About Us</a>
-            <a href="#offices" className="block py-2 hover:text-[#00aeef]" onClick={() => setMobileMenuOpen(false)}>District Offices</a>
-            <a href="#announcements" className="block py-2 hover:text-[#00aeef]" onClick={() => setMobileMenuOpen(false)}>Advisories &amp; Announcements</a>
-          </div>
-        )}
-      </nav>
+      <Navbar />
 
       {/* 2. Hero Header Section with Premium Multi-Layer Overlay */}
       <section
