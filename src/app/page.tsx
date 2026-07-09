@@ -90,7 +90,7 @@ export default function Homepage() {
         ></div>
 
         {/* 1. Horizontal Linear Gradient Overlay (Fades left-to-right) */}
-        <div className="absolute inset-0 bg-gradient-to-r from-white via-white/60 to-transparent pointer-events-none"></div>
+        <div className="absolute inset-0 bg-gradient-to-r from-white via-white/30 to-transparent pointer-events-none"></div>
 
         {/* 2. Subtle Dotted Water Grid Wave Overlay */}
         <div className="absolute inset-0 opacity-[0.08] bg-[radial-gradient(#00aeef_1.5px,transparent_1.5px)] [background-size:24px_24px] pointer-events-none"></div>
@@ -131,7 +131,6 @@ export default function Homepage() {
 
           {/* Right Column: Main Features of AquaTrack (Contained in equal-sized white cards) */}
           <div className="flex flex-col space-y-4 lg:pl-8">
-            <h2 className="text-3xl font-black text-[#001e66] tracking-tight border-b border-slate-300 pb-3 mb-2">Main Features</h2>
             
             <div className="space-y-4 flex flex-col">
               
