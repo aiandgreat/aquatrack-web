@@ -1,8 +1,8 @@
 # AquaTrack Core Implementation Progress Ledger
 
 - [x] Task 1: Project Scaffolding & Prisma PostGIS Schema Setup
-- [ ] Task 2: Upstash Redis & Rate Limiter Configuration
-- [ ] Task 3: Telemetry Ingestion Edge Function
+- [x] Task 2: Upstash Redis & Rate Limiter Configuration
+- [x] Task 3: Telemetry Ingestion Edge Function
 - [ ] Task 4: Citizen Complaint Route & Spatial Scan Trigger
 - [ ] Task 5: AI Triage & PostGIS Diagnostic Alert Engine
 - [ ] Task 6: Resend API Notification Integration
