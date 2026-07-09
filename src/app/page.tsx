@@ -1,7 +1,43 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import Link from "next/link";
+
+function AnimatedCounter({ value, duration = 2000, suffix = "" }: { value: number; duration?: number; suffix?: string }) {
+  const [count, setCount] = useState(0);
+
+  useEffect(() => {
+    let startTimestamp: number | null = null;
+    let animationFrameId: number;
+
+    const step = (timestamp: number) => {
+      if (!startTimestamp) startTimestamp = timestamp;
+      const progress = Math.min((timestamp - startTimestamp) / duration, 1);
+      
+      // Decelerating progress curve (ease-out quad)
+      const easeProgress = progress * (2 - progress);
+      const currentValue = Math.floor(easeProgress * value);
+      
+      setCount(currentValue);
+
+      if (progress < 1) {
+        animationFrameId = requestAnimationFrame(step);
+      } else {
+        setCount(value);
+      }
+    };
+
+    animationFrameId = requestAnimationFrame(step);
+    return () => cancelAnimationFrame(animationFrameId);
+  }, [value, duration]);
+
+  return (
+    <span>
+      {count.toLocaleString()}
+      {suffix}
+    </span>
+  );
+}
 
 export default function Homepage() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -192,7 +228,9 @@ export default function Homepage() {
               </svg>
             </div>
             <div>
-              <p className="text-3xl font-black text-[#001e66] tracking-tight">52 Years</p>
+              <p className="text-3xl font-black text-[#001e66] tracking-tight">
+                <AnimatedCounter value={52} suffix=" Years" />
+              </p>
               <p className="text-xs font-bold uppercase tracking-wider text-slate-500 mt-0.5">Years of Service</p>
             </div>
           </div>
@@ -205,7 +243,9 @@ export default function Homepage() {
               </svg>
             </div>
             <div>
-              <p className="text-3xl font-black text-[#001e66] tracking-tight">250,000+</p>
+              <p className="text-3xl font-black text-[#001e66] tracking-tight">
+                <AnimatedCounter value={250000} suffix="+" />
+              </p>
               <p className="text-xs font-bold uppercase tracking-wider text-slate-500 mt-0.5">Consumers Subscribed</p>
             </div>
           </div>
@@ -219,7 +259,9 @@ export default function Homepage() {
               </svg>
             </div>
             <div>
-              <p className="text-3xl font-black text-[#001e66] tracking-tight">35</p>
+              <p className="text-3xl font-black text-[#001e66] tracking-tight">
+                <AnimatedCounter value={35} />
+              </p>
               <p className="text-xs font-bold uppercase tracking-wider text-slate-500 mt-0.5">Barangays Served</p>
             </div>
           </div>
