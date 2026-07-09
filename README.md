@@ -105,8 +105,9 @@ AquaTrack uses **Supabase Auth** for staff identity management.
 
 1. **Sign Up** (`/register`): Staff submit name, email, and password. Supabase sends a confirmation email. The `full_name` is stored in `auth.users.raw_user_meta_data`.
 2. **Email Confirmation**: The user clicks the link in the Supabase-sent email, which activates their account.
-3. **Sign In** (`/login`): Staff authenticate with email and password via `signInWithPassword`. On success they are redirected to `/dashboard`.
-4. **Session**: Supabase manages the session via a secure cookie. The browser Supabase client (`src/lib/supabase.ts`) uses `NEXT_PUBLIC_SUPABASE_URL` and `NEXT_PUBLIC_SUPABASE_ANON_KEY`.
+3. **DB Sync (automatic)**: A PostgreSQL trigger (`on_auth_user_created`) fires on every new `auth.users` insert and creates a corresponding row in `public."User"` with `role = CONSUMER_RESIDENT`. The `User.id` is the Supabase Auth UUID, permanently linking the auth identity to the app record.
+4. **Sign In** (`/login`): Staff authenticate with email and password via `signInWithPassword`. On success they are redirected to `/dashboard`.
+5. **Session**: Supabase manages the session via a secure cookie. The browser Supabase client (`src/lib/supabase.ts`) uses `NEXT_PUBLIC_SUPABASE_URL` and `NEXT_PUBLIC_SUPABASE_ANON_KEY`.
 
 ### Supabase Auth Configuration
 
@@ -114,6 +115,25 @@ In your Supabase project dashboard:
 - **Authentication → Settings** → Set **Site URL** to your deployed app URL (e.g. `https://aquatrack.vercel.app`)
 - **Authentication → Settings** → Add `http://localhost:3000` under **Redirect URLs** for local development
 - **Authentication → Email Templates** → Customize the confirmation email with CSFWD branding (optional)
+
+### Installing the Auth → Database Sync Trigger
+
+After running `prisma migrate deploy`, open the **Supabase SQL Editor** and run:
+
+```
+supabase/sync_auth_users.sql
+```
+
+This installs the `on_auth_user_created` trigger. After that, every new account registered through `/register` will automatically appear as a row in `public."User"` with:
+
+| Field | Value |
+|-------|-------|
+| `id` | Supabase Auth UUID |
+| `name` | `full_name` from sign-up form (falls back to email prefix) |
+| `email` | Account email |
+| `role` | `CONSUMER_RESIDENT` (default; admin can promote later) |
+| `phone` | `null` (can be set later via admin panel) |
+| `serviceAccountNo` | `null` (assigned by CSFWD admin) |
 
 ## Useful Operations
 

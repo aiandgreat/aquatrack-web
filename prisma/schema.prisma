@@ -129,11 +129,11 @@ model WorkOrder {
 }
 
 model User {
-  id               String      @id @default(uuid())
+  id               String      @id
   name             String
   email            String      @unique
-  role             UserRole
-  phone            String
+  role             UserRole    @default(CONSUMER_RESIDENT)
+  phone            String?
   serviceAccountNo String?
   complaints       Complaint[]
   workOrders       WorkOrder[]
