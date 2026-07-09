@@ -5,8 +5,8 @@
 - [x] Task 3: Telemetry Ingestion Edge Function
 - [x] Task 4: Citizen Complaint Route & Spatial Scan Trigger
 - [x] Task 5: AI Triage & PostGIS Diagnostic Alert Engine
-- [ ] Task 6: Resend API Notification Integration
-- [ ] Task 7: Command Center Dashboard Mapbox Layout
+- [x] Task 6: Resend API Notification Integration
+- [x] Task 7: Command Center Dashboard Mapbox Layout
 - [ ] Task 8: Tremor Telemetry Sparkline Drawer
 - [ ] Task 9: Diagnostic Alerts Drawer & Proximity Dispatcher
 - [ ] Task 10: Field Crew Mobile Dashboard Route
