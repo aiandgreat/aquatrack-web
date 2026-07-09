@@ -2,7 +2,6 @@
 
 import React, { useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import Link from "next/link";
 import { NavItem } from "./NavItems";
 
 interface MobileMenuProps {
@@ -82,23 +81,7 @@ export default function MobileMenu({ isOpen, onClose, items, activeHash }: Mobil
               })}
             </div>
 
-            {/* Mobile Actions Drawer Bottom */}
-            <div className="pt-6 border-t border-slate-100 flex flex-col space-y-3">
-              <Link
-                href="/dashboard"
-                onClick={onClose}
-                className="w-full text-center py-3 bg-[#001e66] hover:bg-[#00aeef] text-white rounded-xl font-bold text-xs uppercase tracking-widest transition-all"
-              >
-                Portal Login
-              </Link>
-              <Link
-                href="/crew"
-                onClick={onClose}
-                className="w-full text-center py-3 border border-slate-200 hover:bg-slate-50 text-[#001e66] rounded-xl font-bold text-xs uppercase tracking-widest transition-all"
-              >
-                Crew Access
-              </Link>
-            </div>
+
           </motion.div>
         </>
       )}

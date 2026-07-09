@@ -3,7 +3,6 @@
 import React, { useState, useEffect } from "react";
 import Link from "next/link";
 import NavItems, { NavItem } from "./NavItems";
-import NavbarActions from "./NavbarActions";
 import MobileMenu from "./MobileMenu";
 
 export default function Navbar() {
@@ -79,9 +78,9 @@ export default function Navbar() {
           <div className="flex items-center">
             <Link href="/" className="flex items-center cursor-pointer">
               <img 
-                src="/LOGO1.png" 
+                src="/LOGO2.png" 
                 alt="AquaTrack Logo" 
-                className="h-14 w-auto translate-y-1 hover:opacity-90 transition-opacity" 
+                className="h-25 w-auto translate-y-1 hover:opacity-90 transition-opacity" 
               />
             </Link>
           </div>
@@ -91,10 +90,6 @@ export default function Navbar() {
             <NavItems items={navItems} activeHash={activeHash} />
           </div>
 
-          {/* Desktop Auth/Actions Capsule */}
-          <div className="hidden md:flex items-center">
-            <NavbarActions />
-          </div>
 
           {/* Mobile responsive drawer toggle button */}
           <div className="flex items-center md:hidden">
