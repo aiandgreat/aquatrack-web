@@ -16,8 +16,8 @@ build/
 .env.test.local
 .env.production.local
 
-# SDD brief tasks
-.superpowers/sdd/task-*-brief.md
+# Agent/Superpowers directory
+.superpowers/
 
 # Log files
 npm-debug.log*
@@ -26,5 +26,5 @@ yarn-error.log*
 pnpm-debug.log*
 
 # OS Files
-.DS_Store
-Thumbs.db
+# TS Build Info Cache
+*.tsbuildinfo
