@@ -7,7 +7,7 @@
 - [x] Task 5: AI Triage & PostGIS Diagnostic Alert Engine
 - [x] Task 6: Resend API Notification Integration
 - [x] Task 7: Command Center Dashboard Mapbox Layout
-- [ ] Task 8: Tremor Telemetry Sparkline Drawer
-- [ ] Task 9: Diagnostic Alerts Drawer & Proximity Dispatcher
-- [ ] Task 10: Field Crew Mobile Dashboard Route
+- [x] Task 8: Tremor Telemetry Sparkline Drawer
+- [x] Task 9: Diagnostic Alerts Drawer & Proximity Dispatcher
+- [x] Task 10: Field Crew Mobile Dashboard Route
 - [ ] Task 11: Admin Thresholds & Seed Simulation Page
