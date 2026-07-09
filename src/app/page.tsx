@@ -37,7 +37,7 @@ export default function Homepage() {
             <div className="flex items-center">
               {/* Logo of AquaTrack */}
               <div className="flex items-center cursor-pointer">
-                <img src="/LOGO1.png" alt="AquaTrack Logo" className="h-45 w-auto translate-y-1" />
+                <img src="/LOGO2.png" alt="AquaTrack Logo" className="h-25 w-auto translate-y-1" />
               </div>
             </div>
 
@@ -104,7 +104,26 @@ export default function Homepage() {
           <div className="flex flex-col space-y-6">
             {/* Tagline */}
             <h1 className="text-4xl md:text-5xl lg:text-6xl font-black leading-tight text-[#001e66]">
-              Clean Water, One <span className="bg-[#ffd800] px-2 py-0.5 rounded text-[#001e66]">Smart</span> <span className="text-[#970006]">Drop</span> at a Time.
+              Clean Water, One{" "}
+              <span className="relative inline-block px-3 py-1 text-[#001e66]">
+                <span className="relative z-10">Smart</span>
+                {/* Yellow Watersplash SVG Effect */}
+                <svg
+                  viewBox="0 0 120 45"
+                  fill="none"
+                  xmlns="http://www.w3.org/2000/svg"
+                  className="absolute inset-0 w-full h-full -z-10 text-[#ffd800] fill-current transform scale-110 overflow-visible"
+                >
+                  <path d="M12,22 C18,10 32,8 55,14 C75,19 90,9 105,12 C115,14 118,22 115,26 C110,32 98,38 78,35 C58,33 42,39 25,36 C15,34 9,30 12,22 Z" />
+                  <circle cx="8" cy="12" r="3" />
+                  <circle cx="112" cy="8" r="4" />
+                  <circle cx="116" cy="34" r="2.5" />
+                  <circle cx="15" cy="38" r="3.5" />
+                  <circle cx="62" cy="5" r="2" />
+                  <circle cx="58" cy="40" r="2" />
+                </svg>
+              </span>{" "}
+              <span className="text-[#970006]">Drop</span> at a Time.
             </h1>
             
             {/* Description */}
