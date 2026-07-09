@@ -10,6 +10,7 @@ import { useRouter } from "next/navigation";
 export default function RegisterPage() {
   const router = useRouter();
   const [fullName, setFullName] = useState("");
+  const [phone, setPhone] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
@@ -39,6 +40,7 @@ export default function RegisterPage() {
       options: {
         data: {
           full_name: fullName,
+          phone,
         },
       },
     });
@@ -61,6 +63,7 @@ export default function RegisterPage() {
             id: authData.user.id,
             email: authData.user.email,
             fullName,
+            phone,
           }),
         });
       } catch {
@@ -178,6 +181,23 @@ export default function RegisterPage() {
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                     placeholder="staff@csfwd.gov.ph"
+                    className="w-full px-4 py-3 rounded-xl border border-slate-200 bg-slate-50 text-sm text-[#001e66] font-medium placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-[#00aeef]/40 focus:border-[#00aeef] transition-all"
+                  />
+                </div>
+
+                {/* Phone Number */}
+                <div className="space-y-1.5">
+                  <label htmlFor="register-phone" className="block text-xs font-bold uppercase tracking-wider text-slate-500">
+                    Phone Number
+                  </label>
+                  <input
+                    id="register-phone"
+                    type="tel"
+                    autoComplete="tel"
+                    required
+                    value={phone}
+                    onChange={(e) => setPhone(e.target.value)}
+                    placeholder="09XX-XXX-XXXX"
                     className="w-full px-4 py-3 rounded-xl border border-slate-200 bg-slate-50 text-sm text-[#001e66] font-medium placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-[#00aeef]/40 focus:border-[#00aeef] transition-all"
                   />
                 </div>

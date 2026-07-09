@@ -40,8 +40,9 @@ BEGIN
     NEW.email,
     'CONSUMER_RESIDENT',               -- default role for self-registered users
     COALESCE(
-      NEW.raw_user_meta_data->>'phone', -- optional phone if provided during sign-up
-      ''
+      NEW.raw_user_meta_data->>'phone',  -- phone captured during sign-up form
+      NEW.phone,                          -- Supabase native phone field (if set)
+      NULL
     ),
     NULL                               -- serviceAccountNo assigned later by admin
   )

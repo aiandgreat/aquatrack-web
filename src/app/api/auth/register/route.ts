@@ -18,7 +18,7 @@ const prisma = new PrismaClient({ adapter });
  */
 export async function POST(req: Request) {
   try {
-    const { id, email, fullName } = await req.json();
+    const { id, email, fullName, phone } = await req.json();
 
     if (!id || !email) {
       return NextResponse.json(
@@ -31,13 +31,16 @@ export async function POST(req: Request) {
     // If not, this creates the row directly via Prisma.
     const user = await prisma.user.upsert({
       where: { id },
-      update: {}, // don't overwrite if trigger already populated it
+      update: {
+        // Update phone if it was provided (trigger may have left it null)
+        ...(phone ? { phone: phone.trim() } : {}),
+      },
       create: {
         id,
         email,
         name: fullName?.trim() || email.split("@")[0],
         role: "CONSUMER_RESIDENT",
-        phone: null,
+        phone: phone?.trim() || null,
         serviceAccountNo: null,
       },
     });
