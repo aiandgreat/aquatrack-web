@@ -36,11 +36,8 @@ export default function Homepage() {
           <div className="flex justify-between h-20">
             <div className="flex items-center">
               {/* Logo of AquaTrack */}
-              <div className="flex items-center space-x-2 cursor-pointer">
-                <img src="/logo.svg" alt="AquaTrack Logo" className="w-9 h-9" />
-                <span className="text-2xl font-black tracking-tight text-[#001e66]">
-                  AQ<span className="text-[#ffd800]">U</span><span className="text-[#970006]">A</span>TRACK
-                </span>
+              <div className="flex items-center cursor-pointer">
+                <img src="/LOGO1.png" alt="AquaTrack Logo" className="h-10 w-auto" />
               </div>
             </div>
 

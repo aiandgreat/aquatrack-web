@@ -4,6 +4,9 @@ import "./globals.css";
 export const metadata = {
   title: "AquaTrack",
   description: "Municipal Water District Command Center",
+  icons: {
+    icon: "/favicon.png",
+  },
 };
 
 export default function RootLayout({
