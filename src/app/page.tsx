@@ -68,10 +68,10 @@ export default function Homepage() {
   const districtOffices = [
     {
       name: "CSFWD Main Office (Sto. Rosario)",
-      address: "B. Mendoza St., Sto. Rosario, City of San Fernando, Pampanga 2000",
+      address: "2MMQ+68 San Fernando, Pampanga, Philippines",
       phone: "(045) 961-3546",
       hours: "8:00 AM - 5:00 PM (Mon-Fri)",
-      query: "City of San Fernando Water District B. Mendoza St Pampanga"
+      query: "2MMQ+68 San Fernando, Pampanga, Philippines"
     },
     {
       name: "Saguin Sub-Office",
@@ -384,10 +384,15 @@ export default function Homepage() {
                         : "bg-slate-50 border-slate-200/80 text-[#001e66] hover:bg-slate-100 hover:border-slate-300"
                     }`}
                   >
-                    <div className="flex justify-between items-start">
-                      <span className="font-extrabold text-sm md:text-base leading-snug">{office.name}</span>
+                    <div className="flex justify-between items-start w-full">
+                      <span className="font-extrabold text-sm md:text-base leading-snug flex items-center">
+                        <svg className="w-5 h-5 text-[#00aeef] mr-2 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                          <path fillRule="evenodd" d="M5.05 4.05a7 7 0 119.9 9.9L10 18.9l-4.95-4.95a7 7 0 010-9.9zM10 11a2 2 0 100-4 2 2 0 000 4z" clipRule="evenodd" />
+                        </svg>
+                        {office.name}
+                      </span>
                       {isActive && (
-                        <span className="bg-[#00aeef] text-white text-[9px] font-extrabold px-2 py-0.5 rounded uppercase tracking-wider">
+                        <span className="bg-[#00aeef] text-white text-[9px] font-extrabold px-2 py-0.5 rounded uppercase tracking-wider flex-shrink-0">
                           Active Map
                         </span>
                       )}
