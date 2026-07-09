@@ -132,3 +132,7 @@ ALTER TABLE "WorkOrder" ADD CONSTRAINT "WorkOrder_alertId_fkey" FOREIGN KEY ("al
 
 -- AddForeignKey
 ALTER TABLE "WorkOrder" ADD CONSTRAINT "WorkOrder_engineerId_fkey" FOREIGN KEY ("engineerId") REFERENCES "User"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+
+-- CreateSpatialIndex
+CREATE INDEX IF NOT EXISTS "TelemetryNode_geom_idx" ON "TelemetryNode" USING GIST (geom);
+CREATE INDEX IF NOT EXISTS "Complaint_geom_idx" ON "Complaint" USING GIST (geom);

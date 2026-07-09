@@ -25,9 +25,15 @@
 - `.env.example` / `.env`
 - `tests/db-connection.test.ts`
 - `.superpowers/sdd/progress.md`
+- `.gitignore`
 
 ## Self-review findings
 - The schema is fully compliant with the spec. Modified the `AiStatus` enum and defaults to match the spec modifications (`AiStatus.PENDING`).
 
+## Post-Review Fixes Applied
+- **Missing Spatial Indexes (GiST)**: Created GiST indexes on geometry columns (`TelemetryNode.geom` and `Complaint.geom`) in the initial migration file `prisma/migrations/init/migration.sql`.
+- **Missing `.gitignore` File**: Added a standard `.gitignore` at the root ignoring `node_modules`, `.env`, build directories, and task briefs.
+
 ## Issues or concerns
 - None.
+

@@ -85,6 +85,7 @@ enum UserRole {
 
 enum AiStatus {
   SUCCESS
+  PENDING
   FAILED
 }
 
@@ -129,7 +130,7 @@ model Complaint {
   category       IssueCategory?
   urgency        UrgencyLevel?
   status         TicketStatus   @default(PENDING)
-  aiStatus       AiStatus       @default(SUCCESS)
+  aiStatus       AiStatus       @default(PENDING)
   imageUrl       String?
   latitude       Float
   longitude      Float
@@ -251,7 +252,7 @@ We decouple our API layer into two execution points:
  1. Check Upstash Redis Rate Limiter (`ratelimit:complaint:<ip_address>`)
        │
        ▼
- 2. Commit `Complaint` to Postgres with `TicketStatus.PENDING` and `AiStatus.SUCCESS`
+ 2. Commit `Complaint` to Postgres with `TicketStatus.PENDING` and `AiStatus.PENDING`
        │
        ├──► Natively generates PostGIS geometry object from Float coordinates
        │
