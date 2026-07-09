@@ -37,7 +37,7 @@ export default function Homepage() {
             <div className="flex items-center">
               {/* Logo of AquaTrack */}
               <div className="flex items-center cursor-pointer">
-                <img src="/LOGO1.png" alt="AquaTrack Logo" className="h-10 w-auto" />
+                <img src="/LOGO1.png" alt="AquaTrack Logo" className="h-14 w-auto" />
               </div>
             </div>
 
