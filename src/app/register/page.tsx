@@ -33,7 +33,7 @@ export default function RegisterPage() {
 
     setLoading(true);
 
-    const { error: authError } = await supabase.auth.signUp({
+    const { data: authData, error: authError } = await supabase.auth.signUp({
       email,
       password,
       options: {
@@ -43,13 +43,34 @@ export default function RegisterPage() {
       },
     });
 
-    setLoading(false);
-
     if (authError) {
+      setLoading(false);
       setError(authError.message);
-    } else {
-      setSuccess(true);
+      return;
     }
+
+    // Sync the new user profile into the app database immediately.
+    // Uses the Supabase Auth UUID as the primary key so auth and
+    // app records are permanently linked.
+    if (authData.user?.id) {
+      try {
+        await fetch("/api/auth/register", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            id: authData.user.id,
+            email: authData.user.email,
+            fullName,
+          }),
+        });
+      } catch {
+        // Non-fatal — the SQL trigger will catch up, or an admin can resync.
+        console.warn("DB profile sync failed; auth account still created.");
+      }
+    }
+
+    setLoading(false);
+    setSuccess(true);
   };
 
   return (
