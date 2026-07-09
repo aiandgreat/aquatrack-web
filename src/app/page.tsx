@@ -64,6 +64,47 @@ export default function Homepage() {
     }
   ];
 
+  // City of San Fernando Water District (CSFWD) Offices data
+  const districtOffices = [
+    {
+      name: "CSFWD Main Office (Sto. Rosario)",
+      address: "B. Mendoza St., Sto. Rosario, City of San Fernando, Pampanga 2000",
+      phone: "(045) 961-3546",
+      hours: "8:00 AM - 5:00 PM (Mon-Fri)",
+      query: "City of San Fernando Water District B. Mendoza St Pampanga"
+    },
+    {
+      name: "Saguin Sub-Office",
+      address: "Fortune Square Bldg. (in front of Coke), Saguin, City of San Fernando, Pampanga",
+      phone: "(045) 961-5804",
+      hours: "8:00 AM - 5:00 PM (Mon-Fri)",
+      query: "Fortune Square Bldg Saguin City of San Fernando Pampanga"
+    },
+    {
+      name: "Sindalan Sub-Office",
+      address: "Sindalan Payment Center, Brgy. Sindalan, City of San Fernando, Pampanga",
+      phone: "0968-854-1343",
+      hours: "8:00 AM - 3:00 PM (Mon-Fri)",
+      query: "Sindalan City of San Fernando Pampanga"
+    },
+    {
+      name: "Bulaon Sub-Office",
+      address: "Bulaon Payment Center, Brgy. Bulaon, City of San Fernando, Pampanga",
+      phone: "0933-814-6585",
+      hours: "8:00 AM - 3:00 PM (Mon-Fri)",
+      query: "Bulaon City of San Fernando Pampanga"
+    },
+    {
+      name: "Teopaco Sub-Office",
+      address: "P. Gomez St., Teopaco, City of San Fernando, Pampanga",
+      phone: "(045) 961-3546",
+      hours: "8:00 AM - 4:00 PM (Mon-Fri)",
+      query: "P. Gomez St City of San Fernando Pampanga"
+    }
+  ];
+
+  const [activeOffice, setActiveOffice] = useState(districtOffices[0]);
+
   return (
     <div className="min-h-screen bg-white text-[#001e66] font-sans flex flex-col">
       {/* 1. Header/Navbar Section */}
@@ -275,7 +316,7 @@ export default function Homepage() {
           
           <div className="text-center max-w-3xl mx-auto mb-16">
             <span className="text-xs font-bold uppercase tracking-widest text-[#00aeef]">Strategic Compass</span>
-            <h2 className="text-3xl font-extrabold mt-2 text-[#001e66]">Our Mission and Vision for AquaTrack</h2>
+            <h2 className="text-3xl font-extrabold mt-2 text-[#001e66]">Our Mission and Vision</h2>
             <p className="mt-4 text-slate-600 leading-relaxed text-sm">
               AquaTrack bridges the gap between resident observers and water system operators in Pampanga. By correlating real-time sensor node alerts with geolocated citizen feedback, we maintain optimal pressure systems and pure water delivery across San Fernando.
             </p>
@@ -316,31 +357,83 @@ export default function Homepage() {
       </section>
 
       {/* 4. District Offices Section */}
-      <section id="offices" className="py-20 bg-white">
+      <section id="offices" className="py-24 bg-white">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="text-center max-w-3xl mx-auto mb-12">
+          
+          <div className="text-center max-w-3xl mx-auto mb-16">
             <span className="text-xs font-bold uppercase tracking-widest text-[#00aeef]">Customer Care</span>
-            <h2 className="text-3xl font-extrabold mt-2 text-[#001e66]">Local District Offices</h2>
-            <p className="mt-2 text-slate-500 text-sm">Find your nearest service terminal in San Fernando</p>
+            <h2 className="text-3xl font-black mt-2 text-[#001e66]">Local District Offices</h2>
+            <p className="mt-4 text-slate-600 leading-relaxed text-sm">
+              Find and locate the main office of the City of San Fernando Water District (CSFWD) and our satellite payment branches. Select any office to update the interactive map.
+            </p>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-8 max-w-4xl mx-auto">
-            <div className="p-6 bg-slate-50 rounded-xl border border-slate-200">
-              <h3 className="font-bold text-lg text-[#001e66]">San Fernando City Hall Annex</h3>
-              <p className="text-xs text-slate-500 mt-2">Capitol Boulevard, Brgy. San Juan, City of San Fernando, Pampanga</p>
-              <div className="mt-4 flex items-center space-x-2 text-xs font-bold text-[#00aeef]">
-                <span>Contact: (045) 961-8821</span>
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-stretch">
+            
+            {/* Left Column: Office Selector List (lg:col-span-5) */}
+            <div className="lg:col-span-5 flex flex-col space-y-4">
+              {districtOffices.map((office, idx) => {
+                const isActive = activeOffice.name === office.name;
+                return (
+                  <button
+                    key={idx}
+                    onClick={() => setActiveOffice(office)}
+                    className={`w-full text-left p-5 rounded-2xl border transition-all duration-200 flex flex-col space-y-2 ${
+                      isActive 
+                        ? "bg-[#001e66] border-[#001e66] text-white shadow-lg scale-[1.02]" 
+                        : "bg-slate-50 border-slate-200/80 text-[#001e66] hover:bg-slate-100 hover:border-slate-300"
+                    }`}
+                  >
+                    <div className="flex justify-between items-start">
+                      <span className="font-extrabold text-sm md:text-base leading-snug">{office.name}</span>
+                      {isActive && (
+                        <span className="bg-[#00aeef] text-white text-[9px] font-extrabold px-2 py-0.5 rounded uppercase tracking-wider">
+                          Active Map
+                        </span>
+                      )}
+                    </div>
+                    <p className={`text-xs ${isActive ? "text-slate-200" : "text-slate-600"} leading-relaxed`}>
+                      {office.address}
+                    </p>
+                    <div className="flex items-center space-x-4 pt-1 text-[11px] font-semibold">
+                      <span className="flex items-center space-x-1">
+                        <span>📞</span>
+                        <span className={isActive ? "text-slate-300" : "text-slate-500"}>{office.phone}</span>
+                      </span>
+                      <span className="flex items-center space-x-1">
+                        <span>🕒</span>
+                        <span className={isActive ? "text-slate-300" : "text-slate-500"}>{office.hours}</span>
+                      </span>
+                    </div>
+                  </button>
+                );
+              })}
+            </div>
+
+            {/* Right Column: Google Maps API Integration Map View (lg:col-span-7) */}
+            <div className="lg:col-span-7 bg-slate-50 border border-slate-200 rounded-3xl overflow-hidden shadow-inner min-h-[380px] lg:min-h-full flex flex-col">
+              <div className="bg-[#001e66]/5 px-5 py-3.5 border-b border-slate-200/60 flex items-center justify-between text-xs font-bold text-[#001e66]">
+                <span className="flex items-center space-x-2">
+                  <span className="animate-pulse w-2.5 h-2.5 rounded-full bg-[#00aeef]"></span>
+                  <span>Google Maps Live API View</span>
+                </span>
+                <span className="text-[#00aeef]">{activeOffice.name}</span>
+              </div>
+              <div className="flex-1 relative">
+                <iframe
+                  title="CSFWD Office Google Map Location"
+                  width="100%"
+                  height="100%"
+                  style={{ border: 0, minHeight: "420px" }}
+                  loading="lazy"
+                  allowFullScreen
+                  src={`https://maps.google.com/maps?q=${encodeURIComponent(activeOffice.query)}&t=&z=16&ie=UTF8&iwloc=&output=embed`}
+                ></iframe>
               </div>
             </div>
 
-            <div className="p-6 bg-slate-50 rounded-xl border border-slate-200">
-              <h3 className="font-bold text-lg text-[#001e66]">Sindalan Operations Depot</h3>
-              <p className="text-xs text-slate-500 mt-2">MacArthur Highway, Brgy. Sindalan, City of San Fernando, Pampanga</p>
-              <div className="mt-4 flex items-center space-x-2 text-xs font-bold text-[#00aeef]">
-                <span>Contact: (045) 961-8825</span>
-              </div>
-            </div>
           </div>
+
         </div>
       </section>
 
