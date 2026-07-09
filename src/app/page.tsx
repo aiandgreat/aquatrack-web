@@ -129,39 +129,40 @@ export default function Homepage() {
             </div>
           </div>
 
-          {/* Right Column: Main Features of AquaTrack (Unconfined and enlarged) */}
-          <div className="flex flex-col space-y-8 lg:pl-8">
+          {/* Right Column: Main Features of AquaTrack (Contained in equal-sized white cards) */}
+          <div className="flex flex-col space-y-4 lg:pl-8">
+            <h2 className="text-3xl font-black text-[#001e66] tracking-tight border-b border-slate-300 pb-3 mb-2">Main Features</h2>
             
-            <div className="space-y-8">
+            <div className="space-y-4 flex flex-col">
               
               {/* Feature 1 */}
-              <div className="flex items-start space-x-6">
+              <div className="w-full bg-white/90 border border-slate-200/80 p-5 rounded-2xl shadow-sm flex items-center space-x-6 min-h-[120px] transition-all hover:border-[#00aeef] hover:shadow-md">
                 <div className="w-14 h-14 bg-[#00aeef]/10 rounded-xl flex items-center justify-center text-[#00aeef] flex-shrink-0 shadow-sm border border-[#00aeef]/20">
                   <svg className="w-7 h-7" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5">
                     <path strokeLinecap="round" strokeLinejoin="round" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01" />
                   </svg>
                 </div>
                 <div>
-                  <h3 className="text-xl font-extrabold text-[#001e66] tracking-tight">Real-Time Complaint Tracking</h3>
-                  <p className="text-sm text-slate-700 mt-1.5 leading-relaxed">Submit and track water-related concerns anytime.</p>
+                  <h3 className="text-lg font-extrabold text-[#001e66] tracking-tight">Real-Time Complaint Tracking</h3>
+                  <p className="text-xs text-slate-700 mt-1 leading-relaxed">Submit and track water-related concerns anytime.</p>
                 </div>
               </div>
 
               {/* Feature 2 */}
-              <div className="flex items-start space-x-6">
+              <div className="w-full bg-white/90 border border-slate-200/80 p-5 rounded-2xl shadow-sm flex items-center space-x-6 min-h-[120px] transition-all hover:border-[#00aeef] hover:shadow-md">
                 <div className="w-14 h-14 bg-[#ffd800]/15 rounded-xl flex items-center justify-center text-[#001e66] flex-shrink-0 shadow-sm border border-[#ffd800]/30">
                   <svg className="w-7 h-7" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5">
                     <path strokeLinecap="round" strokeLinejoin="round" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
                   </svg>
                 </div>
                 <div>
-                  <h3 className="text-xl font-extrabold text-[#001e66] tracking-tight">AI-Assisted Report Classification</h3>
-                  <p className="text-sm text-slate-700 mt-1.5 leading-relaxed">Supports native Tagalog or Kapampangan report descriptions and automated report classification.</p>
+                  <h3 className="text-lg font-extrabold text-[#001e66] tracking-tight">AI-Assisted Classification</h3>
+                  <p className="text-xs text-slate-700 mt-1 leading-relaxed">Supports native Tagalog or Kapampangan report descriptions and automated report classification.</p>
                 </div>
               </div>
 
               {/* Feature 3 */}
-              <div className="flex items-start space-x-6">
+              <div className="w-full bg-white/90 border border-slate-200/80 p-5 rounded-2xl shadow-sm flex items-center space-x-6 min-h-[120px] transition-all hover:border-[#00aeef] hover:shadow-md">
                 <div className="w-14 h-14 bg-[#970006]/10 rounded-xl flex items-center justify-center text-[#970006] flex-shrink-0 shadow-sm border border-[#970006]/20">
                   <svg className="w-7 h-7" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5">
                     <path strokeLinecap="round" strokeLinejoin="round" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
@@ -169,8 +170,8 @@ export default function Homepage() {
                   </svg>
                 </div>
                 <div>
-                  <h3 className="text-xl font-extrabold text-[#001e66] tracking-tight">Geospatial Mapping and Location Pinning</h3>
-                  <p className="text-sm text-slate-700 mt-1.5 leading-relaxed">Precise and automated GPS pinning of exact locations of water service-related complaints.</p>
+                  <h3 className="text-lg font-extrabold text-[#001e66] tracking-tight">Geospatial Mapping &amp; Pinning</h3>
+                  <p className="text-xs text-slate-700 mt-1 leading-relaxed">Precise and automated GPS pinning of exact locations of water service-related complaints.</p>
                 </div>
               </div>
 
