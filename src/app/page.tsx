@@ -85,12 +85,12 @@ export default function Homepage() {
       >
         {/* 4. Underlying Blended Image */}
         <div 
-          className="absolute inset-0 bg-cover bg-center bg-no-repeat opacity-15 mix-blend-multiply pointer-events-none"
+          className="absolute inset-0 bg-cover bg-center bg-no-repeat opacity-45 mix-blend-multiply pointer-events-none"
           style={{ backgroundImage: "url('https://greenempowerment.org/wp-content/uploads/2020/09/kids-water.jpg')" }}
         ></div>
 
-        {/* 1. Light Linear Gradient Overlay */}
-        <div className="absolute inset-0 bg-gradient-to-b from-white/45 via-white/35 to-white/45 pointer-events-none"></div>
+        {/* 1. Horizontal Linear Gradient Overlay (Fades left-to-right) */}
+        <div className="absolute inset-0 bg-gradient-to-r from-white via-white/60 to-transparent pointer-events-none"></div>
 
         {/* 2. Subtle Dotted Water Grid Wave Overlay */}
         <div className="absolute inset-0 opacity-[0.08] bg-[radial-gradient(#00aeef_1.5px,transparent_1.5px)] [background-size:24px_24px] pointer-events-none"></div>
