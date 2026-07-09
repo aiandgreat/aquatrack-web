@@ -127,22 +127,46 @@ npm install
 
 ## 3. Database Setup
 
-### A. Generate Prisma Client
-
-```powershell
-npm run db:generate
-```
-
-### B. Apply Schema to Supabase
-
-> Make sure PostGIS is enabled in your Supabase project first:
+> **Prerequisite:** Enable PostGIS in your Supabase project first:
 > Supabase Dashboard → Database → Extensions → enable **postgis**
 
+### A. Generate the Prisma Client
+
+Generates the type-safe Prisma client from `prisma/schema.prisma`:
+
 ```powershell
-npm run db:push
+npx prisma generate
 ```
 
-### C. Deploy the Spatial RPC Function
+### B. Run Migrations (Development)
+
+Applies the initial DDL migration in `prisma/migrations/init/` to your database, including spatial indexes:
+
+```powershell
+npx prisma migrate dev
+```
+
+> Use `prisma migrate dev` during active development — it creates new migration files as you modify the schema.
+
+### C. Run Migrations (Production / Supabase)
+
+In a production or CI environment, apply existing migrations without prompting:
+
+```powershell
+npx prisma migrate deploy
+```
+
+> ⚠️ **Do not use `prisma db push` in production** — it bypasses the migration history and can cause schema drift.
+
+### D. Inspect the Database (Optional)
+
+Open Prisma Studio to browse your tables visually:
+
+```powershell
+npx prisma studio
+```
+
+### E. Deploy the PostGIS RPC Function
 
 Open the **Supabase SQL Editor** and run the contents of:
 
@@ -150,7 +174,7 @@ Open the **Supabase SQL Editor** and run the contents of:
 supabase/find_nearby_anomalies.sql
 ```
 
-This registers the `find_nearby_anomalies(report_lat, report_lng, max_distance_meters)` PostgreSQL function used by the AI triage engine.
+This registers the `find_nearby_anomalies(report_lat, report_lng, max_distance_meters)` PostgreSQL RPC function used by the AI triage edge function to scan for active sensor anomalies within a 500m buffer.
 
 ---
 
