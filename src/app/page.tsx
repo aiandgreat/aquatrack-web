@@ -107,12 +107,12 @@ export default function Homepage() {
               Clean Water, One{" "}
               <span className="relative inline-block px-3 py-1 text-[#001e66]">
                 <span className="relative z-10">Smart</span>
-                {/* Yellow Watersplash SVG Effect */}
+                {/* Vivid Azure Watersplash SVG Effect */}
                 <svg
                   viewBox="0 0 120 45"
                   fill="none"
                   xmlns="http://www.w3.org/2000/svg"
-                  className="absolute inset-0 w-full h-full -z-10 text-[#ffd800] fill-current transform scale-110 overflow-visible"
+                  className="absolute inset-0 w-full h-full -z-10 text-[#00aeef] fill-current transform scale-110 overflow-visible"
                 >
                   <path d="M12,22 C18,10 32,8 55,14 C75,19 90,9 105,12 C115,14 118,22 115,26 C110,32 98,38 78,35 C58,33 42,39 25,36 C15,34 9,30 12,22 Z" />
                   <circle cx="8" cy="12" r="3" />
