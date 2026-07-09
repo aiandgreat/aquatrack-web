@@ -85,16 +85,25 @@ export default function Homepage() {
         )}
       </nav>
 
-      {/* 2. Hero Header Section with 50% White Overlay */}
+      {/* 2. Hero Header Section with Premium Multi-Layer Overlay */}
       <section
         id="home"
-        className="relative bg-cover bg-center py-24 md:py-36 px-4 flex items-center min-h-[550px]"
-        style={{
-          backgroundImage: "url('https://greenempowerment.org/wp-content/uploads/2020/09/kids-water.jpg')",
-        }}
+        className="relative py-24 md:py-36 px-4 flex items-center min-h-[550px] bg-slate-50 overflow-hidden"
       >
-        {/* 50% White Overlay */}
-        <div className="absolute inset-0 bg-white/50" />
+        {/* 4. Underlying Blended Image */}
+        <div 
+          className="absolute inset-0 bg-cover bg-center bg-no-repeat opacity-15 mix-blend-multiply pointer-events-none"
+          style={{ backgroundImage: "url('https://greenempowerment.org/wp-content/uploads/2020/09/kids-water.jpg')" }}
+        ></div>
+
+        {/* 1. Light Linear Gradient Overlay */}
+        <div className="absolute inset-0 bg-gradient-to-b from-white/45 via-white/35 to-white/45 pointer-events-none"></div>
+
+        {/* 2. Subtle Dotted Water Grid Wave Overlay */}
+        <div className="absolute inset-0 opacity-[0.08] bg-[radial-gradient(#00aeef_1.5px,transparent_1.5px)] [background-size:24px_24px] pointer-events-none"></div>
+
+        {/* 3. Bottom Fade-to-White Overlay */}
+        <div className="absolute bottom-0 left-0 right-0 h-24 bg-gradient-to-t from-white/60 to-transparent pointer-events-none"></div>
 
         <div className="relative max-w-7xl mx-auto w-full z-10">
           <div className="max-w-2xl bg-white/80 p-8 md:p-12 rounded-2xl shadow-xl backdrop-blur-md border border-white/50">
