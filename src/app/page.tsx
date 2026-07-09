@@ -180,15 +180,95 @@ export default function Homepage() {
         </div>
       </section>
 
-      {/* 3. About Us Section */}
-      <section id="about" className="py-20 bg-slate-50 border-t border-slate-100">
+      {/* 2.5. Operational Impact Metrics Box */}
+      <div className="relative max-w-5xl mx-auto px-4 z-20 -mt-16">
+        <div className="bg-white border border-slate-200/80 rounded-3xl shadow-2xl p-6 md:p-8 grid grid-cols-1 md:grid-cols-3 gap-8 md:divide-x md:divide-slate-100">
+          
+          {/* Metric 1 */}
+          <div className="flex items-center space-x-5 md:px-4 group cursor-pointer transition-transform duration-300 hover:-translate-y-1">
+            <div className="w-14 h-14 rounded-2xl bg-[#00aeef]/10 flex items-center justify-center text-[#00aeef] transition-colors group-hover:bg-[#00aeef]/20">
+              <svg className="w-7 h-7" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+            </div>
+            <div>
+              <p className="text-3xl font-black text-[#001e66] tracking-tight">52 Years</p>
+              <p className="text-xs font-bold uppercase tracking-wider text-slate-500 mt-0.5">Years of Service</p>
+            </div>
+          </div>
+
+          {/* Metric 2 */}
+          <div className="flex items-center space-x-5 md:pl-8 md:pr-4 group cursor-pointer transition-transform duration-300 hover:-translate-y-1">
+            <div className="w-14 h-14 rounded-2xl bg-[#ffd800]/15 flex items-center justify-center text-[#001e66] transition-colors group-hover:bg-[#ffd800]/35">
+              <svg className="w-7 h-7" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
+              </svg>
+            </div>
+            <div>
+              <p className="text-3xl font-black text-[#001e66] tracking-tight">250,000+</p>
+              <p className="text-xs font-bold uppercase tracking-wider text-slate-500 mt-0.5">Consumers Subscribed</p>
+            </div>
+          </div>
+
+          {/* Metric 3 */}
+          <div className="flex items-center space-x-5 md:pl-8 group cursor-pointer transition-transform duration-300 hover:-translate-y-1">
+            <div className="w-14 h-14 rounded-2xl bg-[#970006]/10 flex items-center justify-center text-[#970006] transition-colors group-hover:bg-[#970006]/20">
+              <svg className="w-7 h-7" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+                <path strokeLinecap="round" strokeLinejoin="round" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+              </svg>
+            </div>
+            <div>
+              <p className="text-3xl font-black text-[#001e66] tracking-tight">35</p>
+              <p className="text-xs font-bold uppercase tracking-wider text-slate-500 mt-0.5">Barangays Served</p>
+            </div>
+          </div>
+
+        </div>
+      </div>
+
+      {/* 3. Mission & Vision Section */}
+      <section id="about" className="py-24 bg-slate-50 border-t border-slate-100">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="text-center max-w-3xl mx-auto">
-            <span className="text-xs font-bold uppercase tracking-widest text-[#00aeef]">Innovative Sanitation</span>
-            <h2 className="text-3xl font-extrabold mt-2 text-[#001e66]">Our Mission &amp; Infrastructure</h2>
+          
+          <div className="text-center max-w-3xl mx-auto mb-16">
+            <span className="text-xs font-bold uppercase tracking-widest text-[#00aeef]">Strategic Compass</span>
+            <h2 className="text-3xl font-extrabold mt-2 text-[#001e66]">Our Mission and Vision for AquaTrack</h2>
             <p className="mt-4 text-slate-600 leading-relaxed text-sm">
               AquaTrack bridges the gap between resident observers and water system operators in Pampanga. By correlating real-time sensor node alerts with geolocated citizen feedback, we maintain optimal pressure systems and pure water delivery across San Fernando.
             </p>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-8 max-w-5xl mx-auto">
+            
+            {/* Mission Card */}
+            <div className="bg-white p-8 rounded-3xl border border-slate-200/80 shadow-md hover:border-[#00aeef] transition-all duration-300">
+              <div className="w-12 h-12 bg-[#00aeef]/10 rounded-xl flex items-center justify-center text-[#00aeef] mb-6">
+                <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z" />
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M21 12a9 9 0 11-18 0 9 9 0 1118 0z" />
+                </svg>
+              </div>
+              <h3 className="text-xl font-extrabold text-[#001e66]">Our Mission</h3>
+              <p className="text-sm text-slate-600 mt-3 leading-relaxed">
+                To deliver uninterrupted, clean, and safe water services to the residents of San Fernando by integrating cutting-edge IoT telemetry and automated AI triage classification, making public complaints actionable in real time.
+              </p>
+            </div>
+
+            {/* Vision Card */}
+            <div className="bg-white p-8 rounded-3xl border border-slate-200/80 shadow-md hover:border-[#00aeef] transition-all duration-300">
+              <div className="w-12 h-12 bg-[#ffd800]/10 rounded-xl flex items-center justify-center text-[#ffd800] mb-6 border border-[#ffd800]/20">
+                <svg className="w-6 h-6 text-[#001e66]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                </svg>
+              </div>
+              <h3 className="text-xl font-extrabold text-[#001e66]">Our Vision</h3>
+              <p className="text-sm text-slate-600 mt-3 leading-relaxed">
+                To establish the City of San Fernando as a leading smart water municipality in the Philippines, leveraging spatial analytics and digital pipelines to achieve zero water wastage and instant responsive sanitation.
+              </p>
+            </div>
+
           </div>
         </div>
       </section>
