@@ -82,10 +82,28 @@ supabase secrets set UPSTASH_REDIS_REST_URL=https://...
 supabase secrets set UPSTASH_REDIS_REST_TOKEN=AX...
 ```
 
-### 6. Run the development server
+### 6. Run the local environment
+
+You can run and operate the entire platform locally using the following steps:
+
+#### Start the Next.js Dev Server
 ```bash
 npm run dev
 ```
+By default, the server runs on **http://localhost:3000** (or **http://localhost:3001** if port 3000 is occupied).
+
+#### View and Edit Database Records
+Launch Prisma Studio to inspect, add, or edit telemetry readings, complaints, and user accounts:
+```bash
+npx prisma studio
+```
+Visit the database explorer at **http://localhost:5555**.
+
+#### Seeding & Simulating Mock IoT Telemetry
+To populate your map and telemetry charts with real-time streaming data:
+1. Log into the platform (or visit the `/admin` page directly).
+2. Use the **Simulate Node Telemetry Ingestion** controls to generate mock IoT payload streams.
+3. Verify that the sparkline charts on the `/dashboard` update instantly with newly ingested parameters.
 
 | Route | Description |
 |-------|-------------|
