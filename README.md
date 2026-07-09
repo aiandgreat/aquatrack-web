@@ -4,6 +4,7 @@ A production-ready municipal water district command center for real-time IoT tel
 
 ## Tech Stack
 - **Framework**: Next.js 16 (App Router)
+- **Authentication**: Supabase Auth (email/password, session management)
 - **Database**: Supabase (PostgreSQL + PostGIS SRID 4326) + Prisma ORM
 - **Spatial Queries**: PostGIS `ST_DWithin` 500m buffer scans via custom RPC function
 - **Caching & Rate Limiting**: Upstash Redis (sliding-window, 5 req/hr per citizen)
@@ -34,11 +35,15 @@ npm install --legacy-peer-deps
 Create a `.env.local` file in the root directory and add the following:
 
 ```env
-# Supabase (PostgreSQL + Edge Functions)
+# Supabase (PostgreSQL + Edge Functions + Auth)
 DATABASE_URL="postgresql://postgres:[password]@db.[project-ref].supabase.co:5432/postgres"
 DIRECT_URL="postgresql://postgres:[password]@db.[project-ref].supabase.co:5432/postgres"
 SUPABASE_URL="https://[project-ref].supabase.co"
 SUPABASE_SERVICE_ROLE_KEY="eyJ..."
+
+# Supabase Auth (public — safe to expose in browser)
+NEXT_PUBLIC_SUPABASE_URL="https://[project-ref].supabase.co"
+NEXT_PUBLIC_SUPABASE_ANON_KEY="eyJ..."
 
 # Upstash Redis
 UPSTASH_REDIS_REST_URL="https://[instance].upstash.io"
@@ -84,10 +89,31 @@ npm run dev
 
 | Route | Description |
 |-------|-------------|
+| `/` | Public homepage — tagline, metrics, offices map, advisories |
+| `/login` | Staff login — Supabase Auth email/password sign-in |
+| `/register` | Account registration — Supabase Auth sign-up with email confirmation |
 | `/dashboard` | Command Center — map, telemetry sparklines, alert sidebar |
 | `/crew` | Field Crew Mobile Portal — active work orders + status transitions |
 | `/admin` | Admin Panel — threshold configuration & simulation controls |
 | `/api/complaints` | POST endpoint — citizen complaint ingestion |
+
+## Authentication
+
+AquaTrack uses **Supabase Auth** for staff identity management.
+
+### How it works
+
+1. **Sign Up** (`/register`): Staff submit name, email, and password. Supabase sends a confirmation email. The `full_name` is stored in `auth.users.raw_user_meta_data`.
+2. **Email Confirmation**: The user clicks the link in the Supabase-sent email, which activates their account.
+3. **Sign In** (`/login`): Staff authenticate with email and password via `signInWithPassword`. On success they are redirected to `/dashboard`.
+4. **Session**: Supabase manages the session via a secure cookie. The browser Supabase client (`src/lib/supabase.ts`) uses `NEXT_PUBLIC_SUPABASE_URL` and `NEXT_PUBLIC_SUPABASE_ANON_KEY`.
+
+### Supabase Auth Configuration
+
+In your Supabase project dashboard:
+- **Authentication → Settings** → Set **Site URL** to your deployed app URL (e.g. `https://aquatrack.vercel.app`)
+- **Authentication → Settings** → Add `http://localhost:3000` under **Redirect URLs** for local development
+- **Authentication → Email Templates** → Customize the confirmation email with CSFWD branding (optional)
 
 ## Useful Operations
 

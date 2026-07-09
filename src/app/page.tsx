@@ -145,13 +145,13 @@ export default function Homepage() {
             {/* Portal Action Buttons */}
             <div className="flex flex-col sm:flex-row gap-4 pt-4">
               <Link
-                href="/dashboard"
+                href="/login"
                 className="flex-1 bg-[#001e66] hover:bg-[#00aeef] text-white font-extrabold text-center py-3.5 px-6 rounded-xl transition-all duration-200 shadow-md hover:scale-105"
               >
                 Sign In to Portal
               </Link>
               <Link
-                href="/crew"
+                href="/register"
                 className="flex-1 bg-white hover:bg-slate-50 text-[#00aeef] border-2 border-[#00aeef] font-extrabold text-center py-3 px-6 rounded-xl transition-all duration-200 hover:scale-105"
               >
                 Register Account
