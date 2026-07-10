@@ -18,6 +18,7 @@ build/
 
 # Agent/Superpowers directory
 .superpowers/
+docs/
 
 # Log files
 npm-debug.log*
