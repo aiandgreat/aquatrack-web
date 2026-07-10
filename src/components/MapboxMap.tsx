@@ -31,8 +31,8 @@ export default function MapboxMap({
   useEffect(() => {
     if (!mapContainerRef.current) return;
 
-    // Center map around Sto. Rosario, San Fernando coordinates
-    const sanFernandoCenter: [number, number] = [120.9842, 14.5995];
+    // Center map around Sto. Rosario, San Fernando, Pampanga coordinates
+    const sanFernandoCenter: [number, number] = [120.6936, 15.0278];
 
     // Initialize Mapbox Map
     const map = new mapboxgl.Map({
@@ -60,10 +60,10 @@ export default function MapboxMap({
               geometry: {
                 type: "LineString",
                 coordinates: [
-                  [120.9820, 14.5980],
-                  [120.9842, 14.5995],
-                  [120.9850, 14.6010],
-                  [120.9860, 14.6025],
+                  [120.6915, 15.0255],
+                  [120.6936, 15.0278],
+                  [120.6950, 15.0295],
+                  [120.6970, 15.0315],
                 ],
               },
               properties: {},

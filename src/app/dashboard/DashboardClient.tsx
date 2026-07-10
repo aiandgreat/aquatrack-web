@@ -46,8 +46,8 @@ const defaultComplaints = [
     id: "complaint-101",
     rawText: "Mababa ang presyon ng tubig dito sa Sector 3, halos walang lumalabas.",
     summary: "Severe pressure drop reported at Sector 3",
-    latitude: 14.6002,
-    longitude: 120.9848,
+    latitude: 15.0285,
+    longitude: 120.6942,
     urgency: "HIGH",
     category: "PIPELINE_BREACH_PRESSURE_DROP",
     status: "PENDING"
@@ -56,8 +56,8 @@ const defaultComplaints = [
     id: "complaint-102",
     rawText: "Dilaw at may mga latak na buhangin ang lumalabas sa gripo namin.",
     summary: "Yellow sedimentation in resident supply lines",
-    latitude: 14.6012,
-    longitude: 120.9852,
+    latitude: 15.0298,
+    longitude: 120.6955,
     urgency: "CRITICAL",
     category: "HIGH_TURBIDITY",
     status: "PENDING"
@@ -151,10 +151,10 @@ export default function DashboardClient({
 
   // Fallbacks to mock database values if tables are empty
   const nodes = initialNodes.length > 0 ? initialNodes : [
-    { id: "node-1", name: "Main Pump Station A", latitude: 14.5995, longitude: 120.9842, status: "ONLINE", type: "PUMP_STATION" },
-    { id: "node-2", name: "Household Edge B", latitude: 14.6010, longitude: 120.9850, status: "MAINTENANCE", type: "HOUSEHOLD_EDGE" },
-    { id: "node-3", name: "Junction Valve C", latitude: 14.5980, longitude: 120.9830, status: "OFFLINE", type: "HOUSEHOLD_EDGE" },
-    { id: "node-4", name: "Reservoir Feed D", latitude: 14.6025, longitude: 120.9860, status: "ONLINE", type: "PUMP_STATION" },
+    { id: "node-1", name: "Main Pump Station A", latitude: 15.0278, longitude: 120.6936, status: "ONLINE", type: "PUMP_STATION" },
+    { id: "node-2", name: "Household Edge B", latitude: 15.0295, longitude: 120.6950, status: "MAINTENANCE", type: "HOUSEHOLD_EDGE" },
+    { id: "node-3", name: "Junction Valve C", latitude: 15.0255, longitude: 120.6915, status: "OFFLINE", type: "HOUSEHOLD_EDGE" },
+    { id: "node-4", name: "Reservoir Feed D", latitude: 15.0315, longitude: 120.6970, status: "ONLINE", type: "PUMP_STATION" },
   ];
 
   const readings = Object.keys(initialReadings).length > 0 ? initialReadings : {
@@ -192,7 +192,7 @@ export default function DashboardClient({
   const mockAlerts = {
     "complaint-101": {
       id: "alert-501",
-      node: { name: "Household Edge B", latitude: 14.6010, longitude: 120.9850 },
+      node: { name: "Household Edge B", latitude: 15.0295, longitude: 120.6950 },
       geminiAnalysis: {
         probableRootCause: "Pressure readings at Node B dropped below 15 PSI, matching resident reports of low pressure within a 500m radius. Suspected valve blockage or pipeline structural fracture.",
         confidenceScore: 88,
@@ -201,7 +201,7 @@ export default function DashboardClient({
     },
     "complaint-102": {
       id: "alert-502",
-      node: { name: "Household Edge B", latitude: 14.6010, longitude: 120.9850 },
+      node: { name: "Household Edge B", latitude: 15.0295, longitude: 120.6950 },
       geminiAnalysis: {
         probableRootCause: "Maintenance event recorded on Node B has caused turbid backflow into resident loops. Sediment filters have breached maximum NTU thresholds.",
         confidenceScore: 92,
@@ -212,9 +212,9 @@ export default function DashboardClient({
 
   // Mock Field Crews with geographical positions
   const mockCrews = [
-    { id: "crew-1", name: "Engr. Santos (Mobile 1)", latitude: 14.6000, longitude: 120.9835 },
-    { id: "crew-2", name: "Technician Reyes (Mobile 2)", latitude: 14.6020, longitude: 120.9855 },
-    { id: "crew-3", name: "Repair Team Lopez (Mobile 3)", latitude: 14.5975, longitude: 120.9840 }
+    { id: "crew-1", name: "Engr. Santos (Mobile 1)", latitude: 15.0280, longitude: 120.6930 },
+    { id: "crew-2", name: "Technician Reyes (Mobile 2)", latitude: 15.0305, longitude: 120.6960 },
+    { id: "crew-3", name: "Repair Team Lopez (Mobile 3)", latitude: 15.0250, longitude: 120.6920 }
   ];
 
   // Click handlers
