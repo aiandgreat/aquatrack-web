@@ -8,7 +8,8 @@ A production-ready municipal water district command center for real-time IoT tel
 - **Framework**: Next.js 16 (App Router) using React Server Components (RSC) for pre-rendering administrative dashboards.
 - **Styling & UI**: Tailwind CSS + shadcn/ui custom styling utilities.
 - **Data Visualization**: Tremor + Recharts for displaying historical and live telemetry metrics.
-- **Geospatial Rendering (Simulated)**: High-fidelity custom SVG vector-based radar/HUD canvas for incident visual pinning and active 500m scan rings.
+- **Geospatial Rendering**: Mapbox GL JS for client-side rendering of coordinate arrays, pipeline network layers, and active 500m PostGIS scan rings.
+- **Reporting Utility**: jsPDF + jsPDF-AutoTable for compiling and generating client-side downloadable water quality compliance documentation.
 - **Testing**: Vitest (33 tests, 11 suites).
 
 ### Backend & Core Services
@@ -17,11 +18,13 @@ A production-ready municipal water district command center for real-time IoT tel
 - **Database Mapping & ORM**: Prisma ORM utilizing the `@prisma/adapter-pg` driver adapter.
 - **Serverless Microservices**: Supabase Edge Functions (Deno/TypeScript runtime) executing database triggers and third-party communications.
 - **Authentication**: Supabase Auth (GoTrue API) for secure user registrations, logins (including Facebook OAuth), and session management.
+- **Object Storage**: Supabase Storage Buckets for structured hosting of citizen-submitted leak and damage photos.
 
 ### Database Layer
 - **Core Engine**: Supabase PostgreSQL (Cloud-managed relational database).
 - **Spatial Extension**: PostGIS for native handling of geometry data types, boundary indexing, and coordinate proximity analytics.
 - **Connection Pooler**: PgBouncer configured on port 6543 to preserve thread capacity.
+- **Real-time Streaming**: Supabase Realtime (WebSockets) for pushing live system updates (new complaints and status changes) to the dashboard interface without page refreshes.
 
 ### AI & Communications
 - **AI Integration Core**: Google Gemini API integrated via the Vercel AI SDK using Structured JSON Schema mode for multi-lingual complaint triaging.

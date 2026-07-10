@@ -16,19 +16,20 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "Rate limit exceeded" }, { status: 429 });
     }
 
-    const { rawText, latitude, longitude } = await req.json();
+    const { rawText, latitude, longitude, imageUrl } = await req.json();
     if (!rawText || latitude === undefined || longitude === undefined) {
       return NextResponse.json({ error: "Missing parameters" }, { status: 400 });
     }
 
     // Insert Complaint. We use Prisma transaction and ST_SetSRID for Point geometry insertion.
     const created: any[] = await prisma.$queryRaw`
-      INSERT INTO "Complaint" (id, "rawText", latitude, longitude, status, "aiStatus", geom, "updatedAt")
+      INSERT INTO "Complaint" (id, "rawText", latitude, longitude, "imageUrl", status, "aiStatus", geom, "updatedAt")
       VALUES (
         gen_random_uuid(), 
         ${rawText}, 
         ${latitude}, 
         ${longitude}, 
+        ${imageUrl || null},
         'PENDING'::"TicketStatus", 
         'SUCCESS'::"AiStatus", 
         ST_SetSRID(ST_MakePoint(${longitude}, ${latitude}), 4326),

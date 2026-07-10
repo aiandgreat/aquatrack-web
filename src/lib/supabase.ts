@@ -29,4 +29,29 @@ export const supabase = {
   get auth() {
     return getSupabaseClient().auth;
   },
+  get storage() {
+    return getSupabaseClient().storage;
+  }
 };
+
+/**
+ * Uploads a file (photo of discolored water or pipe breach) to the
+ * 'complaint-media' Supabase Storage bucket and returns its public URL.
+ */
+export async function uploadComplaintPhoto(file: File): Promise<string> {
+  const client = getSupabaseClient();
+  const fileExt = file.name.split(".").pop();
+  const filePath = `${Date.now()}-${Math.random().toString(36).substring(7)}.${fileExt}`;
+
+  const { error: uploadError } = await client.storage
+    .from("complaint-media")
+    .upload(filePath, file);
+
+  if (uploadError) {
+    throw new Error(`Storage upload failed: ${uploadError.message}`);
+  }
+
+  const { data } = client.storage.from("complaint-media").getPublicUrl(filePath);
+  return data.publicUrl;
+}
+

@@ -1,9 +1,11 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import MapboxMap from "../../components/MapboxMap";
 import TelemetryAnalytics from "../../components/TelemetryAnalytics";
 import DiagnosticAlertDrawer from "../../components/DiagnosticAlertDrawer";
+import { generateComplianceReport } from "../../lib/pdf-generator";
+import { getSupabaseClient } from "../../lib/supabase";
 
 interface TelemetryReading {
   timestamp: string;
@@ -30,6 +32,7 @@ interface Complaint {
   longitude: number;
   urgency: string;
   category: string;
+  status?: string;
 }
 
 interface DashboardClientProps {
@@ -37,6 +40,29 @@ interface DashboardClientProps {
   initialComplaints: Complaint[];
   initialReadings: Record<string, TelemetryReading[]>;
 }
+
+const defaultComplaints = [
+  {
+    id: "complaint-101",
+    rawText: "Mababa ang presyon ng tubig dito sa Sector 3, halos walang lumalabas.",
+    summary: "Severe pressure drop reported at Sector 3",
+    latitude: 14.6002,
+    longitude: 120.9848,
+    urgency: "HIGH",
+    category: "PIPELINE_BREACH_PRESSURE_DROP",
+    status: "PENDING"
+  },
+  {
+    id: "complaint-102",
+    rawText: "Dilaw at may mga latak na buhangin ang lumalabas sa gripo namin.",
+    summary: "Yellow sedimentation in resident supply lines",
+    latitude: 14.6012,
+    longitude: 120.9852,
+    urgency: "CRITICAL",
+    category: "HIGH_TURBIDITY",
+    status: "PENDING"
+  }
+];
 
 export default function DashboardClient({
   initialNodes,
@@ -49,33 +75,86 @@ export default function DashboardClient({
   const [dispatchedCrews, setDispatchedCrews] = useState<string[]>([]);
   const [activeTab, setActiveTab] = useState<"alerts" | "crews">("alerts");
 
+  // Local state for complaints to handle real-time appends/updates
+  const [complaintsList, setComplaintsList] = useState<Complaint[]>(() => 
+    initialComplaints.length > 0 ? initialComplaints : [...defaultComplaints]
+  );
+
+  // Supabase Realtime WebSocket subscription for postgres changes
+  useEffect(() => {
+    try {
+      const client = getSupabaseClient();
+      const channel = client
+        .channel("complaints-realtime-sync")
+        .on(
+          "postgres_changes",
+          { event: "INSERT", schema: "public", table: "Complaint" },
+          (payload) => {
+            const inserted = payload.new as any;
+            const formatted: Complaint = {
+              id: inserted.id,
+              rawText: inserted.rawText,
+              summary: inserted.summary || "New resident report",
+              latitude: inserted.latitude,
+              longitude: inserted.longitude,
+              urgency: inserted.urgency || "MEDIUM",
+              category: inserted.category || "UNCLASSIFIED_INFRASTRUCTURE_ANOMALY",
+              status: inserted.status,
+            };
+            // Prepend new complaint instantly
+            setComplaintsList((prev) => [formatted, ...prev]);
+          }
+        )
+        .on(
+          "postgres_changes",
+          { event: "UPDATE", schema: "public", table: "Complaint" },
+          (payload) => {
+            const updated = payload.new as any;
+            setComplaintsList((prev) =>
+              prev.map((c) => (c.id === updated.id ? { ...c, status: updated.status } : c))
+            );
+          }
+        )
+        .subscribe();
+
+      return () => {
+        client.removeChannel(channel);
+      };
+    } catch (err) {
+      console.warn("Supabase Realtime subscription skipped (missing env keys for local tests)", err);
+    }
+  }, []);
+
+  const handleDownloadReport = () => {
+    const flatReadings: any[] = [];
+    nodes.forEach((n) => {
+      const nodeReadings = readings[n.id] || [];
+      nodeReadings.forEach((r) => {
+        flatReadings.push({
+          nodeName: n.name,
+          ph: r.ph,
+          turbidity: r.turbidity,
+          tds: r.tds,
+          pressure: r.pressure,
+          timestamp: r.timestamp,
+        });
+      });
+    });
+
+    const readingsList = flatReadings.length > 0 ? flatReadings : [
+      { nodeName: "Main Pump Station A", ph: 7.2, turbidity: 1.2, tds: 220, pressure: 45.2, timestamp: new Date().toISOString() },
+      { nodeName: "Household Edge B", ph: 6.5, turbidity: 4.8, tds: 380, pressure: 35.1, timestamp: new Date().toISOString() },
+    ];
+
+    generateComplianceReport({ readings: readingsList });
+  };
+
   // Fallbacks to mock database values if tables are empty
   const nodes = initialNodes.length > 0 ? initialNodes : [
     { id: "node-1", name: "Main Pump Station A", latitude: 14.5995, longitude: 120.9842, status: "ONLINE", type: "PUMP_STATION" },
     { id: "node-2", name: "Household Edge B", latitude: 14.6010, longitude: 120.9850, status: "MAINTENANCE", type: "HOUSEHOLD_EDGE" },
     { id: "node-3", name: "Junction Valve C", latitude: 14.5980, longitude: 120.9830, status: "OFFLINE", type: "HOUSEHOLD_EDGE" },
     { id: "node-4", name: "Reservoir Feed D", latitude: 14.6025, longitude: 120.9860, status: "ONLINE", type: "PUMP_STATION" },
-  ];
-
-  const complaints = initialComplaints.length > 0 ? initialComplaints : [
-    {
-      id: "complaint-101",
-      rawText: "Mababa ang presyon ng tubig dito sa Sector 3, halos walang lumalabas.",
-      summary: "Severe pressure drop reported at Sector 3",
-      latitude: 14.6002,
-      longitude: 120.9848,
-      urgency: "HIGH",
-      category: "PIPELINE_BREACH_PRESSURE_DROP"
-    },
-    {
-      id: "complaint-102",
-      rawText: "Dilaw at may mga latak na buhangin ang lumalabas sa gripo namin.",
-      summary: "Yellow sedimentation in resident supply lines",
-      latitude: 14.6012,
-      longitude: 120.9852,
-      urgency: "CRITICAL",
-      category: "HIGH_TURBIDITY"
-    }
   ];
 
   const readings = Object.keys(initialReadings).length > 0 ? initialReadings : {
@@ -167,7 +246,7 @@ export default function DashboardClient({
           </div>
           <div>
             <h2 className="text-md font-bold tracking-wider text-slate-100">OPERATIONS CONTROL</h2>
-            <p className="text-[10px] text-slate-400 uppercase tracking-widest">{complaints.length} active infrastructure alerts</p>
+            <p className="text-[10px] text-slate-400 uppercase tracking-widest">{complaintsList.length} active infrastructure alerts</p>
           </div>
         </div>
 
@@ -181,9 +260,20 @@ export default function DashboardClient({
             <span className="text-slate-500">AVG_PRESSURE:</span>{" "}
             <span className="text-cyan-400 font-bold">39.4 PSI</span>
           </div>
-          <div>
-            <span className="text-slate-500">ACTIVE_NODES:</span>{" "}
-            <span className="text-slate-200">{nodes.filter(n => n.status === "ONLINE").length}/{nodes.length} ONLINE</span>
+          <div className="flex items-center space-x-6">
+            <div>
+              <span className="text-slate-500">ACTIVE_NODES:</span>{" "}
+              <span className="text-slate-200">{nodes.filter(n => n.status === "ONLINE").length}/{nodes.length} ONLINE</span>
+            </div>
+            <button
+              onClick={handleDownloadReport}
+              className="bg-[#00aeef] hover:bg-[#00aeef]/80 text-white font-extrabold text-[10px] uppercase tracking-widest px-3 py-1.5 rounded-lg transition-all duration-200 flex items-center gap-1.5"
+            >
+              <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+              </svg>
+              PDF Report
+            </button>
           </div>
         </div>
       </header>
@@ -255,7 +345,7 @@ export default function DashboardClient({
         <div className="flex-1 p-4 bg-slate-950 flex flex-col relative h-full">
           <MapboxMap
             nodes={nodes}
-            complaints={complaints}
+            complaints={complaintsList}
             selectedNodeId={selectedNodeId}
             selectedComplaintId={selectedComplaintId}
             onSelectNode={handleSelectNode}
@@ -298,7 +388,7 @@ export default function DashboardClient({
                 <div className="space-y-3">
                   <p className="text-xs text-slate-500 italic">Select an active resident complaint warning on the map to review the AI diagnostics reports.</p>
                   
-                  {complaints.map((comp) => (
+                  {complaintsList.map((comp) => (
                     <div
                       key={comp.id}
                       onClick={() => handleSelectComplaint(comp.id)}
