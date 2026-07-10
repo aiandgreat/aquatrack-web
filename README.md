@@ -66,6 +66,9 @@ UPSTASH_REDIS_REST_TOKEN="AX..."
 # Google Gemini AI
 GEMINI_API_KEY="AIza..."
 
+# Vercel AI SDK (optional; falls back to GEMINI_API_KEY if omitted)
+GOOGLE_GENERATIVE_AI_API_KEY="AIza..."
+
 # Resend Email
 RESEND_API_KEY="re_..."
 
