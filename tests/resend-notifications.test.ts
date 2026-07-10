@@ -1,5 +1,5 @@
 import { expect, test, vi } from "vitest";
-import { sendCrewNotification } from "../src/lib/resend";
+import { sendCrewNotification, sendReactEmailNotification } from "../src/lib/resend";
 
 vi.mock("resend", () => {
   return {
@@ -39,10 +39,33 @@ test("sendCrewNotification handles Resend API errors", async () => {
   expect(resultErr.success).toBe(false);
   expect(resultErr.error).toBe("Resend API error");
 });
-
 test("sendCrewNotification handles Resend API unexpected exceptions", async () => {
   const resultThrow = await sendCrewNotification("throw@district.gov", "Incident", "<h1>Alert</h1>");
   expect(resultThrow.success).toBe(false);
   expect(resultThrow.error).toBe("Network connection failed");
 });
+
+
+test("sendReactEmailNotification returns status 400 (success: false) for empty emails", async () => {
+  const result = await sendReactEmailNotification("", "Alert", {
+    crewName: "Santos",
+    incidentId: "123",
+    urgency: "HIGH",
+    description: "Leak",
+  });
+  expect(result.success).toBe(false);
+  expect(result.error).toBe("Recipient email is required");
+});
+
+test("sendReactEmailNotification successfully sends email using React Email component template", async () => {
+  const result = await sendReactEmailNotification("crew1@district.gov", "Alert", {
+    crewName: "Santos",
+    incidentId: "123",
+    urgency: "HIGH",
+    description: "Leak",
+  });
+  expect(result.success).toBe(true);
+  expect(result.id).toBe("resend-email-id-123");
+});
+
 

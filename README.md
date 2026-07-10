@@ -3,18 +3,29 @@
 A production-ready municipal water district command center for real-time IoT telemetry monitoring, AI-powered citizen complaint triage, and field crew dispatch.
 
 ## Tech Stack
-- **Framework**: Next.js 16 (App Router)
-- **Authentication**: Supabase Auth (email/password, session management)
-- **Database**: Supabase (PostgreSQL + PostGIS SRID 4326) + Prisma ORM
-- **Spatial Queries**: PostGIS `ST_DWithin` 500m buffer scans via custom RPC function
-- **Caching & Rate Limiting**: Upstash Redis (sliding-window, 5 req/hr per citizen)
-- **Serverless Workers**: Supabase Edge Functions (Deno runtime) — `telemetry-ingest`, `triage-complaint`
-- **AI Integration**: Google Gemini API — dialect translation (Tagalog/Taglish/Kapampangan), complaint classification & root-cause analysis
-- **Email Alerts**: Resend API — transactional notifications to field crew and operators
-- **Data Visualization**: Tremor + Recharts — AreaChart sparklines for pressure, pH, turbidity, TDS
-- **Map**: Mapbox GL JS — interactive node pins and 500m radius overlays
-- **Styling**: Tailwind CSS
-- **Testing**: Vitest (31 tests, 11 suites)
+
+### Frontend
+- **Framework**: Next.js 16 (App Router) using React Server Components (RSC) for pre-rendering administrative dashboards.
+- **Styling & UI**: Tailwind CSS + shadcn/ui custom styling utilities.
+- **Data Visualization**: Tremor + Recharts for displaying historical and live telemetry metrics.
+- **Geospatial Rendering (Simulated)**: High-fidelity custom SVG vector-based radar/HUD canvas for incident visual pinning and active 500m scan rings.
+- **Testing**: Vitest (33 tests, 11 suites).
+
+### Backend & Core Services
+- **Application Server**: Next.js 16 (Server Environment) hosting secure API Routes, Server Actions, and Auth routes.
+- **In-Memory Cache & Rate Limiter**: Redis (via Upstash) to enforce endpoint protection and cache rapid IoT sensor bursts.
+- **Database Mapping & ORM**: Prisma ORM utilizing the `@prisma/adapter-pg` driver adapter.
+- **Serverless Microservices**: Supabase Edge Functions (Deno/TypeScript runtime) executing database triggers and third-party communications.
+- **Authentication**: Supabase Auth (GoTrue API) for secure user registrations, logins (including Facebook OAuth), and session management.
+
+### Database Layer
+- **Core Engine**: Supabase PostgreSQL (Cloud-managed relational database).
+- **Spatial Extension**: PostGIS for native handling of geometry data types, boundary indexing, and coordinate proximity analytics.
+- **Connection Pooler**: PgBouncer configured on port 6543 to preserve thread capacity.
+
+### AI & Communications
+- **AI Integration Core**: Google Gemini API integrated via the Vercel AI SDK using Structured JSON Schema mode for multi-lingual complaint triaging.
+- **Transactional Email Layer**: Resend API + React Email for immediate structural breakdown routing and engineer dispatches.
 
 ## Setup Instructions
 
@@ -157,7 +168,7 @@ This installs the `on_auth_user_created` trigger. After that, every new account 
 
 ### Run Tests
 ```bash
-npm test                                          # Full suite (31 tests)
+npm test                                          # Full suite (33 tests)
 npx vitest run tests/ai-triage.test.ts            # AI triage unit tests
 npx vitest run tests/complaints-api.test.ts       # Complaint route tests
 npx vitest run tests/proximity-sorting.test.ts    # Haversine distance tests
