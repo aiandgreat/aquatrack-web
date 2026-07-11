@@ -39,6 +39,7 @@ export default function MapboxMap({
   const mapRef = useRef<mapboxgl.Map | null>(null);
   const markersRef = useRef<Record<string, mapboxgl.Marker>>({});
   const [mapStyle, setMapStyle] = useState<"streets" | "satellite" | "dark">("streets");
+  const isFirstStyleRender = useRef(true);
 
   useEffect(() => {
     if (!mapContainerRef.current) return;
@@ -135,11 +136,16 @@ export default function MapboxMap({
 
     return () => {
       map.remove();
+      mapRef.current = null;
     };
   }, []);
 
   // Update Mapbox style dynamically when selected
   useEffect(() => {
+    if (isFirstStyleRender.current) {
+      isFirstStyleRender.current = false;
+      return;
+    }
     const map = mapRef.current;
     if (map) {
       if (mapStyle === "streets") map.setStyle("mapbox://styles/mapbox/streets-v12");

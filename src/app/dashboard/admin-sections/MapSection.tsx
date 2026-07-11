@@ -1,5 +1,5 @@
 import React from "react";
-import MapboxMap from "@/components/MapboxMap";
+import MapboxMap from "../../../components/MapboxMap";
 
 interface TelemetryNode {
   id: string;

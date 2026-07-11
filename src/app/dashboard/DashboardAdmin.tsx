@@ -2,8 +2,8 @@
 
 import React, { useState, useEffect } from "react";
 import Link from "next/link";
-import { getSupabaseClient } from "@/lib/supabase";
-import { generateComplianceReport } from "@/lib/pdf-generator";
+import { getSupabaseClient } from "../../lib/supabase";
+import { generateComplianceReport } from "../../lib/pdf-generator";
 
 // Import Modular Sections
 import HomeSection from "./admin-sections/HomeSection";

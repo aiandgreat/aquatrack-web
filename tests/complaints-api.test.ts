@@ -81,7 +81,16 @@ test.skip("POST returns 429 if rate limit is exceeded", async () => {
 test("POST returns 202 and inserts complaint, triggering webhook on success", async () => {
   mockRateLimiter.mockResolvedValue({ success: true, remaining: 4 });
   mockQueryRaw.mockResolvedValue([{ id: "generated-uuid" }]);
-  mockFetch.mockResolvedValue({ status: 200 });
+  
+  mockFetch.mockImplementation(async (url: string) => {
+    if (url.includes("nominatim.openstreetmap.org")) {
+      return {
+        ok: true,
+        json: async () => ({ address: { village: "Sindalan" } }),
+      };
+    }
+    return { ok: true, status: 200, json: async () => ({}) };
+  });
 
   const payload = { rawText: "Water pipe burst!", latitude: 14.56, longitude: 121.02 };
   const req = new Request("http://localhost:3000/api/complaints", {
@@ -107,7 +116,9 @@ test("POST returns 202 and inserts complaint, triggering webhook on success", as
 
   // Verify webhook fetch was triggered
   expect(mockFetch).toHaveBeenCalled();
-  const [calledUrl, calledOptions] = mockFetch.mock.calls[0];
+  const webhookCall = mockFetch.mock.calls.find(([url]) => url.includes("/functions/v1/triage-complaint"));
+  expect(webhookCall).toBeDefined();
+  const [calledUrl, calledOptions] = webhookCall;
   expect(calledUrl).toContain("/functions/v1/triage-complaint");
   expect(calledOptions.method).toBe("POST");
   const webhookBody = JSON.parse(calledOptions.body);

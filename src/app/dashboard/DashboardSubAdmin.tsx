@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from "react";
 import Link from "next/link";
-import { getSupabaseClient } from "@/lib/supabase";
+import { getSupabaseClient } from "../../lib/supabase";
 import MapSection from "./admin-sections/MapSection";
 import TelemetrySection from "./admin-sections/TelemetrySection";
 import HomeSection from "./sub-admin-sections/HomeSection";

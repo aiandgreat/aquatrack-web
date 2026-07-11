@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import { getSupabaseClient } from "@/lib/supabase";
+import { getSupabaseClient } from "../../lib/supabase";
 import DashboardClient from "./DashboardClient";
 import DashboardSubAdmin from "./DashboardSubAdmin";
 

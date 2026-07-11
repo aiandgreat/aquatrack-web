@@ -19,18 +19,19 @@ const SAN_FERNANDO_BARANGAYS = [
 
 export async function GET() {
   try {
-    // Group complaints by barangay field
-    const results = await prisma.complaint.groupBy({
-      by: ["barangay"],
-      _count: { id: true },
-      where: { barangay: { not: null } },
-    });
+    // Group complaints by barangay field using direct SQL query to bypass circular type checks
+    const results = await prisma.$queryRaw<Array<{ barangay: string | null; count: bigint }>>`
+      SELECT barangay, COUNT(id) as count
+      FROM "Complaint"
+      WHERE barangay IS NOT NULL
+      GROUP BY barangay
+    `;
 
     // Build a map of barangay -> count
     const countMap: Record<string, number> = {};
     for (const row of results) {
       if (row.barangay) {
-        countMap[row.barangay] = row._count.id;
+        countMap[row.barangay] = Number(row.count);
       }
     }
 
