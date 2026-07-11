@@ -304,6 +304,32 @@ export default function DashboardClient({
     checkRole();
   }, []);
 
+  // Enable Supabase Realtime subscriptions for complaint changes
+  useEffect(() => {
+    if (!userProfile) return;
+
+    try {
+      const client = getSupabaseClient();
+      const channel = client
+        .channel("client-complaints-realtime")
+        .on(
+          "postgres_changes",
+          { event: "*", schema: "public", table: "Complaint" },
+          (payload) => {
+            console.log("Realtime complaint update received for resident:", payload);
+            fetchUserComplaints(); // Refresh the list dynamically!
+          }
+        )
+        .subscribe();
+
+      return () => {
+        client.removeChannel(channel);
+      };
+    } catch (err) {
+      console.error("Failed to setup realtime complaints subscription:", err);
+    }
+  }, [userProfile]);
+
   const fetchUserComplaints = async () => {
     try {
       const res = await fetch("/api/admin/complaints");
@@ -609,7 +635,7 @@ export default function DashboardClient({
         <div className="flex items-center space-x-4">
           <div className="text-right hidden sm:flex flex-col">
             <span className="text-xs font-black text-[#001e66] leading-none">{userProfile?.name}</span>
-            <span className="text-[9px] text-[#00aeef] font-bold mt-1 uppercase tracking-wider">
+            <span className="text-[9px] text-[#00aeef] font-mono font-bold mt-1 uppercase tracking-wider">
               {userProfile?.email}
             </span>
           </div>
@@ -870,6 +896,8 @@ export default function DashboardClient({
                 <div className="space-y-1.5">
                   <label className="text-xxs font-bold text-slate-500 uppercase">Attach Photo (Optional)</label>
                   <input
+                    key="complaint-file-upload-input"
+                    id="complaint-file-upload-input"
                     type="file"
                     accept="image/*"
                     onChange={handlePhotoUpload}

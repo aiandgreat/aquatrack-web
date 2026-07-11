@@ -140,6 +140,33 @@ export default function DashboardSubAdmin({
     checkAccess();
   }, []);
 
+  // Enable Supabase Realtime subscriptions for complaint changes
+  useEffect(() => {
+    if (!currentUserRole) return;
+
+    try {
+      const client = getSupabaseClient();
+      const channel = client
+        .channel("subadmin-complaints-realtime")
+        .on(
+          "postgres_changes",
+          { event: "*", schema: "public", table: "Complaint" },
+          (payload) => {
+            console.log("Realtime complaint update received:", payload);
+            fetchComplaints(); // Refresh the list dynamically!
+            fetchStats(); // Update dashboard metric counters!
+          }
+        )
+        .subscribe();
+
+      return () => {
+        client.removeChannel(channel);
+      };
+    } catch (err) {
+      console.error("Failed to setup realtime complaints subscription:", err);
+    }
+  }, [currentUserRole]);
+
   const fetchAdvisories = async () => {
     try {
       const res = await fetch("/api/advisories");
@@ -314,7 +341,7 @@ export default function DashboardSubAdmin({
               SA
             </div>
             <div className="text-left hidden sm:flex flex-col">
-              <span className="text-xs font-black text-[#001e66] leading-none">{session?.user?.email}</span>
+              <span className="text-xs font-mono font-black text-[#001e66] leading-none">{session?.user?.email}</span>
               <span className="text-[8px] font-black uppercase text-[#00aeef] mt-1 tracking-wider leading-none">
                 {currentUserRole}
               </span>

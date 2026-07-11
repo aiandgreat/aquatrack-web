@@ -215,6 +215,33 @@ export default function DashboardAdmin({
     checkAccess();
   }, []);
 
+  // Enable Supabase Realtime subscriptions for complaint changes
+  useEffect(() => {
+    if (currentUserRole !== "ADMIN") return;
+
+    try {
+      const client = getSupabaseClient();
+      const channel = client
+        .channel("admin-complaints-realtime")
+        .on(
+          "postgres_changes",
+          { event: "*", schema: "public", table: "Complaint" },
+          (payload) => {
+            console.log("Realtime complaint update received:", payload);
+            fetchComplaints(); // Refresh the list dynamically!
+            fetchStats(); // Update dashboard metric counters!
+          }
+        )
+        .subscribe();
+
+      return () => {
+        client.removeChannel(channel);
+      };
+    } catch (err) {
+      console.error("Failed to setup realtime complaints subscription:", err);
+    }
+  }, [currentUserRole]);
+
   const fetchUsers = async () => {
     try {
       const res = await fetch("/api/admin/users");
@@ -662,7 +689,7 @@ export default function DashboardAdmin({
             {showProfileMenu && (
               <div className="absolute right-0 mt-2 w-56 bg-white border border-slate-200 rounded-2xl shadow-xl py-2 z-50 text-xs">
                 <div className="px-4 py-2 border-b border-slate-100">
-                  <p className="font-extrabold text-[#001e66]">{session?.user?.email || "admin@csfwd.gov.ph"}</p>
+                  <p className="font-mono font-extrabold text-[#001e66]">{session?.user?.email || "admin@csfwd.gov.ph"}</p>
                   <p className="text-[9px] text-[#00aeef] font-bold mt-0.5">Control Division Account</p>
                 </div>
                 <button
@@ -821,7 +848,7 @@ export default function DashboardAdmin({
             />
           )}
 
-          {activeTab === "heatmaps" && <HeatmapsSection />}
+          {activeTab === "heatmaps" && <HeatmapsSection complaints={complaints} />}
 
           {activeTab === "telemetry" && (
             <TelemetrySection

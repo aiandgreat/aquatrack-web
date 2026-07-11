@@ -20,6 +20,7 @@ interface MapboxMapProps {
     userName?: string;
     userEmail?: string;
     serviceAccountNo?: string;
+    imageUrl?: string;
   }>;
   selectedNodeId: string | null;
   selectedComplaintId: string | null;
@@ -39,7 +40,9 @@ export default function MapboxMap({
   const mapRef = useRef<mapboxgl.Map | null>(null);
   const markersRef = useRef<Record<string, mapboxgl.Marker>>({});
   const [mapStyle, setMapStyle] = useState<"streets" | "satellite" | "dark">("streets");
+  const [hoveredComplaintId, setHoveredComplaintId] = useState<string | null>(null);
   const isFirstStyleRender = useRef(true);
+  const isMapMovingRef = useRef(false);
 
   useEffect(() => {
     if (!mapContainerRef.current) return;
@@ -58,6 +61,16 @@ export default function MapboxMap({
 
     mapRef.current = map;
 
+    // Disable hover focus changes during active zoom and pan camera transitions
+    map.on("movestart", () => {
+      isMapMovingRef.current = true;
+      setHoveredComplaintId(null);
+    });
+
+    map.on("moveend", () => {
+      isMapMovingRef.current = false;
+    });
+
     // Add navigation controls
     map.addControl(new mapboxgl.NavigationControl(), "top-right");
 
@@ -71,21 +84,114 @@ export default function MapboxMap({
             features: [
               {
                 type: "Feature",
+                properties: { "type": "primary", "name": "MacArthur Highway Main Feed" },
                 geometry: {
                   type: "LineString",
                   coordinates: [
-                    [120.6915, 15.0255],
+                    [120.6936, 15.0350],
+                    [120.6936, 15.0310],
                     [120.6936, 15.0278],
-                    [120.6950, 15.0295],
-                    [120.6970, 15.0315],
+                    [120.6936, 15.0240],
+                    [120.6936, 15.0200]
                   ],
                 },
-                properties: {},
               },
+              {
+                type: "Feature",
+                properties: { "type": "primary", "name": "Jose Abad Santos Arterial" },
+                geometry: {
+                  type: "LineString",
+                  coordinates: [
+                    [120.6820, 15.0278],
+                    [120.6900, 15.0278],
+                    [120.6936, 15.0278],
+                    [120.7000, 15.0278],
+                    [120.7080, 15.0278]
+                  ],
+                },
+              },
+              {
+                type: "Feature",
+                properties: { "type": "secondary", "name": "Del Pilar Distribution Line" },
+                geometry: {
+                  type: "LineString",
+                  coordinates: [
+                    [120.6936, 15.0240],
+                    [120.6980, 15.0240],
+                    [120.6980, 15.0278],
+                    [120.7020, 15.0278]
+                  ],
+                },
+              },
+              {
+                type: "Feature",
+                properties: { "type": "secondary", "name": "Consunji St Distribution Line" },
+                geometry: {
+                  type: "LineString",
+                  coordinates: [
+                    [120.6936, 15.0310],
+                    [120.6900, 15.0310],
+                    [120.6900, 15.0278]
+                  ],
+                },
+              },
+              {
+                type: "Feature",
+                properties: { "type": "secondary", "name": "Lourdes Branch Line" },
+                geometry: {
+                  type: "LineString",
+                  coordinates: [
+                    [120.6936, 15.0278],
+                    [120.6880, 15.0250],
+                    [120.6850, 15.0220]
+                  ],
+                },
+              },
+              {
+                type: "Feature",
+                properties: { "type": "secondary", "name": "San Jose Distribution" },
+                geometry: {
+                  type: "LineString",
+                  coordinates: [
+                    [120.6936, 15.0330],
+                    [120.6990, 15.0330],
+                    [120.6990, 15.0290]
+                  ],
+                },
+              }
             ],
           },
         });
 
+        // 1. Pipeline Outer Glow / Casing Layer
+        map.addLayer({
+          id: "pipelines-glow",
+          type: "line",
+          source: "pipelines",
+          layout: {
+            "line-join": "round",
+            "line-cap": "round",
+          },
+          paint: {
+            "line-color": [
+              "match",
+              ["get", "type"],
+              "primary", "#00aeef",
+              "secondary", "#06b6d4",
+              "#06b6d4"
+            ],
+            "line-width": [
+              "match",
+              ["get", "type"],
+              "primary", 9,
+              "secondary", 6,
+              6
+            ],
+            "line-opacity": 0.25,
+          },
+        });
+
+        // 2. Pipeline Core Layer
         map.addLayer({
           id: "pipelines-line",
           type: "line",
@@ -95,9 +201,21 @@ export default function MapboxMap({
             "line-cap": "round",
           },
           paint: {
-            "line-color": "#06b6d4",
-            "line-width": 4,
-            "line-opacity": 0.6,
+            "line-color": [
+              "match",
+              ["get", "type"],
+              "primary", "#00aeef",
+              "secondary", "#06b6d4",
+              "#06b6d4"
+            ],
+            "line-width": [
+              "match",
+              ["get", "type"],
+              "primary", 4.5,
+              "secondary", 2.5,
+              2.5
+            ],
+            "line-opacity": 0.8,
           },
         });
       }
@@ -224,36 +342,16 @@ export default function MapboxMap({
 
     // Plot Citizen Complaints
     complaints.forEach((comp) => {
+      // Outer stable hitbox wrapper (prevents boundary shifts/glitching during hover/scale events)
       const el = document.createElement("div");
-      const isSelected = comp.id === selectedComplaintId;
-      el.className = `w-5 h-5 rounded-full bg-rose-600 border-2 border-white flex items-center justify-center cursor-pointer shadow-lg transition-transform hover:scale-125 ${
-        isSelected ? "animate-bounce scale-110 ring-4 ring-rose-500/30" : ""
-      }`;
+      el.className = "w-9 h-9 flex items-center justify-center cursor-pointer bg-transparent relative";
 
+      // Inner visible dot
       el.innerHTML = `
-        <span class="w-2.5 h-2.5 rounded-full bg-white animate-pulse"></span>
-      `;
-
-      const popupContent = `
-        <div style="color: #001e66; font-family: sans-serif; font-size: 11px; padding: 4px; min-width: 180px;">
-          <div style="font-weight: 900; font-size: 12px; margin-bottom: 4px; color: #dc2626;">⚠️ INCIDENT REPORT</div>
-          <div style="margin-bottom: 2px;"><strong>Resident:</strong> ${comp.userName || "Anonymous Resident"}</div>
-          <div style="margin-bottom: 2px;"><strong>Acct No:</strong> ${comp.serviceAccountNo || "N/A - Non Consumer"}</div>
-          <div style="margin-bottom: 2px;"><strong>Barangay:</strong> ${comp.barangay || "San Fernando"}</div>
-          <div style="margin-bottom: 4px;"><strong>Urgency:</strong> <span style="font-weight: bold; color: ${
-            comp.urgency === "CRITICAL" ? "#ef4444" : comp.urgency === "HIGH" ? "#f59e0b" : "#4b5563"
-          }">${comp.urgency}</span></div>
-          <div style="border-top: 1px solid #e2e8f0; padding-top: 4px; margin-top: 4px;">
-            <strong>Problem:</strong>
-            <div style="font-style: italic; color: #475569; margin-top: 2px; max-height: 60px; overflow-y: auto;">
-              "${comp.rawText}"
-            </div>
-          </div>
+        <div class="marker-dot w-5 h-5 rounded-full bg-rose-600 border-2 border-white flex items-center justify-center shadow-lg transition-all duration-200">
+          <span class="w-2.5 h-2.5 rounded-full bg-white animate-pulse"></span>
         </div>
       `;
-
-      const popup = new mapboxgl.Popup({ offset: 15, closeButton: false })
-        .setHTML(popupContent);
 
       el.addEventListener("click", (e) => {
         e.stopPropagation();
@@ -261,14 +359,47 @@ export default function MapboxMap({
         updateScanRing(comp.longitude, comp.latitude);
       });
 
+      el.addEventListener("mouseenter", () => {
+        if (isMapMovingRef.current) return;
+        setHoveredComplaintId(comp.id);
+        updateScanRing(comp.longitude, comp.latitude);
+      });
+
+      el.addEventListener("mouseleave", () => {
+        setHoveredComplaintId(null);
+      });
+
       const marker = new mapboxgl.Marker(el)
         .setLngLat([comp.longitude, comp.latitude])
-        .setPopup(popup)
         .addTo(map);
 
       markersRef.current[`comp-${comp.id}`] = marker;
     });
-  }, [nodes, complaints, selectedComplaintId]);
+  }, [nodes, complaints]);
+
+  // Dynamic selection and hover visual styling updates (prevents map marker teardown/flickering)
+  useEffect(() => {
+    complaints.forEach((comp) => {
+      const marker = markersRef.current[`comp-${comp.id}`];
+      if (!marker) return;
+      const el = marker.getElement();
+      const dot = el.querySelector(".marker-dot");
+      if (!dot) return;
+
+      const isSelected = comp.id === selectedComplaintId;
+      const isHovered = comp.id === hoveredComplaintId;
+
+      if (isSelected) {
+        dot.classList.add("scale-125", "ring-4", "ring-rose-500/50");
+        dot.classList.remove("scale-110", "ring-2", "ring-rose-400/40");
+      } else if (isHovered) {
+        dot.classList.add("scale-110", "ring-2", "ring-rose-400/40");
+        dot.classList.remove("scale-125", "ring-4", "ring-rose-500/50");
+      } else {
+        dot.classList.remove("scale-125", "scale-110", "ring-4", "ring-2", "ring-rose-500/50", "ring-rose-400/40");
+      }
+    });
+  }, [selectedComplaintId, hoveredComplaintId, complaints]);
 
   // Proximity Focus & Camera flying
   useEffect(() => {
@@ -322,12 +453,14 @@ export default function MapboxMap({
       {/* HUD Layer Grid (top transparent layer) */}
       <div className="absolute inset-0 bg-[linear-gradient(to_right,#1e293b_1.5px,transparent_1.5px),linear-gradient(to_bottom,#1e293b_1.5px,transparent_1.5px)] bg-[size:5rem_5rem] opacity-5 pointer-events-none" />
 
-      {/* Selected Indicator HUD overlay */}
-      {(selectedNodeId || selectedComplaintId) && (
+      {/* Selected Indicator HUD overlay (Hover for Complaints, Select for Nodes) */}
+      {(selectedNodeId || hoveredComplaintId) && (
         <div className="absolute bottom-4 left-4 z-10 bg-slate-950/95 border border-slate-800 rounded-xl p-4 text-xs font-mono backdrop-blur-md text-slate-200 max-w-xs sm:max-w-sm shadow-2xl z-20">
-          {selectedComplaintId ? (() => {
-            const comp = complaints.find((c) => c.id === selectedComplaintId);
+          {hoveredComplaintId ? (() => {
+            const comp = complaints.find((c) => c.id === hoveredComplaintId);
             if (!comp) return null;
+            const mapboxToken = mapboxgl.accessToken || process.env.NEXT_PUBLIC_MAPBOX_TOKEN || "";
+            const staticMapUrl = `https://api.mapbox.com/styles/v1/mapbox/satellite-v9/static/${comp.longitude},${comp.latitude},16.5,0/280x120?access_token=${mapboxToken}`;
             return (
               <div className="space-y-2">
                 <div className="text-rose-500 font-black text-[9px] tracking-widest uppercase">⚠️ CITIZEN INCIDENT FOCUS</div>
@@ -339,6 +472,12 @@ export default function MapboxMap({
                   <div><strong className="text-slate-300">Location:</strong> {comp.latitude.toFixed(5)}, {comp.longitude.toFixed(5)}</div>
                   <div className="mt-2 p-2 bg-slate-900/80 rounded border border-slate-800 text-slate-300 italic font-medium leading-relaxed max-h-24 overflow-y-auto">
                     "{comp.rawText}"
+                  </div>
+                  <div className="mt-2.5">
+                    <span className="text-[9px] font-black text-slate-400 uppercase block mb-1">📍 Location Satellite Preview</span>
+                    <div className="rounded-lg overflow-hidden border border-slate-800 shadow-md">
+                      <img src={staticMapUrl} alt="Location Satellite Preview" className="w-full h-[120px] object-cover" />
+                    </div>
                   </div>
                 </div>
               </div>

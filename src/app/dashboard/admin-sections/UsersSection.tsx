@@ -98,7 +98,7 @@ export default function UsersSection({
                 <tr key={u.id} className="hover:bg-slate-50/50 transition-colors">
                   <td className="py-4 px-4">
                     <div className="font-extrabold text-[#001e66] text-sm">{u.name}</div>
-                    <div className="text-slate-600 font-medium mt-0.5">{u.email}</div>
+                    <div className="text-slate-600 font-mono font-medium mt-0.5">{u.email}</div>
                     <div className="text-[10px] font-mono text-slate-400 mt-1 select-all">{u.id}</div>
                   </td>
                   <td className="py-4 px-4 font-bold">

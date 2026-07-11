@@ -20,7 +20,7 @@ export default function FieldCrewPortal() {
     <div className="min-h-screen bg-slate-950 text-slate-200 p-4 max-w-md mx-auto">
       <header className="border-b border-slate-800 pb-3 mb-4">
         <h1 className="text-lg font-bold text-cyan-400">Field Engineering Portal</h1>
-        <p className="text-xs text-slate-500">Crew ID: tech-772</p>
+        <p className="text-xs text-slate-500 font-mono">Crew ID: tech-772</p>
       </header>
 
       <div className="bg-slate-900 border border-slate-800 rounded p-4">
@@ -31,7 +31,8 @@ export default function FieldCrewPortal() {
           </span>
         </div>
         <h2 className="text-md font-bold mt-2">{currentJob.location}</h2>
-        <p className="text-xs text-slate-400 mt-1">{currentJob.diagnosticDetails}</p>
+        <div className="text-[10px] font-mono text-slate-500 mt-0.5">{currentJob.id}</div>
+        <p className="text-xs text-slate-400 mt-1.5">{currentJob.diagnosticDetails}</p>
 
         {currentJob.imageUrl && (
           <div className="mt-3">
