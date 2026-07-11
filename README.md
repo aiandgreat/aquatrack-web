@@ -232,3 +232,8 @@ npm start
 - **Barangay Sorting & Filtering**: Added dynamic Barangay filters and alphabetical (A-Z/Z-A) and urgency sorting to the administrative complaints database, complete with location pill badges for each ticket row.
 - **Interactive Map Popups & HUD Overlay**: Configured a `🗺️ View Map` action button on the complaints logs to switch tabs and fly coordinates. Complaints pins are equipped with Mapbox Popups and detailed HUD overlay cards listing resident names, water service account numbers, barangay, and problem descriptions.
 - **Fluid & Scrollable Viewports**: Removed rigid viewport height locks (`h-screen overflow-hidden`) from all dashboards (admin, sub-admin, and client portals), replacing them with responsive grids and layouts that support natural document scrolling.
+- **Dynamic Heatmaps & Pulse Overlays**: Integrated a native Mapbox GL Heatmap density layer with category-colored pulsing indicators matching issue classifications.
+- **Gemini Barangay Summarizer**: Leveraged `gemini-3.5-flash` to write automated two-sentence threat assessments and operational safety status cards for municipal sectors, backed by a robust statistics-based local fallback.
+- **Anti-Flicker Marker Physics**: Wrapped Mapbox pins in stationary transparent hitboxes (`w-9 h-9`) to resolve boundary scaling glitches and hover flickering during map zooming/panning.
+- **Supabase Real-Time Broadcasts**: Connected Web socket subscription listeners across the Admin, Sub-Admin, and Resident client portals to push database modifications instantly.
+- **Unified Font Stack**: Loaded Plus Jakarta Sans (for body text and titles) and Geist Mono (for IDs, emails, timestamps, and coordinates) into Tailwind CSS v4 `@theme` layouts.
