@@ -141,7 +141,7 @@ export default function DashboardClient({
         container: clientMapContainerRef.current,
         style: "mapbox://styles/mapbox/streets-v12",
         center: [lng, lat],
-        zoom: 15.5,
+        zoom: gpsPinpointActive ? 17 : 15.5,
       });
 
       clientMapRef.current = map;
@@ -153,6 +153,11 @@ export default function DashboardClient({
         .addTo(map);
 
       clientMarkerRef.current = marker;
+
+      // Center camera immediately if GPS coordinates have been fetched
+      if (gpsPinpointActive) {
+        map.easeTo({ center: [lng, lat], zoom: 17 });
+      }
 
       marker.on("dragend", () => {
         const lngLat = marker.getLngLat();
