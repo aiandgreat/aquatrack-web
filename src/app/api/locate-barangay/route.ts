@@ -1,11 +1,7 @@
 import { NextResponse } from "next/server";
-import { PrismaClient } from "@prisma/client";
-import { PrismaPg } from "@prisma/adapter-pg";
 import { Pool } from "pg";
 
 const pool = new Pool({ connectionString: process.env.DATABASE_URL });
-const adapter = new PrismaPg(pool);
-const prisma = new PrismaClient({ adapter });
 
 const SAN_FERNANDO_BARANGAYS = [
   "Alasas", "Baliti", "Bulaon", "Calulut", "Del Carmen", "Del Pilar",
@@ -17,17 +13,27 @@ const SAN_FERNANDO_BARANGAYS = [
   "Santo Niño", "Santo Rosario", "Sindalan", "Telabastagan",
 ];
 
+/**
+ * Normalize a raw place name from Nominatim to match our barangay list.
+ * Handles variations like "Barangay Del Pilar", "Brgy. Del Pilar", "Santo Rosario (Poblacion)", etc.
+ */
 function normalizeBarangayName(raw: string): string | null {
   if (!raw) return null;
+
+  // Strip common prefixes
   let cleaned = raw
     .replace(/^barangay\s+/i, "")
     .replace(/^brgy\.?\s+/i, "")
-    .replace(/\s*\(.*?\)\s*/g, "")
+    .replace(/\s*\(.*?\)\s*/g, "") // strip (Poblacion), etc.
     .trim();
+
+  // Direct match
   const direct = SAN_FERNANDO_BARANGAYS.find(
     (b) => b.toLowerCase() === cleaned.toLowerCase()
   );
   if (direct) return direct;
+
+  // Partial / fuzzy match — find barangay whose name is contained in the raw string
   const partial = SAN_FERNANDO_BARANGAYS.find(
     (b) =>
       raw.toLowerCase().includes(b.toLowerCase()) ||
@@ -36,41 +42,65 @@ function normalizeBarangayName(raw: string): string | null {
   return partial ?? null;
 }
 
+/**
+ * Step 1: Reverse-geocode via Nominatim (OpenStreetMap) to get real address.
+ * Extracts barangay from: village, suburb, neighbourhood, quarter, city_district.
+ */
 async function nominatimLookup(latitude: number, longitude: number): Promise<string | null> {
   try {
     const url =
       `https://nominatim.openstreetmap.org/reverse` +
       `?lat=${latitude}&lon=${longitude}&format=json&zoom=16&addressdetails=1`;
+
     const res = await fetch(url, {
-      headers: { "User-Agent": "AquaTrack-CSFWD/1.0 (aquatrack@csfwd.gov.ph)" },
+      headers: {
+        // Nominatim requires a User-Agent
+        "User-Agent": "AquaTrack-CSFWD/1.0 (aquatrack@csfwd.gov.ph)",
+      },
       signal: AbortSignal.timeout(6000),
     });
+
     if (!res.ok) return null;
+
     const data = await res.json();
     const addr = data?.address ?? {};
+
+    // Try each field that Nominatim uses for barangay-level admin
     const candidates = [
-      addr.village, addr.suburb, addr.neighbourhood,
-      addr.quarter, addr.city_district, addr.hamlet, addr.residential,
+      addr.village,
+      addr.suburb,
+      addr.neighbourhood,
+      addr.quarter,
+      addr.city_district,
+      addr.hamlet,
+      addr.residential,
     ];
+
     for (const candidate of candidates) {
       if (!candidate) continue;
       const matched = normalizeBarangayName(candidate);
       if (matched) return matched;
     }
+
     return null;
-  } catch {
+  } catch (err) {
+    console.warn("Nominatim reverse geocoding failed:", err);
     return null;
   }
 }
 
 /**
- * Server-side PostGIS nearest-neighbor barangay detection (fallback only).
- * Uses ST_Distance with geography cast for accurate meter-based distance.
- * Returns null if the nearest centroid is >5 km away (outside San Fernando).
+ * Step 2 (fallback): PostGIS nearest-centroid lookup.
+ * Only used when Nominatim doesn't match any known San Fernando barangay.
+ * Uses ST_Distance with ::geography cast for meter-accurate distances.
  */
-async function detectBarangayFromCoords(longitude: number, latitude: number): Promise<{ barangay: string; distanceMeters: number } | null> {
+async function postgisNearestBarangay(
+  longitude: number,
+  latitude: number
+): Promise<{ barangay: string; distanceMeters: number } | null> {
   try {
-    const result = await pool.query(`
+    const result = await pool.query(
+      `
       SELECT name, ST_Distance(
         ST_SetSRID(ST_MakePoint($1, $2), 4326)::geography,
         centroid::geography
@@ -114,74 +144,70 @@ async function detectBarangayFromCoords(longitude: number, latitude: number): Pr
       ) AS t(name, centroid)
       ORDER BY distance_meters ASC
       LIMIT 1;
-    `, [longitude, latitude]);
+      `,
+      [longitude, latitude]
+    );
 
     if (result.rows.length === 0) return null;
-    const distanceMeters = Math.round(parseFloat(result.rows[0].distance_meters));
-    if (distanceMeters > 5000) return null; // outside San Fernando
-    return { barangay: result.rows[0].name, distanceMeters };
+
+    const { name, distance_meters } = result.rows[0];
+    const distanceMeters = Math.round(parseFloat(distance_meters));
+
+    // If the nearest centroid is more than 5km away, the user is likely
+    // outside San Fernando entirely — don't return a false match.
+    if (distanceMeters > 5000) return null;
+
+    return { barangay: name, distanceMeters };
   } catch (err) {
-    console.error("PostGIS barangay lookup failed:", err);
+    console.error("PostGIS centroid fallback failed:", err);
     return null;
   }
 }
 
+/**
+ * POST /api/locate-barangay
+ * Body: { latitude: number, longitude: number }
+ *
+ * Resolution order:
+ * 1. Nominatim reverse geocoding → match to known San Fernando barangay
+ * 2. PostGIS nearest-centroid fallback (only within 5 km of San Fernando)
+ * 3. null → outside service area
+ */
 export async function POST(req: Request) {
   try {
-    const { rawText, latitude, longitude, imageUrl } = await req.json();
+    const { latitude, longitude } = await req.json();
 
-    if (!rawText || latitude === undefined || longitude === undefined) {
-      return NextResponse.json({ error: "Missing parameters" }, { status: 400 });
+    if (latitude === undefined || longitude === undefined) {
+      return NextResponse.json({ error: "Missing coordinates" }, { status: 400 });
     }
 
-    // Step 1: Nominatim real-address reverse geocoding (most accurate)
+    // Step 1: Nominatim real-address lookup
     const nominatimBarangay = await nominatimLookup(latitude, longitude);
+    if (nominatimBarangay) {
+      return NextResponse.json({
+        barangay: nominatimBarangay,
+        distanceMeters: 0,
+        source: "nominatim",
+      });
+    }
 
-    // Step 2: PostGIS nearest-centroid fallback (within 5 km of San Fernando)
-    const postgisResult = nominatimBarangay
-      ? null
-      : await detectBarangayFromCoords(longitude, latitude);
+    // Step 2: PostGIS nearest-centroid (within 5 km only)
+    const postgisResult = await postgisNearestBarangay(longitude, latitude);
+    if (postgisResult) {
+      return NextResponse.json({
+        barangay: postgisResult.barangay,
+        distanceMeters: postgisResult.distanceMeters,
+        source: "postgis-centroid",
+      });
+    }
 
-    const barangay = nominatimBarangay ?? postgisResult?.barangay ?? null;
-    const distanceMeters = nominatimBarangay ? 0 : (postgisResult?.distanceMeters ?? null);
-
-    // Insert Complaint with precise PostGIS geometry and auto-detected barangay.
-    const created: any[] = await prisma.$queryRaw`
-      INSERT INTO "Complaint" (id, "rawText", latitude, longitude, "imageUrl", barangay, status, "aiStatus", geom, "updatedAt")
-      VALUES (
-        gen_random_uuid(),
-        ${rawText},
-        ${latitude},
-        ${longitude},
-        ${imageUrl || null},
-        ${barangay},
-        'PENDING'::"TicketStatus",
-        'SUCCESS'::"AiStatus",
-        ST_SetSRID(ST_MakePoint(${longitude}, ${latitude}), 4326),
-        NOW()
-      )
-      RETURNING id;
-    `;
-
-    const complaintId = created[0].id;
-
-    // Trigger async triage webhook
-    const webhookUrl = `${process.env.NEXT_PUBLIC_SUPABASE_URL}/functions/v1/triage-complaint`;
-    fetch(webhookUrl, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "Authorization": `Bearer ${process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY}`,
-      },
-      body: JSON.stringify({ complaintId, latitude, longitude }),
-    }).catch(err => console.error("Async webhook trigger failed", err));
-
+    // Step 3: Outside service area
     return NextResponse.json({
-      success: true,
-      id: complaintId,
-      barangay,
-      distanceMeters,
-    }, { status: 202 });
+      barangay: null,
+      distanceMeters: null,
+      source: "none",
+      message: "Location is outside City of San Fernando service area.",
+    });
   } catch (err: any) {
     return NextResponse.json({ error: err.message }, { status: 500 });
   }

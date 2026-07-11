@@ -48,20 +48,7 @@ export default function Homepage() {
   // Yellow: #ffd800
   // Vivid Red: #970006
 
-  const advisories = [
-    {
-      date: "July 9, 2026",
-      title: "Scheduled Pipeline Maintenance - Barangay Del Pilar",
-      text: "Normal water pressure may fluctuate between 8:00 AM and 5:00 PM due to active sensor node calibrations.",
-      type: "warning"
-    },
-    {
-      date: "July 8, 2026",
-      title: "Water Quality Standard Update",
-      text: "All primary pump stations in San Fernando continue to exceed WHO standards for safe drinking water, averaging 1.2 NTU turbidity.",
-      type: "info"
-    }
-  ];
+  const advisories: any[] = [];
 
   // City of San Fernando Water District (CSFWD) Offices data
   const districtOffices = [
@@ -421,6 +408,11 @@ export default function Homepage() {
                 </div>
               </div>
             ))}
+            {advisories.length === 0 && (
+              <div className="bg-white p-6 rounded-xl border border-slate-200 shadow-sm text-center">
+                <p className="text-slate-500 italic text-xs font-semibold">No active notices broadcasted.</p>
+              </div>
+            )}
           </div>
         </div>
       </section>

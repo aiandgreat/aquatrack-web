@@ -19,17 +19,36 @@ export default function LoginPage() {
     setLoading(true);
     setError(null);
 
-    const { error: authError } = await supabase.auth.signInWithPassword({
+    const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
       email,
       password,
     });
 
-    setLoading(false);
-
     if (authError) {
       setError(authError.message);
+      setLoading(false);
     } else {
-      router.push("/dashboard");
+      try {
+        const res = await fetch("/api/auth/profile", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ userId: authData.user?.id }),
+        });
+        const profile = await res.json();
+
+        if (profile?.role === "ADMIN") {
+          router.push("/admin");
+        } else if (profile?.role === "FIELD_ENGINEER_TECHNICIAN") {
+          router.push("/dashboard");
+        } else {
+          router.push("/dashboard");
+        }
+      } catch (err) {
+        console.error("Failed to check user role:", err);
+        router.push("/dashboard");
+      } finally {
+        setLoading(false);
+      }
     }
   };
 

@@ -122,6 +122,8 @@ To populate your map and telemetry charts with real-time streaming data:
 2. Use the **Simulate Node Telemetry Ingestion** controls to generate mock IoT payload streams.
 3. Verify that the sparkline charts on the `/dashboard` update instantly with newly ingested parameters.
 
+### Web App Routing
+
 | Route | Description |
 |-------|-------------|
 | `/` | Public homepage — tagline, metrics, offices map, advisories |
@@ -130,7 +132,23 @@ To populate your map and telemetry charts with real-time streaming data:
 | `/dashboard` | Command Center — map, telemetry sparklines, alert sidebar |
 | `/crew` | Field Crew Mobile Portal — active work orders + status transitions |
 | `/admin` | Admin Panel — threshold configuration & simulation controls |
-| `/api/complaints` | POST endpoint — citizen complaint ingestion |
+
+### Backend API Endpoints Reference
+
+| Method | Endpoint | Description |
+| :--- | :--- | :--- |
+| `POST` | `/api/complaints` | Ingests a new citizen complaint. Resolves location using Nominatim/PostGIS and triggers an asynchronous AI triage webhook. |
+| `POST` | `/api/triage` | Direct synchronous endpoint to classify text category and urgency via Google Gemini & Vercel AI SDK. |
+| `POST` | `/api/locate-barangay` | Reverse-geocodes coordinate pairs to a normalized San Fernando barangay (using OSM Nominatim with PostGIS fallback). |
+| `GET`, `POST`, `DELETE` | `/api/advisories` | Manages community alerts and bulletins (fetch all, create new, delete by ID). |
+| `POST` | `/api/auth/profile` | Resolves a user's role and details for a given Supabase Auth ID. |
+| `POST` | `/api/auth/register` | Syncs a newly signed-up Supabase Auth user to the database's `User` model. |
+| `GET`, `PUT` | `/api/admin/complaints` | Administrative route to list all complaints or modify status and engineer dispatches. |
+| `GET` | `/api/admin/heatmap` | Aggregates and counts complaints grouped by barangay for mapping. |
+| `GET`, `PUT` | `/api/admin/nodes` | Fetches all telemetry nodes or toggles sensor statuses (`ONLINE`, `OFFLINE`, `MAINTENANCE`). |
+| `GET` | `/api/admin/stats` | Fetches operational metrics (total users, active nodes, unresolved complaints). |
+| `GET`, `PUT` | `/api/admin/users` | Lists all users or updates role profiles, phone, and service account numbers. |
+
 
 ## Authentication
 

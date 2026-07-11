@@ -31,6 +31,9 @@ export const supabase = {
   },
   get storage() {
     return getSupabaseClient().storage;
+  },
+  from(relation: string) {
+    return getSupabaseClient().from(relation);
   }
 };
 

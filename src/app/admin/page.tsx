@@ -1,53 +1,87 @@
-"use client";
+import React from "react";
+import { PrismaClient } from "@prisma/client";
+import { PrismaPg } from "@prisma/adapter-pg";
+import { Pool } from "pg";
+import DashboardAdmin from "@/app/dashboard/DashboardAdmin";
 
-import React, { useState } from "react";
+const pool = new Pool({ connectionString: process.env.DATABASE_URL });
+const adapter = new PrismaPg(pool);
+const prisma = new PrismaClient({ adapter });
 
-export default function AdminSettings() {
-  const [nodes, setNodes] = useState([
-    { id: "node-101", name: "East Reservoir Pump", pressure: 42 },
-    { id: "node-102", name: "North Main Junction", pressure: 45 }
-  ]);
+export const dynamic = "force-dynamic";
 
-  const triggerMockAnomaly = async (nodeId: string) => {
-    // Send simulated anomaly telemetry to localhost endpoint
-    const mockTelemetry = {
-      nodeId,
-      ph: 5.5, // Anomaly (Normal is 6.5-8.5)
-      turbidity: 8.2, // Anomaly (Normal is < 5)
-      tds: 650, // Anomaly (Normal is < 500)
-      pressure: 12.0 // Anomaly (Normal is 30-60)
-    };
-    alert(`Mock Anomaly Telemetry Dispatched for Node: ${nodeId}`);
+export default async function AdminPage() {
+  // 1. Fetch users from database
+  const users = await prisma.user.findMany({
+    orderBy: { name: "asc" },
+  });
+
+  // 2. Fetch telemetry nodes from database
+  const nodes = await prisma.telemetryNode.findMany({
+    orderBy: { name: "asc" },
+  });
+
+  // 3. Fetch complaints from database
+  const complaints = await prisma.complaint.findMany({
+    orderBy: { createdAt: "desc" },
+  });
+
+  // 4. Fetch stats from database
+  const totalUsers = users.length;
+  const onlineNodes = nodes.filter((n) => n.status === "ONLINE").length;
+  const totalNodes = nodes.length;
+  const unresolvedComplaints = complaints.filter((c) =>
+    ["PENDING", "EVALUATING", "DISPATCHED", "ONGOING"].includes(c.status)
+  ).length;
+
+  // Format data types for client serialization
+  const serializedUsers = users.map((u) => ({
+    id: u.id,
+    name: u.name,
+    email: u.email,
+    role: u.role.toString(),
+    phone: u.phone,
+    serviceAccountNo: u.serviceAccountNo,
+  }));
+
+  const serializedNodes = nodes.map((n) => ({
+    id: n.id,
+    name: n.name,
+    type: n.type.toString(),
+    latitude: n.latitude,
+    longitude: n.longitude,
+    status: n.status.toString(),
+  }));
+
+  const serializedComplaints = complaints.map((c) => ({
+    id: c.id,
+    rawText: c.rawText,
+    translatedText: c.translatedText || "",
+    summary: c.summary || "Resident reported issue",
+    latitude: c.latitude,
+    longitude: c.longitude,
+    urgency: c.urgency?.toString() || "MEDIUM",
+    category: c.category?.toString() || "UNCLASSIFIED_INFRASTRUCTURE_ANOMALY",
+    status: c.status.toString(),
+    aiStatus: c.aiStatus.toString(),
+    imageUrl: c.imageUrl || "",
+    createdAt: c.createdAt.toISOString(),
+  }));
+
+  const initialStats = {
+    totalUsers,
+    onlineNodes,
+    totalNodes,
+    unresolvedComplaints,
+    complianceIndex: 0,
   };
 
   return (
-    <div className="flex-1 bg-slate-950 p-6 text-slate-200">
-      <header className="border-b border-slate-800 pb-3 mb-6">
-        <h1 className="text-xl font-bold text-cyan-400">Settings &amp; Simulation Panel</h1>
-        <p className="text-sm text-slate-500">Inject telemetry packets to evaluate alarm state routines</p>
-      </header>
-
-      <div className="max-w-xl space-y-6">
-        <div className="bg-slate-900 border border-slate-800 rounded p-4">
-          <h2 className="text-md font-bold mb-3">Simulation Telemetry Nodes</h2>
-          <div className="space-y-3">
-            {nodes.map((node) => (
-              <div key={node.id} className="flex justify-between items-center p-3 bg-slate-950 border border-slate-800 rounded">
-                <div>
-                  <p className="font-semibold text-sm">{node.name}</p>
-                  <p className="text-xs text-slate-500">ID: {node.id} | Current Pressure: {node.pressure} PSI</p>
-                </div>
-                <button
-                  onClick={() => triggerMockAnomaly(node.id)}
-                  className="bg-red-600 hover:bg-red-700 text-slate-50 font-bold px-3 py-1.5 rounded text-xs"
-                >
-                  Simulate Anomaly
-                </button>
-              </div>
-            ))}
-          </div>
-        </div>
-      </div>
-    </div>
+    <DashboardAdmin
+      initialUsers={serializedUsers}
+      initialNodes={serializedNodes}
+      initialComplaints={serializedComplaints}
+      initialStats={initialStats}
+    />
   );
 }

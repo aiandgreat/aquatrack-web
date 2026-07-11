@@ -25,8 +25,9 @@ enum UrgencyLevel {
 
 enum TicketStatus {
   PENDING
-  INVESTIGATING
+  EVALUATING
   DISPATCHED
+  ONGOING
   RESOLVED
 }
 
@@ -101,6 +102,15 @@ model Complaint {
   updatedAt      DateTime       @updatedAt
   userId         String?
   user           User?          @relation(fields: [userId], references: [id], onDelete: SetNull)
+  assignedToId   String?
+  assignedTo     User?          @relation("AssignedComplaints", fields: [assignedToId], references: [id], onDelete: SetNull)
+
+  // High-precision geolocation parameters
+  accuracy       Float?
+  address        String?
+  barangay       String?
+  gpsStatus      String?
+  permissionStatus String?
 
   @@index([status])
 }
@@ -129,12 +139,23 @@ model WorkOrder {
 }
 
 model User {
-  id               String      @id
-  name             String
-  email            String      @unique
-  role             UserRole    @default(CONSUMER_RESIDENT)
-  phone            String?
-  serviceAccountNo String?
-  complaints       Complaint[]
-  workOrders       WorkOrder[]
+  id                 String      @id
+  name               String
+  email              String      @unique
+  role               UserRole    @default(CONSUMER_RESIDENT)
+  phone              String?
+  serviceAccountNo   String?
+  complaints         Complaint[]
+  assignedComplaints Complaint[] @relation("AssignedComplaints")
+  workOrders         WorkOrder[]
+}
+
+model Advisory {
+  id         String   @id @default(uuid())
+  date       String
+  title      String
+  text       String
+  type       String   // "warning" | "info"
+  targetRole String   // "broadcast" | "consumers" | "technicians"
+  createdAt  DateTime @default(now())
 }
