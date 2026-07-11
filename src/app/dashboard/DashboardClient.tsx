@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, useRef } from "react";
 import Link from "next/link";
-import { getSupabaseClient } from "../../lib/supabase";
+import { getSupabaseClient, uploadComplaintPhoto } from "../../lib/supabase";
 import mapboxgl from "mapbox-gl";
 import "mapbox-gl/dist/mapbox-gl.css";
 
@@ -80,6 +80,24 @@ export default function DashboardClient({
   const [submitting, setSubmitting] = useState(false);
   const [gpsPinpointActive, setGpsPinpointActive] = useState(false);
   const [gpsAccuracy, setGpsAccuracy] = useState<number | null>(null);
+  const [uploadingPhoto, setUploadingPhoto] = useState(false);
+
+  const handlePhotoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setUploadingPhoto(true);
+    setSubmitError(null);
+    try {
+      const publicUrl = await uploadComplaintPhoto(file);
+      setComplaintImageUrl(publicUrl);
+    } catch (err: any) {
+      console.error(err);
+      setSubmitError(err.message || "Failed to upload photo.");
+    } finally {
+      setUploadingPhoto(false);
+    }
+  };
 
   // Request user's exact geolocation GPS coordinates on mount and watch for improvements
   useEffect(() => {
@@ -848,16 +866,31 @@ export default function DashboardClient({
                   </div>
                 </div>
 
-                {/* Complaint Image URL */}
+                {/* Complaint Photo Upload */}
                 <div className="space-y-1.5">
-                  <label className="text-xxs font-bold text-slate-500 uppercase">Complaint Photo URL (Optional)</label>
+                  <label className="text-xxs font-bold text-slate-500 uppercase">Attach Photo (Optional)</label>
                   <input
-                    type="text"
-                    value={complaintImageUrl}
-                    onChange={(e) => setComplaintImageUrl(e.target.value)}
-                    placeholder="https://example.com/photo.jpg"
-                    className="w-full bg-slate-50 border border-slate-200 text-[#001e66] font-bold text-xs py-3 px-4 rounded-xl focus:outline-none focus:border-[#00aeef]"
+                    type="file"
+                    accept="image/*"
+                    onChange={handlePhotoUpload}
+                    disabled={uploadingPhoto || submitting}
+                    className="w-full text-xs text-slate-500 file:mr-4 file:py-2.5 file:px-4 file:rounded-xl file:border-0 file:text-xs file:font-black file:bg-[#00aeef]/10 file:text-[#00aeef] hover:file:bg-[#00aeef]/20 cursor-pointer"
                   />
+                  {uploadingPhoto && (
+                    <p className="text-[10px] text-[#00aeef] animate-pulse mt-1">Uploading photo to Supabase Storage...</p>
+                  )}
+                  {complaintImageUrl && (
+                    <div className="mt-2.5 relative w-32 h-24 rounded-xl overflow-hidden border border-slate-200 shadow-sm">
+                      <img src={complaintImageUrl} alt="Preview" className="w-full h-full object-cover" />
+                      <button
+                        type="button"
+                        onClick={() => setComplaintImageUrl("")}
+                        className="absolute top-1.5 right-1.5 bg-red-600 hover:bg-red-700 text-white rounded-full w-5 h-5 flex items-center justify-center text-[10px] font-black shadow transition-colors cursor-pointer"
+                      >
+                        ✕
+                      </button>
+                    </div>
+                  )}
                 </div>
 
                 {/* AI Triage Analysis Card */}

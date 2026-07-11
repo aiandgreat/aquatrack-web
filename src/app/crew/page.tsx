@@ -8,7 +8,8 @@ export default function FieldCrewPortal() {
     status: "ASSIGNED",
     location: "Main Street Valve #45",
     diagnosticDetails: "Pressure drop reported nearby. Suspected line breach.",
-    actionPrompt: "Verify pressure gauges, replace faulty gaskets on section B-12."
+    actionPrompt: "Verify pressure gauges, replace faulty gaskets on section B-12.",
+    imageUrl: "https://images.unsplash.com/photo-1584267385494-9fdf97b090f5?auto=format&fit=crop&w=600&q=80"
   });
 
   const handleUpdateStatus = (newStatus: string) => {
@@ -31,6 +32,15 @@ export default function FieldCrewPortal() {
         </div>
         <h2 className="text-md font-bold mt-2">{currentJob.location}</h2>
         <p className="text-xs text-slate-400 mt-1">{currentJob.diagnosticDetails}</p>
+
+        {currentJob.imageUrl && (
+          <div className="mt-3">
+            <span className="text-xxs font-bold text-slate-500 uppercase block mb-1">Attached Incident Photo</span>
+            <a href={currentJob.imageUrl} target="_blank" rel="noopener noreferrer" className="block relative rounded border border-slate-800 overflow-hidden hover:opacity-90 transition-opacity">
+              <img src={currentJob.imageUrl} alt="Attached Incident" className="w-full h-36 object-cover" />
+            </a>
+          </div>
+        )}
 
         <div className="mt-4 bg-slate-950 p-3 rounded border border-slate-800">
           <p className="text-xs text-slate-500 font-bold">RECOMMENDED INSTRUCTIONS</p>

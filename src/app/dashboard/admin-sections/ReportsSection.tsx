@@ -174,6 +174,17 @@ export default function ReportsSection({
                         🇺🇸 Translation: "{c.translatedText}"
                       </div>
                     )}
+                    {c.imageUrl && (
+                      <div className="mt-2">
+                        <span className="text-[10px] font-black text-slate-400 uppercase block mb-1">Attached Photo</span>
+                        <a href={c.imageUrl} target="_blank" rel="noopener noreferrer" className="inline-block relative rounded-lg border border-slate-200 overflow-hidden group">
+                          <img src={c.imageUrl} alt="Complaint Media" className="w-24 h-16 object-cover group-hover:opacity-80 transition-opacity" />
+                          <div className="absolute inset-0 bg-slate-900/40 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity">
+                            <span className="text-[8px] font-black text-white uppercase tracking-wider">🔎 Open</span>
+                          </div>
+                        </a>
+                      </div>
+                    )}
                     <div className="flex items-center gap-1.5 pt-1">
                       <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[9px] font-black bg-slate-100 text-slate-600 border border-slate-200 uppercase tracking-wide">
                         📍 {c.barangay || "Outside Service Area"}
@@ -279,6 +290,17 @@ export default function ReportsSection({
                       {c.translatedText && (
                         <div className="text-xxs text-slate-400 font-semibold mt-1">
                           🇺🇸 Translation: "{c.translatedText}"
+                        </div>
+                      )}
+                      {c.imageUrl && (
+                        <div className="mt-2">
+                          <span className="text-[10px] font-black text-slate-400 uppercase block mb-1">Attached Photo</span>
+                          <a href={c.imageUrl} target="_blank" rel="noopener noreferrer" className="inline-block relative rounded-lg border border-slate-200 overflow-hidden group">
+                            <img src={c.imageUrl} alt="Complaint Media" className="w-24 h-16 object-cover group-hover:opacity-80 transition-opacity" />
+                            <div className="absolute inset-0 bg-slate-900/40 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity">
+                              <span className="text-[8px] font-black text-white uppercase tracking-wider">🔎 Open</span>
+                            </div>
+                          </a>
                         </div>
                       )}
                       <div className="flex items-center gap-1.5 pt-1">
