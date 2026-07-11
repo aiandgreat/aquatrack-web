@@ -179,7 +179,7 @@ export default function DashboardClient({
         clientMarkerRef.current = null;
       }
     };
-  }, [activeTab]);
+  }, [activeTab, loading]);
 
   // Sync GPS changes to map marker
   useEffect(() => {
