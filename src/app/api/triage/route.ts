@@ -22,7 +22,7 @@ export async function POST(req: Request) {
 
     // Configure Gemini model using Vercel AI SDK custom provider
     const googleProvider = createGoogle({ apiKey });
-    const model = googleProvider("gemini-2.5-flash");
+    const model = googleProvider("gemini-3.5-flash");
 
     const { text: aiResponse } = await generateText({
       model,
