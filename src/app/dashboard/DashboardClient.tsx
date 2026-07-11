@@ -448,9 +448,10 @@ export default function DashboardClient({
 
     try {
       // Automatically analyze the report via Gemini AI
-      let urgency = "MEDIUM";
-      let category = "UNCLASSIFIED_INFRASTRUCTURE_ANOMALY";
-      let summary = "Resident reported water quality concern.";
+      let dbUrgency = "MEDIUM";
+      let dbCategory = "UNCLASSIFIED_INFRASTRUCTURE_ANOMALY";
+      let dbSummary = "Resident reported water quality concern.";
+      let dbTranslatedText = complaintText;
 
       try {
         const triageRes = await fetch("/api/triage", {
@@ -461,16 +462,17 @@ export default function DashboardClient({
         if (triageRes.ok) {
           const triageData = await triageRes.json();
           if (triageData.success && triageData.result) {
-            urgency = (triageData.result.urgency === "HIGH" || triageData.result.urgency === "CRITICAL") ? "URGENT" : "MEDIUM";
-            category = triageData.result.category;
-            summary = triageData.result.summary;
+            dbUrgency = triageData.result.urgency || "MEDIUM";
+            dbCategory = triageData.result.category || "UNCLASSIFIED_INFRASTRUCTURE_ANOMALY";
+            dbSummary = triageData.result.summary || "Resident reported water quality concern.";
+            dbTranslatedText = triageData.result.translatedText || complaintText;
           }
         }
       } catch (err) {
         const fallbackResult = runLocalTriageFallback(complaintText);
-        urgency = fallbackResult.urgency;
-        category = fallbackResult.category;
-        summary = fallbackResult.summary;
+        dbUrgency = fallbackResult.urgency;
+        dbCategory = fallbackResult.category;
+        dbSummary = fallbackResult.summary;
       }
 
       let lat = parseFloat(customLat);
@@ -497,7 +499,10 @@ export default function DashboardClient({
         latitude: lat,
         longitude: lng,
         imageUrl: complaintImageUrl || null,
-        // barangay is detected server-side via PostGIS — not sent from client
+        urgency: dbUrgency,
+        category: dbCategory,
+        summary: dbSummary,
+        translatedText: dbTranslatedText,
       };
 
       const res = await fetch("/api/complaints", {
@@ -512,10 +517,10 @@ export default function DashboardClient({
         setDetectedBarangay(resData.barangay || detectedBarangay);
         setDetectedDistanceM(resData.distanceMeters ?? detectedDistanceM);
         setAiAnalysis({
-          urgency,
-          category,
-          translatedText: complaintText,
-          summary,
+          urgency: (dbUrgency === "HIGH" || dbUrgency === "CRITICAL") ? "URGENT" : "MEDIUM",
+          category: dbCategory,
+          translatedText: dbTranslatedText,
+          summary: dbSummary,
         });
         setComplaintText("");
         setComplaintImageUrl("");

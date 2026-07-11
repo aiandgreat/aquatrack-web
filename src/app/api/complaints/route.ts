@@ -134,7 +134,7 @@ async function detectBarangayFromCoords(longitude: number, latitude: number): Pr
 
 export async function POST(req: Request) {
   try {
-    const { rawText, latitude, longitude, imageUrl } = await req.json();
+    const { rawText, latitude, longitude, imageUrl, urgency, category, summary, translatedText } = await req.json();
 
     if (!rawText || latitude === undefined || longitude === undefined) {
       return NextResponse.json({ error: "Missing parameters" }, { status: 400 });
@@ -151,9 +151,14 @@ export async function POST(req: Request) {
     const barangay = nominatimBarangay ?? postgisResult?.barangay ?? null;
     const distanceMeters = nominatimBarangay ? 0 : (postgisResult?.distanceMeters ?? null);
 
-    // Insert Complaint with precise PostGIS geometry and auto-detected barangay.
+    const hasDirectClassification = urgency && category && summary;
+
+    // Insert Complaint with precise PostGIS geometry, auto-detected barangay, and AI-triage parameters
     const created: any[] = await prisma.$queryRaw`
-      INSERT INTO "Complaint" (id, "rawText", latitude, longitude, "imageUrl", barangay, status, "aiStatus", geom, "updatedAt")
+      INSERT INTO "Complaint" (
+        id, "rawText", latitude, longitude, "imageUrl", barangay, status, "aiStatus", geom, "updatedAt",
+        urgency, category, summary, "translatedText"
+      )
       VALUES (
         gen_random_uuid(),
         ${rawText},
@@ -161,26 +166,32 @@ export async function POST(req: Request) {
         ${longitude},
         ${imageUrl || null},
         ${barangay},
-        'PENDING'::"TicketStatus",
-        'SUCCESS'::"AiStatus",
+        CAST('PENDING' AS "TicketStatus"),
+        CAST(${hasDirectClassification ? 'SUCCESS' : 'PENDING'} AS "AiStatus"),
         ST_SetSRID(ST_MakePoint(${longitude}, ${latitude}), 4326),
-        NOW()
+        NOW(),
+        CAST(${urgency || null} AS "UrgencyLevel"),
+        CAST(${category || null} AS "IssueCategory"),
+        ${summary || null},
+        ${translatedText || null}
       )
       RETURNING id;
     `;
 
     const complaintId = created[0].id;
 
-    // Trigger async triage webhook
-    const webhookUrl = `${process.env.NEXT_PUBLIC_SUPABASE_URL}/functions/v1/triage-complaint`;
-    fetch(webhookUrl, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "Authorization": `Bearer ${process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY}`,
-      },
-      body: JSON.stringify({ complaintId, latitude, longitude }),
-    }).catch(err => console.error("Async webhook trigger failed", err));
+    // Trigger async triage webhook only as fallback if not pre-triaged
+    if (!hasDirectClassification) {
+      const webhookUrl = `${process.env.NEXT_PUBLIC_SUPABASE_URL}/functions/v1/triage-complaint`;
+      fetch(webhookUrl, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY}`,
+        },
+        body: JSON.stringify({ complaintId, latitude, longitude }),
+      }).catch(err => console.error("Async webhook trigger failed", err));
+    }
 
     return NextResponse.json({
       success: true,
