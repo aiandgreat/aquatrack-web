@@ -22,11 +22,31 @@ export default async function DashboardPage() {
     orderBy: { name: "asc" },
   });
 
-  // 3. Fetch active complaints from database
-  const complaints = await prisma.complaint.findMany({
-    orderBy: { createdAt: "desc" },
-    take: 50,
-  });
+  // 3. Fetch active complaints from database using raw SQL to read PostGIS geom coordinates directly
+  const complaints: any[] = await prisma.$queryRaw`
+    SELECT 
+      c.id, 
+      c."rawText", 
+      c."translatedText", 
+      c.summary, 
+      c.urgency, 
+      c.category, 
+      c.status, 
+      c."aiStatus", 
+      c."imageUrl", 
+      c."createdAt", 
+      c."assignedToId",
+      c.barangay,
+      u.name AS "userName",
+      u.email AS "userEmail",
+      u."serviceAccountNo" AS "serviceAccountNo",
+      ST_X(c.geom) AS longitude,
+      ST_Y(c.geom) AS latitude
+    FROM "Complaint" c
+    LEFT JOIN "User" u ON c."userId" = u.id
+    ORDER BY c."createdAt" DESC
+    LIMIT 50
+  `;
 
   // 4. Fetch latest telemetry readings for nodes
   const nodeReadings: Record<string, any[]> = {};
@@ -70,15 +90,19 @@ export default async function DashboardPage() {
     rawText: c.rawText,
     translatedText: c.translatedText || "",
     summary: c.summary || "Resident reported issue",
-    latitude: c.latitude,
-    longitude: c.longitude,
+    latitude: Number(c.latitude),
+    longitude: Number(c.longitude),
     urgency: c.urgency?.toString() || "MEDIUM",
     category: c.category?.toString() || "UNCLASSIFIED_INFRASTRUCTURE_ANOMALY",
     status: c.status.toString(),
     aiStatus: c.aiStatus.toString(),
     imageUrl: c.imageUrl || "",
-    createdAt: c.createdAt.toISOString(),
+    createdAt: new Date(c.createdAt).toISOString(),
     assignedToId: c.assignedToId || null,
+    barangay: c.barangay || "",
+    userName: c.userName || "Anonymous Resident",
+    userEmail: c.userEmail || "",
+    serviceAccountNo: c.serviceAccountNo || "",
   }));
 
   const totalUsers = users.length;

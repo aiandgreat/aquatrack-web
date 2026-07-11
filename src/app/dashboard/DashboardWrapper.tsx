@@ -37,6 +37,10 @@ interface Complaint {
   imageUrl: string;
   createdAt: string;
   assignedToId?: string | null;
+  barangay: string;
+  userName?: string;
+  userEmail?: string;
+  serviceAccountNo?: string;
 }
 
 interface DashboardStats {

@@ -74,12 +74,20 @@ async function nominatimLookup(latitude: number, longitude: number): Promise<str
       addr.city_district,
       addr.hamlet,
       addr.residential,
+      addr.town,
+      addr.city,
+      addr.municipality,
     ];
 
     for (const candidate of candidates) {
       if (!candidate) continue;
       const matched = normalizeBarangayName(candidate);
       if (matched) return matched;
+      
+      const cleaned = candidate.trim();
+      if (cleaned.length > 2) {
+        return cleaned;
+      }
     }
 
     return null;
@@ -153,9 +161,8 @@ async function postgisNearestBarangay(
     const { name, distance_meters } = result.rows[0];
     const distanceMeters = Math.round(parseFloat(distance_meters));
 
-    // If the nearest centroid is more than 5km away, the user is likely
-    // outside San Fernando entirely — don't return a false match.
-    if (distanceMeters > 5000) return null;
+    // For Pampanga testing, allow distance fallback up to 50km
+    if (distanceMeters > 50000) return null;
 
     return { barangay: name, distanceMeters };
   } catch (err) {

@@ -21,12 +21,32 @@ export default async function AdminPage() {
     orderBy: { name: "asc" },
   });
 
-  // 3. Fetch complaints from database
-  const complaints = await prisma.complaint.findMany({
-    orderBy: { createdAt: "desc" },
-  });
+  // 3. Fetch complaints from database using raw SQL to read PostGIS geom coordinates directly
+  const complaints: any[] = await prisma.$queryRaw`
+    SELECT 
+      c.id, 
+      c."rawText", 
+      c."translatedText", 
+      c.summary, 
+      c.urgency, 
+      c.category, 
+      c.status, 
+      c."aiStatus", 
+      c."imageUrl", 
+      c."createdAt", 
+      c."assignedToId",
+      c.barangay,
+      u.name AS "userName",
+      u.email AS "userEmail",
+      u."serviceAccountNo" AS "serviceAccountNo",
+      ST_X(c.geom) AS longitude,
+      ST_Y(c.geom) AS latitude
+    FROM "Complaint" c
+    LEFT JOIN "User" u ON c."userId" = u.id
+    ORDER BY c."createdAt" DESC
+  `;
 
-  // 4. Fetch stats from database
+  // 4. Format data types for client serialization
   const totalUsers = users.length;
   const onlineNodes = nodes.filter((n) => n.status === "ONLINE").length;
   const totalNodes = nodes.length;
@@ -34,7 +54,6 @@ export default async function AdminPage() {
     ["PENDING", "EVALUATING", "DISPATCHED", "ONGOING"].includes(c.status)
   ).length;
 
-  // Format data types for client serialization
   const serializedUsers = users.map((u) => ({
     id: u.id,
     name: u.name,
@@ -58,14 +77,18 @@ export default async function AdminPage() {
     rawText: c.rawText,
     translatedText: c.translatedText || "",
     summary: c.summary || "Resident reported issue",
-    latitude: c.latitude,
-    longitude: c.longitude,
+    latitude: Number(c.latitude),
+    longitude: Number(c.longitude),
     urgency: c.urgency?.toString() || "MEDIUM",
     category: c.category?.toString() || "UNCLASSIFIED_INFRASTRUCTURE_ANOMALY",
     status: c.status.toString(),
     aiStatus: c.aiStatus.toString(),
     imageUrl: c.imageUrl || "",
-    createdAt: c.createdAt.toISOString(),
+    createdAt: new Date(c.createdAt).toISOString(),
+    barangay: c.barangay || "",
+    userName: c.userName || "Anonymous Resident",
+    userEmail: c.userEmail || "",
+    serviceAccountNo: c.serviceAccountNo || "",
   }));
 
   const initialStats = {

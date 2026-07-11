@@ -8,20 +8,16 @@ interface BarangayData {
 }
 
 function getHeatColor(count: number, max: number): string {
-  if (max === 0 || count === 0) return "bg-slate-100 border-slate-200 text-slate-400";
-  const ratio = count / max;
-  if (ratio >= 0.75) return "bg-red-500 border-red-600 text-white";
-  if (ratio >= 0.5)  return "bg-amber-400 border-amber-500 text-white";
-  if (ratio >= 0.25) return "bg-yellow-300 border-yellow-400 text-yellow-900";
-  return "bg-blue-100 border-blue-300 text-blue-800";
+  if (count === 0) return "bg-slate-100 border-slate-200 text-slate-400";
+  if (count >= 16) return "bg-red-500 border-red-600 text-white";
+  if (count >= 10) return "bg-orange-500 border-orange-600 text-white";
+  return "bg-yellow-300 border-yellow-400 text-yellow-900";
 }
 
 function getHeatLabel(count: number, max: number): string {
-  if (max === 0 || count === 0) return "NONE";
-  const ratio = count / max;
-  if (ratio >= 0.75) return "CRITICAL";
-  if (ratio >= 0.5)  return "HIGH";
-  if (ratio >= 0.25) return "MODERATE";
+  if (count === 0) return "NONE";
+  if (count >= 16) return "CRITICAL";
+  if (count >= 10) return "MODERATE";
   return "LOW";
 }
 
@@ -52,7 +48,7 @@ export default function HeatmapsSection() {
   const sorted = [...barangays].sort((a, b) => b.count - a.count);
   const topBarangays = sorted.filter((b) => b.count > 0).slice(0, 10);
   const totalComplaints = barangays.reduce((s, b) => s + b.count, 0);
-  const hotspotCount = barangays.filter((b) => b.count / maxCount >= 0.75).length;
+  const hotspotCount = barangays.filter((b) => b.count >= 16).length;
 
   return (
     <div className="space-y-6">
@@ -66,19 +62,16 @@ export default function HeatmapsSection() {
         </div>
         <div className="flex items-center gap-3 text-xs font-bold">
           <div className="flex items-center gap-1.5">
-            <span className="w-3 h-3 rounded-sm bg-red-500 inline-block" /> CRITICAL
+            <span className="w-3 h-3 rounded-sm bg-red-500 inline-block" /> CRITICAL (16+)
           </div>
           <div className="flex items-center gap-1.5">
-            <span className="w-3 h-3 rounded-sm bg-amber-400 inline-block" /> HIGH
+            <span className="w-3 h-3 rounded-sm bg-orange-500 inline-block" /> MODERATE (10-15)
           </div>
           <div className="flex items-center gap-1.5">
-            <span className="w-3 h-3 rounded-sm bg-yellow-300 inline-block" /> MODERATE
+            <span className="w-3 h-3 rounded-sm bg-yellow-300 border border-yellow-400 inline-block" /> LOW (1-9)
           </div>
           <div className="flex items-center gap-1.5">
-            <span className="w-3 h-3 rounded-sm bg-blue-100 border border-blue-300 inline-block" /> LOW
-          </div>
-          <div className="flex items-center gap-1.5">
-            <span className="w-3 h-3 rounded-sm bg-slate-100 border border-slate-200 inline-block" /> NONE
+            <span className="w-3 h-3 rounded-sm bg-slate-100 border border-slate-200 inline-block" /> NONE (0)
           </div>
         </div>
       </div>
@@ -146,10 +139,9 @@ export default function HeatmapsSection() {
           </div>
           <div className="text-right">
             <span className={`px-3 py-1.5 rounded-full text-xs font-black uppercase ${
-              getHeatLabel(selectedBarangay.count, maxCount) === "CRITICAL" ? "bg-red-500" :
-              getHeatLabel(selectedBarangay.count, maxCount) === "HIGH" ? "bg-amber-400 text-amber-900" :
-              getHeatLabel(selectedBarangay.count, maxCount) === "MODERATE" ? "bg-yellow-300 text-yellow-900" :
-              getHeatLabel(selectedBarangay.count, maxCount) === "LOW" ? "bg-blue-300 text-blue-900" :
+              getHeatLabel(selectedBarangay.count, maxCount) === "CRITICAL" ? "bg-red-500 text-white" :
+              getHeatLabel(selectedBarangay.count, maxCount) === "MODERATE" ? "bg-orange-500 text-white" :
+              getHeatLabel(selectedBarangay.count, maxCount) === "LOW" ? "bg-yellow-300 text-yellow-900" :
               "bg-slate-200 text-slate-700"
             }`}>
               {getHeatLabel(selectedBarangay.count, maxCount)}
@@ -187,9 +179,8 @@ export default function HeatmapsSection() {
                   <div
                     className={`h-2 rounded-full transition-all duration-500 ${
                       getHeatLabel(brgy.count, maxCount) === "CRITICAL" ? "bg-red-500" :
-                      getHeatLabel(brgy.count, maxCount) === "HIGH" ? "bg-amber-400" :
-                      getHeatLabel(brgy.count, maxCount) === "MODERATE" ? "bg-yellow-300" :
-                      "bg-blue-300"
+                      getHeatLabel(brgy.count, maxCount) === "MODERATE" ? "bg-orange-500" :
+                      "bg-yellow-300"
                     }`}
                     style={{ width: `${maxCount > 0 ? (brgy.count / maxCount) * 100 : 0}%` }}
                   />

@@ -13,6 +13,7 @@ interface Complaint {
   aiStatus: string;
   imageUrl: string;
   createdAt: string;
+  barangay: string;
 }
 
 interface ComplaintsSectionProps {
@@ -23,6 +24,7 @@ interface ComplaintsSectionProps {
   setFilterAssignedOnly: (val: boolean) => void;
   updatingComplaintId: string | null;
   handleUpdateComplaintStatus: (id: string, status: string) => void;
+  handleViewLocation: (id: string) => void;
 }
 
 export default function ComplaintsSection({
@@ -33,6 +35,7 @@ export default function ComplaintsSection({
   setFilterAssignedOnly,
   updatingComplaintId,
   handleUpdateComplaintStatus,
+  handleViewLocation,
 }: ComplaintsSectionProps) {
   return (
     <div className="space-y-6">
@@ -46,7 +49,7 @@ export default function ComplaintsSection({
           {/* Filter Toggle */}
           <button
             onClick={() => setFilterAssignedOnly(!filterAssignedOnly)}
-            className={`px-3 py-2 border rounded-xl text-xs font-bold transition-all shrink-0 ${
+            className={`px-3 py-2 border rounded-xl text-xs font-bold transition-all shrink-0 cursor-pointer ${
               filterAssignedOnly
                 ? "bg-[#00aeef] border-[#00aeef] text-white"
                 : "bg-white border-slate-200 text-[#001e66] hover:bg-slate-50"
@@ -87,6 +90,11 @@ export default function ComplaintsSection({
                       🇬🇧 Translation: "{c.translatedText}"
                     </div>
                   )}
+                  <div className="flex items-center gap-1.5 pt-1">
+                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[9px] font-black bg-slate-100 text-slate-600 border border-slate-200 uppercase tracking-wide">
+                      📍 {c.barangay || "Outside Service Area"}
+                    </span>
+                  </div>
                   <div className="text-[10px] font-mono text-slate-400 select-all mt-1">{c.id}</div>
                 </td>
                 <td className="py-4 px-4 space-y-1">
@@ -105,8 +113,15 @@ export default function ComplaintsSection({
                     </span>
                   </div>
                 </td>
-                <td className="py-4 px-4 font-mono text-slate-600 font-bold">
-                  Lat: {c.latitude.toFixed(5)} <br /> Lng: {c.longitude.toFixed(5)}
+                <td className="py-4 px-4 font-mono text-slate-600 font-bold space-y-1.5">
+                  <div>Lat: {c.latitude.toFixed(5)}</div>
+                  <div>Lng: {c.longitude.toFixed(5)}</div>
+                  <button
+                    onClick={() => handleViewLocation(c.id)}
+                    className="flex items-center gap-1 bg-[#EEF4FA] hover:bg-[#00aeef] text-[#001e66] hover:text-white font-black text-[9px] py-1.5 px-3 rounded-lg border border-slate-200 hover:border-[#00aeef] uppercase tracking-wider transition-all cursor-pointer"
+                  >
+                    🗺️ View Map
+                  </button>
                 </td>
                 <td className="py-4 px-4">
                   <select
@@ -115,6 +130,9 @@ export default function ComplaintsSection({
                     onChange={(e) => handleUpdateComplaintStatus(c.id, e.target.value)}
                     className="bg-white border border-slate-200 hover:border-[#00aeef] disabled:opacity-50 text-[#001e66] font-bold text-xs py-1.5 px-3 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#00aeef]/40 transition-all"
                   >
+                    <option value="PENDING">PENDING</option>
+                    <option value="EVALUATING">EVALUATING</option>
+                    <option value="DISPATCHED">DISPATCHED</option>
                     <option value="ONGOING">ONGOING</option>
                     <option value="RESOLVED">RESOLVED</option>
                   </select>
@@ -124,7 +142,7 @@ export default function ComplaintsSection({
             {filteredComplaints.length === 0 && (
               <tr>
                 <td colSpan={4} className="py-8 text-center text-slate-500 italic">
-                  No complaints found.
+                  No complaints found matching the criteria.
                 </td>
               </tr>
             )}

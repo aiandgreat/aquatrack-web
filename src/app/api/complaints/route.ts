@@ -51,11 +51,17 @@ async function nominatimLookup(latitude: number, longitude: number): Promise<str
     const candidates = [
       addr.village, addr.suburb, addr.neighbourhood,
       addr.quarter, addr.city_district, addr.hamlet, addr.residential,
+      addr.town, addr.city, addr.municipality,
     ];
     for (const candidate of candidates) {
       if (!candidate) continue;
       const matched = normalizeBarangayName(candidate);
       if (matched) return matched;
+      
+      const cleaned = candidate.trim();
+      if (cleaned.length > 2) {
+        return cleaned;
+      }
     }
     return null;
   } catch {
@@ -118,7 +124,7 @@ async function detectBarangayFromCoords(longitude: number, latitude: number): Pr
 
     if (result.rows.length === 0) return null;
     const distanceMeters = Math.round(parseFloat(result.rows[0].distance_meters));
-    if (distanceMeters > 5000) return null; // outside San Fernando
+    if (distanceMeters > 50000) return null; // outside Pampanga test area
     return { barangay: result.rows[0].name, distanceMeters };
   } catch (err) {
     console.error("PostGIS barangay lookup failed:", err);

@@ -5,7 +5,7 @@ interface Advisory {
   date: string;
   title: string;
   text: string;
-  type: "warning" | "info";
+  type: "warning" | "info" | "news" | "event";
   targetRole?: "broadcast" | "consumers" | "technicians";
 }
 
@@ -15,8 +15,8 @@ interface AnnouncementsSectionProps {
   setNewAdvisoryTitle: (v: string) => void;
   newAdvisoryText: string;
   setNewAdvisoryText: (v: string) => void;
-  newAdvisoryType: "warning" | "info";
-  setNewAdvisoryType: (v: "warning" | "info") => void;
+  newAdvisoryType: "warning" | "info" | "news" | "event";
+  setNewAdvisoryType: (v: "warning" | "info" | "news" | "event") => void;
   newAdvisoryTargetRole: "broadcast" | "consumers" | "technicians";
   setNewAdvisoryTargetRole: (v: "broadcast" | "consumers" | "technicians") => void;
   handleCreateAdvisory: (e: React.FormEvent) => void;
@@ -40,7 +40,7 @@ export default function AnnouncementsSection({
     <div className="space-y-6">
       <div className="pb-4 border-b border-slate-200">
         <h2 className="text-lg font-black text-[#001e66] tracking-tight">Community Announcements &amp; Advisories</h2>
-        <p className="text-xs text-slate-500 font-medium font-bold">Broadcast operational warnings or system updates to citizen portals</p>
+        <p className="text-xs text-slate-500 font-bold font-bold">Broadcast operational warnings, news updates, or upcoming district events to citizen portals</p>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
@@ -62,15 +62,15 @@ export default function AnnouncementsSection({
           </div>
 
           <div className="space-y-1.5">
-            <label className="text-xxs font-bold text-slate-500 uppercase">Alert Severity Level</label>
-            <div className="flex gap-2">
+            <label className="text-xxs font-bold text-slate-500 uppercase">Broadcast Type</label>
+            <div className="grid grid-cols-2 gap-2">
               <button
                 type="button"
                 onClick={() => setNewAdvisoryType("warning")}
-                className={`flex-1 py-2 rounded-lg text-xs font-bold border transition-all ${
+                className={`py-2 rounded-lg text-[10px] font-black border transition-all cursor-pointer ${
                   newAdvisoryType === "warning"
-                    ? "bg-[#970006]/10 border-[#970006] text-[#970006]"
-                    : "bg-white border-slate-200 hover:border-[#970006] text-[#001e66]"
+                    ? "bg-red-50 border-red-500 text-red-700 shadow-sm"
+                    : "bg-white border-slate-200 hover:border-red-500 text-[#001e66]"
                 }`}
               >
                 WARNING
@@ -78,13 +78,35 @@ export default function AnnouncementsSection({
               <button
                 type="button"
                 onClick={() => setNewAdvisoryType("info")}
-                className={`flex-1 py-2 rounded-lg text-xs font-bold border transition-all ${
+                className={`py-2 rounded-lg text-[10px] font-black border transition-all cursor-pointer ${
                   newAdvisoryType === "info"
-                    ? "bg-[#00aeef]/10 border-[#00aeef] text-[#00aeef]"
-                    : "bg-white border-slate-200 hover:border-[#00aeef] text-[#001e66]"
+                    ? "bg-blue-50 border-blue-500 text-blue-700 shadow-sm"
+                    : "bg-white border-slate-200 hover:border-blue-500 text-[#001e66]"
                 }`}
               >
                 INFO
+              </button>
+              <button
+                type="button"
+                onClick={() => setNewAdvisoryType("news")}
+                className={`py-2 rounded-lg text-[10px] font-black border transition-all cursor-pointer ${
+                  newAdvisoryType === "news"
+                    ? "bg-emerald-50 border-emerald-500 text-emerald-700 shadow-sm"
+                    : "bg-white border-slate-200 hover:border-emerald-500 text-[#001e66]"
+                }`}
+              >
+                NEWS
+              </button>
+              <button
+                type="button"
+                onClick={() => setNewAdvisoryType("event")}
+                className={`py-2 rounded-lg text-[10px] font-black border transition-all cursor-pointer ${
+                  newAdvisoryType === "event"
+                    ? "bg-purple-50 border-purple-500 text-purple-700 shadow-sm"
+                    : "bg-white border-slate-200 hover:border-purple-500 text-[#001e66]"
+                }`}
+              >
+                EVENT
               </button>
             </div>
           </div>
@@ -115,7 +137,7 @@ export default function AnnouncementsSection({
 
           <button
             type="submit"
-            className="w-full bg-[#001e66] hover:bg-[#00aeef] text-white font-extrabold py-3 rounded-xl transition-all shadow-sm text-xs uppercase tracking-wider"
+            className="w-full bg-[#001e66] hover:bg-[#00aeef] text-white font-extrabold py-3 rounded-xl transition-all shadow-sm text-xs uppercase tracking-wider cursor-pointer"
           >
             Publish Broadcast Notice
           </button>
@@ -128,10 +150,16 @@ export default function AnnouncementsSection({
           <div className="space-y-3">
             {advisories.map((ad) => (
               <div key={ad.id} className="bg-white border border-slate-200 rounded-xl p-4 shadow-sm relative pr-20">
-                <div className="flex items-center space-x-2 gap-2">
+                <div className="flex items-center space-x-2 gap-2 flex-wrap">
                   <span className="text-[10px] font-bold text-slate-400">{ad.date}</span>
-                  <span className={`text-[8px] font-black uppercase px-2 py-0.5 rounded ${
-                    ad.type === "warning" ? "bg-red-50 text-red-600" : "bg-blue-50 text-blue-600"
+                  <span className={`text-[8px] font-black uppercase px-2 py-0.5 rounded border ${
+                    ad.type === "warning"
+                      ? "bg-red-50 text-red-600 border-red-200"
+                      : ad.type === "info"
+                      ? "bg-blue-50 text-blue-600 border-blue-200"
+                      : ad.type === "news"
+                      ? "bg-emerald-50 text-emerald-600 border-emerald-200"
+                      : "bg-purple-50 text-purple-600 border-purple-200"
                   }`}>
                     {ad.type}
                   </span>
@@ -144,7 +172,7 @@ export default function AnnouncementsSection({
 
                 <button
                   onClick={() => handleDeleteAdvisory(ad.id)}
-                  className="absolute right-4 top-4 text-[#970006] hover:underline font-bold text-[10px] uppercase tracking-wider"
+                  className="absolute right-4 top-4 text-[#970006] hover:underline font-bold text-[10px] uppercase tracking-wider cursor-pointer"
                 >
                   Delete
                 </button>

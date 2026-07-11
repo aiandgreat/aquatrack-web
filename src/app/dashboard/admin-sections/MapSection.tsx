@@ -23,6 +23,10 @@ interface Complaint {
   aiStatus: string;
   imageUrl: string;
   createdAt: string;
+  barangay?: string;
+  userName?: string;
+  userEmail?: string;
+  serviceAccountNo?: string;
 }
 
 interface MapSectionProps {

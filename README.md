@@ -224,3 +224,11 @@ npm start
 - **Async Triage Trigger**: The `/api/complaints` route returns a `202 Accepted` immediately and fires the `triage-complaint` Edge Function asynchronously — citizens never wait on Gemini API latency.
 - **Legacy Peer Deps**: `@tremor/react` pins to React 18 peer deps; installed with `--legacy-peer-deps` since the project runs React 19.
 - **Dialect Translation**: Gemini is prompted to translate Tagalog, Taglish, and Kapampangan before classification to ensure consistent enum mapping regardless of input language.
+
+## Recent Platform Upgrades (July 2026)
+
+- **Operational News & Events Broadcasting**: Expanded the community broadcasting subsystem to support publishing `NEWS` (green theme) and `EVENT` (purple theme) notices. These are dynamically linked to automatically populate the "Latest District News" and "Upcoming District Events" columns on the administrator homepage dashboard.
+- **Precision Geolocation Fallback**: Upgraded the client portal's geolocator to utilize a multi-tier fallback pipeline. If a high-accuracy GPS query fails or times out, the client automatically retries using low-accuracy Wi-Fi/IP triangulation.
+- **Barangay Sorting & Filtering**: Added dynamic Barangay filters and alphabetical (A-Z/Z-A) and urgency sorting to the administrative complaints database, complete with location pill badges for each ticket row.
+- **Interactive Map Popups & HUD Overlay**: Configured a `🗺️ View Map` action button on the complaints logs to switch tabs and fly coordinates. Complaints pins are equipped with Mapbox Popups and detailed HUD overlay cards listing resident names, water service account numbers, barangay, and problem descriptions.
+- **Fluid & Scrollable Viewports**: Removed rigid viewport height locks (`h-screen overflow-hidden`) from all dashboards (admin, sub-admin, and client portals), replacing them with responsive grids and layouts that support natural document scrolling.

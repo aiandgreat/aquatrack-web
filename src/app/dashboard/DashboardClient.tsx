@@ -1,8 +1,12 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import Link from "next/link";
 import { getSupabaseClient } from "../../lib/supabase";
+import mapboxgl from "mapbox-gl";
+import "mapbox-gl/dist/mapbox-gl.css";
+
+mapboxgl.accessToken = process.env.NEXT_PUBLIC_MAPBOX_TOKEN || "";
 
 interface User {
   id: string;
@@ -21,6 +25,7 @@ interface Complaint {
   category: string;
   status?: string;
   createdAt?: string;
+  barangay?: string;
 }
 
 interface Advisory {
@@ -28,7 +33,7 @@ interface Advisory {
   date: string;
   title: string;
   text: string;
-  type: "warning" | "info";
+  type: "warning" | "info" | "news" | "event";
   targetRole?: "broadcast" | "consumers" | "technicians";
 }
 
@@ -64,15 +69,24 @@ export default function DashboardClient({
   const [customLat, setCustomLat] = useState("15.0285");
   const [customLng, setCustomLng] = useState("120.6942");
   const [complaintImageUrl, setComplaintImageUrl] = useState("");
+  const [addressSearchQuery, setAddressSearchQuery] = useState("");
+
+  const clientMapContainerRef = useRef<HTMLDivElement>(null);
+  const clientMapRef = useRef<mapboxgl.Map | null>(null);
+  const clientMarkerRef = useRef<mapboxgl.Marker | null>(null);
+  const userHasManuallyPinnedRef = useRef(false);
   const [submitSuccess, setSubmitSuccess] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [gpsPinpointActive, setGpsPinpointActive] = useState(false);
   const [gpsAccuracy, setGpsAccuracy] = useState<number | null>(null);
 
-  // Request user's exact geolocation GPS coordinates on mount
+  // Request user's exact geolocation GPS coordinates on mount and watch for improvements
   useEffect(() => {
+    let watchId: number | null = null;
+
     if (typeof window !== "undefined" && navigator.geolocation) {
+      // Immediate quick positioning
       navigator.geolocation.getCurrentPosition(
         (position) => {
           const lat = position.coords.latitude.toFixed(6);
@@ -83,13 +97,108 @@ export default function DashboardClient({
           setGpsPinpointActive(true);
         },
         (error) => {
-          console.warn("GPS unavailable, falling back to Del Pilar centroid:", error);
-          setGpsPinpointActive(false);
+          console.warn("Initial GPS lookup failed, seeking watch updates:", error);
+        },
+        { enableHighAccuracy: true, timeout: 8000, maximumAge: 0 }
+      );
+
+      // Continuous tracking to refine accuracy
+      watchId = navigator.geolocation.watchPosition(
+        (position) => {
+          if (userHasManuallyPinnedRef.current) return;
+          const lat = position.coords.latitude.toFixed(6);
+          const lng = position.coords.longitude.toFixed(6);
+          setCustomLat(lat);
+          setCustomLng(lng);
+          setGpsAccuracy(position.coords.accuracy);
+          setGpsPinpointActive(true);
+        },
+        (error) => {
+          console.warn("GPS tracking refinement failed:", error);
         },
         { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 }
       );
     }
+
+    return () => {
+      if (watchId !== null && typeof window !== "undefined" && navigator.geolocation) {
+        navigator.geolocation.clearWatch(watchId);
+      }
+    };
   }, []);
+
+  // Initialize and clean up Mapbox map for client report pinning
+  useEffect(() => {
+    if (activeTab !== "file-complaint" || !clientMapContainerRef.current) return;
+
+    const timer = setTimeout(() => {
+      if (!clientMapContainerRef.current) return;
+
+      const lat = parseFloat(customLat) || 15.0285;
+      const lng = parseFloat(customLng) || 120.6942;
+
+      const map = new mapboxgl.Map({
+        container: clientMapContainerRef.current,
+        style: "mapbox://styles/mapbox/streets-v12",
+        center: [lng, lat],
+        zoom: 15.5,
+      });
+
+      clientMapRef.current = map;
+
+      map.addControl(new mapboxgl.NavigationControl(), "top-right");
+
+      const marker = new mapboxgl.Marker({ draggable: true, color: "#e11d48" })
+        .setLngLat([lng, lat])
+        .addTo(map);
+
+      clientMarkerRef.current = marker;
+
+      marker.on("dragend", () => {
+        const lngLat = marker.getLngLat();
+        userHasManuallyPinnedRef.current = true;
+        setCustomLat(lngLat.lat.toFixed(6));
+        setCustomLng(lngLat.lng.toFixed(6));
+        setGpsPinpointActive(true);
+      });
+
+      map.on("click", (e) => {
+        marker.setLngLat(e.lngLat);
+        userHasManuallyPinnedRef.current = true;
+        setCustomLat(e.lngLat.lat.toFixed(6));
+        setCustomLng(e.lngLat.lng.toFixed(6));
+        setGpsPinpointActive(true);
+      });
+    }, 100);
+
+    return () => {
+      clearTimeout(timer);
+      if (clientMapRef.current) {
+        clientMapRef.current.remove();
+        clientMapRef.current = null;
+        clientMarkerRef.current = null;
+      }
+    };
+  }, [activeTab]);
+
+  // Sync GPS changes to map marker
+  useEffect(() => {
+    const map = clientMapRef.current;
+    const marker = clientMarkerRef.current;
+    if (map && marker) {
+      const lat = parseFloat(customLat);
+      const lng = parseFloat(customLng);
+      if (!isNaN(lat) && !isNaN(lng)) {
+        const currentLngLat = marker.getLngLat();
+        const diffLat = Math.abs(currentLngLat.lat - lat);
+        const diffLng = Math.abs(currentLngLat.lng - lng);
+        if (diffLat > 0.0001 || diffLng > 0.0001) {
+          marker.setLngLat([lng, lat]);
+          map.easeTo({ center: [lng, lat], zoom: 17 });
+        }
+      }
+    }
+  }, [customLat, customLng]);
 
   // Auto-detect barangay from GPS coordinates via PostGIS nearest-neighbor API
   useEffect(() => {
@@ -222,6 +331,107 @@ export default function DashboardClient({
       translatedText: text,
       summary
     };
+  };
+
+  const handleRequestLocation = () => {
+    if (typeof window !== "undefined" && navigator.geolocation) {
+      const consent = window.confirm(
+        "AquaTrack Privacy Policy:\n\n" +
+        "AquaTrack uses your location only to identify where the reported water issue occurred. " +
+        "Your location will be attached to this complaint and shared only with authorized personnel.\n\n" +
+        "Do you want to proceed and allow location access?"
+      );
+      if (!consent) return;
+
+      userHasManuallyPinnedRef.current = false;
+      setBarangayLoading(true);
+
+      const getLowAccuracyPosition = () => {
+        navigator.geolocation.getCurrentPosition(
+          (position) => {
+            const lat = position.coords.latitude.toFixed(6);
+            const lng = position.coords.longitude.toFixed(6);
+            setCustomLat(lat);
+            setCustomLng(lng);
+            setGpsAccuracy(position.coords.accuracy);
+            setGpsPinpointActive(true);
+            setBarangayLoading(false);
+          },
+          (lowError) => {
+            console.error("Low-accuracy GPS fallback also failed:", lowError);
+            alert("Could not access device location. Please ensure location services are enabled and permissions are granted in your browser.");
+            setGpsPinpointActive(false);
+            setBarangayLoading(false);
+          },
+          { enableHighAccuracy: false, timeout: 10000, maximumAge: 0 }
+        );
+      };
+
+      navigator.geolocation.getCurrentPosition(
+        (position) => {
+          const lat = position.coords.latitude.toFixed(6);
+          const lng = position.coords.longitude.toFixed(6);
+          setCustomLat(lat);
+          setCustomLng(lng);
+          setGpsAccuracy(position.coords.accuracy);
+          setGpsPinpointActive(true);
+          setBarangayLoading(false);
+        },
+        (error) => {
+          console.warn("High-accuracy GPS request failed, retrying with low-accuracy fallback:", error);
+          if (error.code === error.PERMISSION_DENIED) {
+            alert("Location access was denied. Please allow location permissions in your browser settings to pinpoint your complaint.");
+            setGpsPinpointActive(false);
+            setBarangayLoading(false);
+          } else {
+            getLowAccuracyPosition();
+          }
+        },
+        { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
+      );
+    } else {
+      alert("Geolocation is not supported by your browser.");
+    }
+  };
+
+  const handleAddressSearch = async () => {
+    if (!addressSearchQuery.trim()) return;
+    userHasManuallyPinnedRef.current = true;
+    setBarangayLoading(true);
+    try {
+      const fullQuery = `${addressSearchQuery}, Pampanga, Philippines`;
+      const res = await fetch(
+        `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(fullQuery)}&format=json&limit=1`,
+        {
+          headers: { "User-Agent": "AquaTrack-CSFWD/1.0 (aquatrack@csfwd.gov.ph)" },
+        }
+      );
+      if (res.ok) {
+        const data = await res.json();
+        if (data && data.length > 0) {
+          const matched = data[0];
+          const lat = parseFloat(matched.lat).toFixed(6);
+          const lng = parseFloat(matched.lon).toFixed(6);
+          setCustomLat(lat);
+          setCustomLng(lng);
+          setGpsPinpointActive(true);
+          
+          const map = clientMapRef.current;
+          const marker = clientMarkerRef.current;
+          if (map && marker) {
+            marker.setLngLat([parseFloat(lng), parseFloat(lat)]);
+            map.easeTo({ center: [parseFloat(lng), parseFloat(lat)], zoom: 17 });
+          }
+        } else {
+          alert("No matching locations found in Pampanga.");
+        }
+      }
+    } catch (err) {
+      console.error("Address search failed:", err);
+      alert("Error searching for location.");
+    } finally {
+      setBarangayLoading(false);
+    }
   };
 
   const handleCreateComplaint = async (e: React.FormEvent) => {
@@ -385,10 +595,10 @@ export default function DashboardClient({
       </header>
 
       {/* Main Grid containing left ASIDE and right MAIN panel */}
-      <div className="flex-1 flex overflow-hidden p-[18px] gap-[18px] z-30">
+      <div className="flex-1 flex flex-col lg:flex-row overflow-y-auto lg:overflow-hidden p-[18px] gap-[18px] z-30">
         
         {/* Left Navigation Sidebar (Aside section) */}
-        <aside className="w-[350px] shrink-0 bg-white border border-slate-200 rounded-[18px] shadow-sm shadow-blue-100 p-6 flex flex-col justify-between overflow-y-auto">
+        <aside className="w-full lg:w-[350px] shrink-0 bg-white border border-slate-200 rounded-[18px] shadow-sm shadow-blue-100 p-6 flex flex-col justify-between lg:overflow-y-auto space-y-6 lg:space-y-0">
           <div className="space-y-6">
             <div>
               <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">
@@ -450,7 +660,7 @@ export default function DashboardClient({
         </aside>
 
         {/* Right Main Panel Content */}
-        <main className="flex-1 bg-white border border-slate-200 rounded-[18px] shadow-sm shadow-blue-100 p-8 overflow-y-auto">
+        <main className="flex-1 bg-white border border-slate-200 rounded-[18px] shadow-sm shadow-blue-100 p-8 lg:overflow-y-auto">
           
           {/* Tab 1: File a Complaint */}
           {activeTab === "file-complaint" && (
@@ -500,6 +710,80 @@ export default function DashboardClient({
                             }`
                           : "Requesting device GPS coordinates…"}
                       </span>
+                    </div>
+                  </div>
+
+                  {/* Address Search Bar */}
+                  <div className="space-y-1.5 pt-1">
+                    <label className="text-[9px] font-black text-slate-400 uppercase">Search Address, Street, or Landmark</label>
+                    <div className="flex gap-2">
+                      <input
+                        type="text"
+                        placeholder="e.g. Del Pilar Street, Sto. Rosario..."
+                        value={addressSearchQuery}
+                        onChange={(e) => setAddressSearchQuery(e.target.value)}
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter") {
+                            e.preventDefault();
+                            handleAddressSearch();
+                          }
+                        }}
+                        className="flex-1 bg-white border border-slate-200 text-[#001e66] font-bold text-xs py-2 px-3 rounded-lg focus:outline-none focus:border-[#00aeef] focus:ring-1 focus:ring-[#00aeef]/30"
+                      />
+                      <button
+                        type="button"
+                        onClick={handleAddressSearch}
+                        className="bg-[#001e66] hover:bg-[#00aeef] text-white font-extrabold text-xs px-5 py-2 rounded-lg uppercase tracking-wider active:scale-95 transition-all shadow-sm cursor-pointer"
+                      >
+                        Search
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Interactive Map Pinning Container */}
+                  <div className="w-full h-48 rounded-xl border border-slate-200 overflow-hidden relative shadow-inner">
+                    <div ref={clientMapContainerRef} className="absolute inset-0 w-full h-full" />
+                    <div className="absolute bottom-2 left-2 z-10 bg-slate-900/90 text-white text-[9px] font-mono px-2 py-0.5 rounded border border-slate-700/60 backdrop-blur-sm">
+                      Drag marker or click map to pin exact location
+                    </div>
+                  </div>
+
+                  {/* Locate Me button */}
+                  <button
+                    type="button"
+                    onClick={handleRequestLocation}
+                    className="w-full bg-gradient-to-r from-[#00aeef] to-[#08266D] hover:from-[#08266D] hover:to-[#00aeef] text-white font-black text-[10px] py-2.5 px-3 rounded-lg uppercase tracking-wider shadow-sm hover:shadow-blue-500/10 active:scale-[0.99] transition-all duration-300 flex items-center justify-center gap-1.5 cursor-pointer"
+                  >
+                    🎯 Pin My Current Device Location
+                  </button>
+
+                  {/* Editable coordinates inputs */}
+                  <div className="grid grid-cols-2 gap-3 pt-1">
+                    <div className="space-y-1">
+                      <label className="text-[9px] font-black text-slate-400 uppercase">Latitude</label>
+                      <input
+                        type="text"
+                        value={customLat}
+                        onChange={(e) => {
+                          userHasManuallyPinnedRef.current = true;
+                          setCustomLat(e.target.value);
+                          setGpsPinpointActive(true);
+                        }}
+                        className="w-full bg-white border border-slate-200 text-[#001e66] font-mono text-[10px] py-1.5 px-3 rounded-lg focus:outline-none focus:border-[#00aeef] focus:ring-1 focus:ring-[#00aeef]/30"
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <label className="text-[9px] font-black text-slate-400 uppercase">Longitude</label>
+                      <input
+                        type="text"
+                        value={customLng}
+                        onChange={(e) => {
+                          userHasManuallyPinnedRef.current = true;
+                          setCustomLng(e.target.value);
+                          setGpsPinpointActive(true);
+                        }}
+                        className="w-full bg-white border border-slate-200 text-[#001e66] font-mono text-[10px] py-1.5 px-3 rounded-lg focus:outline-none focus:border-[#00aeef] focus:ring-1 focus:ring-[#00aeef]/30"
+                      />
                     </div>
                   </div>
 
@@ -606,7 +890,7 @@ export default function DashboardClient({
                   <button
                     type="submit"
                     disabled={submitting}
-                    className="bg-[#001e66] hover:bg-[#00aeef] text-white font-extrabold text-xs px-6 py-3.5 rounded-xl uppercase tracking-wider shadow-sm transition-all disabled:opacity-50 flex items-center space-x-2"
+                    className="bg-gradient-to-r from-[#001e66] to-[#00aeef] hover:from-[#00aeef] hover:to-[#001e66] text-white font-black text-xs px-6 py-3.5 rounded-xl uppercase tracking-wider shadow-md shadow-blue-900/10 hover:shadow-blue-500/20 active:scale-[0.98] transition-all duration-300 disabled:opacity-50 flex items-center space-x-2 cursor-pointer"
                   >
                     {submitting ? (
                       <>
@@ -627,61 +911,129 @@ export default function DashboardClient({
 
           {/* Tab 2: Track Complaints */}
           {activeTab === "track-complaint" && (
-            <div className="space-y-6">
-              <div>
-                <h2 className="text-xl font-black text-[#001e66] tracking-tight">Logged Incident Reports</h2>
-                <p className="text-xs text-slate-500 font-medium font-bold">Monitor active ticket statuses and diagnostic actions</p>
+            <div className="space-y-8">
+              {/* Section 1: Active Complaints */}
+              <div className="space-y-4">
+                <div>
+                  <h2 className="text-xl font-black text-[#001e66] tracking-tight">Active Ticket Status Tracker</h2>
+                  <p className="text-xs text-slate-500 font-bold">Monitor your active tickets and dispatch assignments</p>
+                </div>
+
+                <div className="overflow-x-auto border border-slate-100 rounded-xl">
+                  <table className="w-full text-left border-collapse text-xs">
+                    <thead>
+                      <tr className="bg-slate-50 border-b border-slate-200 text-slate-500 font-bold uppercase tracking-wider">
+                        <th className="py-3 px-4">Summary</th>
+                        <th className="py-3 px-4">Urgency</th>
+                        <th className="py-3 px-4">Category</th>
+                        <th className="py-3 px-4">Coordinates</th>
+                        <th className="py-3 px-4">Status</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-100">
+                      {myComplaints
+                        .filter((c) => c.status !== "RESOLVED")
+                        .map((c) => (
+                          <tr key={c.id} className="hover:bg-slate-50/50 transition-colors">
+                            <td className="py-4 px-4 font-bold text-[#001e66]">
+                              <div>{c.summary}</div>
+                              <div className="text-slate-500 font-medium italic mt-0.5">"{c.rawText}"</div>
+                            </td>
+                            <td className="py-4 px-4 font-black">
+                              <span className={`inline-flex items-center px-2 py-0.5 rounded-[6px] text-[9px] font-black uppercase border ${
+                                c.urgency === "CRITICAL" || c.urgency === "HIGH" || c.urgency === "URGENT"
+                                  ? "bg-red-50 text-red-700 border-red-200"
+                                  : c.urgency === "MEDIUM"
+                                  ? "bg-amber-50 text-amber-700 border-amber-200"
+                                  : "bg-slate-50 text-slate-700 border-slate-200"
+                              }`}>
+                                {c.urgency}
+                              </span>
+                            </td>
+                            <td className="py-4 px-4 font-mono text-[10px] text-slate-500">{c.category}</td>
+                            <td className="py-4 px-4 font-mono text-slate-500 font-bold">
+                              {c.latitude.toFixed(4)}, {c.longitude.toFixed(4)}
+                            </td>
+                            <td className="py-4 px-4">
+                              <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-[9px] font-black uppercase border ${
+                                c.status === "PENDING"
+                                  ? "bg-yellow-50 text-yellow-700 border-yellow-200"
+                                  : c.status === "EVALUATING"
+                                  ? "bg-blue-50 text-blue-700 border-blue-200"
+                                  : c.status === "DISPATCHED"
+                                  ? "bg-indigo-50 text-indigo-700 border-indigo-200"
+                                  : c.status === "ONGOING"
+                                  ? "bg-orange-50 text-orange-700 border-orange-200"
+                                  : c.status === "RESOLVED"
+                                  ? "bg-emerald-50 text-emerald-700 border-emerald-200"
+                                  : "bg-slate-100 text-slate-700 border-slate-200"
+                              }`}>
+                                {c.status || "PENDING"}
+                              </span>
+                            </td>
+                          </tr>
+                        ))}
+                      {myComplaints.filter((c) => c.status !== "RESOLVED").length === 0 && (
+                        <tr>
+                          <td colSpan={5} className="py-8 text-center text-slate-500 italic">
+                            No active tickets recorded.
+                          </td>
+                        </tr>
+                      )}
+                    </tbody>
+                  </table>
+                </div>
               </div>
 
-              <div className="overflow-x-auto border border-slate-100 rounded-xl">
-                <table className="w-full text-left border-collapse text-xs">
-                  <thead>
-                    <tr className="bg-slate-50 border-b border-slate-200 text-slate-500 font-bold uppercase tracking-wider">
-                      <th className="py-3 px-4">Summary</th>
-                      <th className="py-3 px-4">Urgency</th>
-                      <th className="py-3 px-4">Category</th>
-                      <th className="py-3 px-4">Coordinates</th>
-                      <th className="py-3 px-4">Status</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-slate-100">
-                    {myComplaints.map((c) => (
-                      <tr key={c.id} className="hover:bg-slate-50/50 transition-colors">
-                        <td className="py-4 px-4 font-bold text-[#001e66]">
-                          <div>{c.summary}</div>
-                          <div className="text-slate-500 font-medium italic mt-0.5">"{c.rawText}"</div>
-                        </td>
-                        <td className="py-4 px-4 font-black">
-                          <span className={`px-2 py-0.5 rounded text-[9px] ${
-                            c.urgency === "CRITICAL" ? "bg-red-50 text-red-600" : "bg-slate-100 text-slate-600"
-                          }`}>
-                            {c.urgency}
-                          </span>
-                        </td>
-                        <td className="py-4 px-4 font-mono text-[10px] text-slate-500">{c.category}</td>
-                        <td className="py-4 px-4 font-mono text-slate-500 font-bold">
-                          {c.latitude.toFixed(4)}, {c.longitude.toFixed(4)}
-                        </td>
-                        <td className="py-4 px-4">
-                          <span className={`px-2.5 py-1 rounded-full text-[9px] font-black uppercase ${
-                            c.status === "RESOLVED"
-                              ? "bg-emerald-50 text-emerald-600 border border-emerald-200"
-                              : "bg-amber-50 text-amber-600 border border-amber-200"
-                          }`}>
-                            {c.status || "PENDING"}
-                          </span>
-                        </td>
+              {/* Section 2: Complaint History */}
+              <div className="space-y-4">
+                <div>
+                  <h2 className="text-xl font-black text-[#001e66] tracking-tight">My Complaint History (Audit Trail)</h2>
+                  <p className="text-xs text-slate-500 font-bold">Resolved incident logs and completed audit trails</p>
+                </div>
+
+                <div className="overflow-x-auto border border-slate-100 rounded-xl">
+                  <table className="w-full text-left border-collapse text-xs">
+                    <thead>
+                      <tr className="bg-slate-50 border-b border-slate-200 text-slate-500 font-bold uppercase tracking-wider">
+                        <th className="py-3 px-4">Resolved Ticket</th>
+                        <th className="py-3 px-4">Category</th>
+                        <th className="py-3 px-4">Address</th>
+                        <th className="py-3 px-4">Coordinates</th>
+                        <th className="py-3 px-4">Status</th>
                       </tr>
-                    ))}
-                    {myComplaints.length === 0 && (
-                      <tr>
-                        <td colSpan={5} className="py-8 text-center text-slate-500 italic">
-                          No logged complaints recorded.
-                        </td>
-                      </tr>
-                    )}
-                  </tbody>
-                </table>
+                    </thead>
+                    <tbody className="divide-y divide-slate-100">
+                      {myComplaints
+                        .filter((c) => c.status === "RESOLVED")
+                        .map((c) => (
+                          <tr key={c.id} className="hover:bg-slate-50/50 transition-colors">
+                            <td className="py-4 px-4 font-bold text-slate-500">
+                              <div>{c.summary}</div>
+                              <div className="text-slate-400 font-medium italic mt-0.5">"{c.rawText}"</div>
+                            </td>
+                            <td className="py-4 px-4 font-mono text-[10px] text-slate-400">{c.category}</td>
+                            <td className="py-4 px-4 font-medium text-slate-500">{c.barangay || "San Fernando"}</td>
+                            <td className="py-4 px-4 font-mono text-slate-400">
+                              {c.latitude.toFixed(4)}, {c.longitude.toFixed(4)}
+                            </td>
+                            <td className="py-4 px-4">
+                              <span className="px-2.5 py-1 rounded-full text-[9px] font-black uppercase bg-emerald-50 text-emerald-700 border border-emerald-200">
+                                RESOLVED
+                              </span>
+                            </td>
+                          </tr>
+                        ))}
+                      {myComplaints.filter((c) => c.status === "RESOLVED").length === 0 && (
+                        <tr>
+                          <td colSpan={5} className="py-8 text-center text-slate-500 italic">
+                            No resolved complaints recorded.
+                          </td>
+                        </tr>
+                      )}
+                    </tbody>
+                  </table>
+                </div>
               </div>
             </div>
           )}
@@ -701,8 +1053,14 @@ export default function DashboardClient({
                     <div key={ad.id} className="bg-slate-50 border border-slate-200 rounded-2xl p-6 shadow-sm relative">
                       <div className="flex items-center space-x-2">
                         <span className="text-[10px] font-bold text-slate-400">{ad.date}</span>
-                        <span className={`text-[8px] font-black uppercase px-2 py-0.5 rounded ${
-                          ad.type === "warning" ? "bg-red-50 text-red-600" : "bg-blue-50 text-blue-600"
+                        <span className={`text-[8px] font-black uppercase px-2 py-0.5 rounded border ${
+                          ad.type === "warning"
+                            ? "bg-red-50 text-red-600 border-red-200"
+                            : ad.type === "info"
+                            ? "bg-blue-50 text-blue-600 border-blue-200"
+                            : ad.type === "news"
+                            ? "bg-emerald-50 text-emerald-600 border-emerald-200"
+                            : "bg-purple-50 text-purple-600 border-purple-200"
                         }`}>
                           {ad.type}
                         </span>

@@ -13,7 +13,7 @@ interface Advisory {
   date: string;
   title: string;
   text: string;
-  type: "warning" | "info";
+  type: "warning" | "info" | "news" | "event";
   targetRole?: "broadcast" | "consumers" | "technicians";
 }
 
@@ -30,8 +30,50 @@ export default function HomeSection({
   setActiveDetailNews,
   setActiveDetailEvent,
 }: HomeSectionProps) {
-  const newsList = []; // Empty per user request
-  const eventsList = []; // Empty per user request
+  const parseEventDate = (dateStr: string) => {
+    try {
+      const clean = dateStr.replace(",", "");
+      const parts = clean.split(" ");
+      if (parts.length >= 2) {
+        const monthAbbr = parts[0].substring(0, 3).toUpperCase();
+        const day = parts[1];
+        return { month: monthAbbr, day };
+      }
+    } catch (e) {
+      // Fallback parsing failed
+    }
+    return { month: "EVT", day: "•" };
+  };
+
+  const newsList = advisories
+    .filter((ad) => ad.type === "news")
+    .map((ad) => ({
+      id: ad.id,
+      date: ad.date,
+      title: ad.title,
+      description: ad.text,
+      tag: ad.targetRole === "consumers" ? "CONSUMERS" : ad.targetRole === "technicians" ? "STAFF" : "PUBLIC",
+    }));
+
+  const eventsList = advisories
+    .filter((ad) => ad.type === "event")
+    .map((ad, idx) => {
+      const { month, day } = parseEventDate(ad.date);
+      const color = [
+        "bg-purple-100 text-purple-700",
+        "bg-indigo-100 text-indigo-700",
+        "bg-blue-100 text-blue-700",
+        "bg-pink-100 text-pink-700",
+      ][idx % 4];
+      return {
+        id: ad.id,
+        month,
+        day,
+        title: ad.title,
+        description: ad.text,
+        color,
+      };
+    });
 
   return (
     <div className="space-y-6">

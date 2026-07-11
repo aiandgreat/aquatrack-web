@@ -40,6 +40,10 @@ interface Complaint {
   imageUrl: string;
   createdAt: string;
   assignedToId?: string | null;
+  barangay: string;
+  userName?: string;
+  userEmail?: string;
+  serviceAccountNo?: string;
 }
 
 interface DashboardStats {
@@ -214,6 +218,12 @@ export default function DashboardSubAdmin({
     }
   };
 
+  const handleViewLocation = (complaintId: string) => {
+    setSelectedComplaintId(complaintId);
+    setSelectedNodeId(null);
+    setActiveTab("map");
+  };
+
   const handleUpdateNodeStatus = async (nodeId: string, newStatus: string) => {
     setUpdatingNodeId(nodeId);
     try {
@@ -324,36 +334,59 @@ export default function DashboardSubAdmin({
       </header>
 
       {/* Main Viewport Grid */}
-      <div className="flex-1 flex overflow-hidden p-[18px] gap-[18px] z-30">
-        <aside className="w-64 shrink-0 bg-white border border-slate-200 rounded-[18px] p-5 shadow-sm shadow-blue-100 flex flex-col gap-1.5 overflow-y-auto">
-          <div className="text-[10px] font-black uppercase tracking-wider text-slate-400 mb-2 border-b border-slate-100 pb-2">
-            Console
+      <div className="flex-1 flex flex-col lg:flex-row p-[18px] gap-[18px] z-30">
+        <aside className="w-full lg:w-64 shrink-0 bg-white border border-slate-200 rounded-[18px] p-5 shadow-sm shadow-blue-100 flex flex-col gap-1 z-20 h-fit lg:sticky lg:top-[18px]">
+          <div className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-2 border-b border-slate-100 pb-2 px-3">
+            STAFF CONSOLE
           </div>
           {[
-            { key: "home",       label: "Dashboard Home" },
-            { key: "map",        label: "Live Monitoring Map" },
-            { key: "complaints", label: "Assigned Complaints" },
-            { key: "telemetry", label: "IoT Telemetry Metrics" },
-            { key: "advisories", label: "Advisories & Events" },
+            { 
+              key: "home", 
+              label: "Dashboard Home", 
+              icon: "M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" 
+            },
+            { 
+              key: "map", 
+              label: "Live Monitoring Map", 
+              icon: "M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7" 
+            },
+            { 
+              key: "complaints", 
+              label: "Assigned Complaints", 
+              icon: "M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" 
+            },
+            { 
+              key: "telemetry", 
+              label: "IoT Telemetry Metrics", 
+              icon: "M9 3v2m6-2v2M9 19v2m6-2v2M5 9H3m2 6H3m18-6h-2m2 6h-2M7 19h10a2 2 0 002-2V7a2 2 0 00-2-2H7a2 2 0 00-2 2v10a2 2 0 002 2zM9 9h6v6H9V9z" 
+            },
+            { 
+              key: "advisories", 
+              label: "Advisories & Events", 
+              icon: "M11 5.882V19.24a1.76 1.76 0 01-3.417.592l-2.147-6.15M18 13a3 3 0 100-6M5.436 13.683A4.001 4.001 0 017 6h1.832c4.1 0 7.625-1.234 9.168-3v14c-1.543-1.766-5.067-3-9.168-3H7a3.988 3.988 0 01-1.564-.317z" 
+            },
           ].map((item) => {
             const isActive = activeTab === item.key;
             return (
               <button
                 key={item.key}
                 onClick={() => setActiveTab(item.key as any)}
-                className={`w-full text-left px-4 py-2.5 rounded-xl text-xs font-black transition-all ${
+                className={`w-full flex items-center gap-3 px-4 py-2.5 rounded-xl text-xs font-black transition-all duration-200 hover:scale-[1.01] ${
                   isActive
-                    ? "bg-[#08266D] text-white shadow-sm"
+                    ? "bg-[#08266D] text-white shadow-md shadow-blue-900/10"
                     : "text-[#001e66] hover:bg-slate-50 hover:text-[#00aeef]"
                 }`}
               >
-                {item.label}
+                <svg className={`w-4 h-4 shrink-0 ${isActive ? "text-white" : "text-[#00aeef]"}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.3">
+                  <path strokeLinecap="round" strokeLinejoin="round" d={item.icon} />
+                </svg>
+                <span>{item.label}</span>
               </button>
             );
           })}
         </aside>
 
-        <main className="flex-1 bg-white border border-slate-200 rounded-[18px] shadow-sm shadow-blue-100 p-6 flex flex-col overflow-y-auto">
+        <main className="flex-1 bg-white border border-slate-200 rounded-[18px] shadow-sm shadow-blue-100 p-6 flex flex-col">
           {alertMessage && (
             <div
               className={`p-4 rounded-xl border mb-6 flex items-start space-x-3 text-sm animate-fade-in ${
@@ -396,6 +429,7 @@ export default function DashboardSubAdmin({
               setFilterAssignedOnly={setFilterAssignedOnly}
               updatingComplaintId={updatingComplaintId}
               handleUpdateComplaintStatus={handleUpdateComplaintStatus}
+              handleViewLocation={handleViewLocation}
             />
           )}
 
