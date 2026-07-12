@@ -11,14 +11,14 @@ export default function AnalyticsSection({
     <div className="space-y-6">
       <div className="flex justify-between items-center pb-4 border-b border-slate-200">
         <div>
-          <h2 className="text-lg font-black text-[#001e66] tracking-tight">PNSDW Compliance Audit Panel</h2>
-          <p className="text-xs text-slate-500 font-medium">Verify overall district water telemetry limits</p>
+          <h2 className="text-lg font-black text-[#001e66] tracking-tight">Water Quality Analytics Panel</h2>
+          <p className="text-xs text-slate-500 font-medium">Verify overall district water telemetry analytics and compliance limits</p>
         </div>
         <button
           onClick={handleDownloadReport}
           className="bg-[#001e66] hover:bg-[#00aeef] text-white font-extrabold text-xs px-4 py-2.5 rounded-xl uppercase tracking-wider shadow-sm transition-all"
         >
-          Download Audit PDF
+          Download Analytics PDF
         </button>
       </div>
 

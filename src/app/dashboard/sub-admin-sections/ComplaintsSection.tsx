@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState, useEffect } from "react";
 
 interface Complaint {
   id: string;
@@ -37,6 +37,18 @@ export default function ComplaintsSection({
   handleUpdateComplaintStatus,
   handleViewLocation,
 }: ComplaintsSectionProps) {
+  const [page, setPage] = useState(1);
+
+  // Reset pagination to page 1 when search or assign filters change
+  useEffect(() => {
+    setPage(1);
+  }, [complaintSearchQuery, filterAssignedOnly]);
+
+  const totalPages = Math.ceil(filteredComplaints.length / 5) || 1;
+  const currentPage = Math.max(1, Math.min(page, totalPages));
+  const start = (currentPage - 1) * 5;
+  const paginatedComplaints = filteredComplaints.slice(start, start + 5);
+
   return (
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 pb-4 border-b border-slate-200">
@@ -75,12 +87,12 @@ export default function ComplaintsSection({
             <tr className="border-b border-slate-200 text-slate-500 font-bold uppercase tracking-wider">
               <th className="py-3 px-4">Citizen Report</th>
               <th className="py-3 px-4">AI Class &amp; Urgency</th>
-              <th className="py-3 px-4">Coordinates</th>
+              <th className="py-3 px-4">Location</th>
               <th className="py-3 px-4">Ticket Status</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-100">
-            {filteredComplaints.map((c) => (
+            {paginatedComplaints.map((c) => (
               <tr key={c.id} className="hover:bg-slate-50/50 transition-colors">
                 <td className="py-4 px-4 space-y-1">
                   <div className="font-extrabold text-[#001e66] text-sm">{c.summary}</div>
@@ -125,8 +137,6 @@ export default function ComplaintsSection({
                   </div>
                 </td>
                 <td className="py-4 px-4 font-mono text-slate-600 font-bold space-y-1.5">
-                  <div>Lat: {c.latitude.toFixed(5)}</div>
-                  <div>Lng: {c.longitude.toFixed(5)}</div>
                   <button
                     onClick={() => handleViewLocation(c.id)}
                     className="flex items-center gap-1 bg-[#EEF4FA] hover:bg-[#00aeef] text-[#001e66] hover:text-white font-black text-[9px] py-1.5 px-3 rounded-lg border border-slate-200 hover:border-[#00aeef] uppercase tracking-wider transition-all cursor-pointer"
@@ -160,6 +170,33 @@ export default function ComplaintsSection({
           </tbody>
         </table>
       </div>
+
+      {totalPages > 1 && (
+        <div className="flex items-center justify-between pt-4 border-t border-slate-100 bg-white px-2">
+          <span className="text-xs font-bold text-slate-500">
+            Showing {start + 1} to {Math.min(start + 5, filteredComplaints.length)} of {filteredComplaints.length} cases
+          </span>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => setPage(currentPage - 1)}
+              disabled={currentPage === 1}
+              className="px-3 py-1.5 rounded-lg border border-slate-200 text-xs font-bold text-[#001e66] hover:bg-[#00aeef] hover:text-white disabled:opacity-50 disabled:hover:bg-transparent disabled:hover:text-[#001e66] transition-all cursor-pointer disabled:cursor-not-allowed select-none"
+            >
+              Previous
+            </button>
+            <span className="text-xs font-bold text-[#001e66]">
+              Page {currentPage} of {totalPages}
+            </span>
+            <button
+              onClick={() => setPage(currentPage + 1)}
+              disabled={currentPage === totalPages}
+              className="px-3 py-1.5 rounded-lg border border-slate-200 text-xs font-bold text-[#001e66] hover:bg-[#00aeef] hover:text-white disabled:opacity-50 disabled:hover:bg-transparent disabled:hover:text-[#001e66] transition-all cursor-pointer disabled:cursor-not-allowed select-none"
+            >
+              Next
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

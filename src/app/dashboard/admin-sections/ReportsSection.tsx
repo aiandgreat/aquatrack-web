@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 
 interface Complaint {
   id: string;
@@ -46,6 +46,14 @@ export default function ReportsSection({
 }: ReportsSectionProps) {
   const [sortBy, setSortBy] = useState<"date" | "barangay-asc" | "barangay-desc" | "urgency">("date");
   const [filterBarangay, setFilterBarangay] = useState<string>("all");
+  const [activePage, setActivePage] = useState(1);
+  const [resolvedPage, setResolvedPage] = useState(1);
+
+  // Reset pagination to page 1 whenever filters or search query changes
+  useEffect(() => {
+    setActivePage(1);
+    setResolvedPage(1);
+  }, [complaintSearchQuery, sortBy, filterBarangay]);
 
   // Separate resolved (history) from active complaints
   const activeComplaints = complaints.filter((c) => c.status !== "RESOLVED");
@@ -98,6 +106,18 @@ export default function ReportsSection({
 
   const filteredActive = applyFiltersAndSort(activeComplaints);
   const filteredResolved = applyFiltersAndSort(resolvedComplaints);
+
+  const activeTotalPages = Math.ceil(filteredActive.length / 5) || 1;
+  const resolvedTotalPages = Math.ceil(filteredResolved.length / 5) || 1;
+
+  const currentActivePage = Math.max(1, Math.min(activePage, activeTotalPages));
+  const currentResolvedPage = Math.max(1, Math.min(resolvedPage, resolvedTotalPages));
+
+  const activeStart = (currentActivePage - 1) * 5;
+  const paginatedActive = filteredActive.slice(activeStart, activeStart + 5);
+
+  const resolvedStart = (currentResolvedPage - 1) * 5;
+  const paginatedResolved = filteredResolved.slice(resolvedStart, resolvedStart + 5);
 
   return (
     <div className="space-y-8">
@@ -158,13 +178,13 @@ export default function ReportsSection({
               <tr className="border-b border-slate-200 text-slate-500 font-bold uppercase tracking-wider">
                 <th className="py-3 px-4">Citizen Report</th>
                 <th className="py-3 px-4">AI Class &amp; Urgency</th>
-                <th className="py-3 px-4">Coordinates</th>
+                <th className="py-3 px-4">Location</th>
                 <th className="py-3 px-4">Ticket Status</th>
                 <th className="py-3 px-4">Assign Field Technician</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
-              {filteredActive.map((c) => (
+              {paginatedActive.map((c) => (
                 <tr key={c.id} className="hover:bg-slate-50/50 transition-colors">
                   <td className="py-4 px-4 space-y-1.5">
                     <div className="font-extrabold text-[#001e66] text-sm">{c.summary}</div>
@@ -209,8 +229,6 @@ export default function ReportsSection({
                     </div>
                   </td>
                   <td className="py-4 px-4 font-mono text-slate-600 font-bold space-y-1.5">
-                    <div>Lat: {c.latitude.toFixed(5)}</div>
-                    <div>Lng: {c.longitude.toFixed(5)}</div>
                     <button
                       onClick={() => handleViewLocation(c.id)}
                       className="flex items-center gap-1 bg-[#EEF4FA] hover:bg-[#00aeef] text-[#001e66] hover:text-white font-black text-[9px] py-1.5 px-3 rounded-lg border border-slate-200 hover:border-[#00aeef] uppercase tracking-wider transition-all cursor-pointer"
@@ -260,6 +278,33 @@ export default function ReportsSection({
             </tbody>
           </table>
         </div>
+
+        {activeTotalPages > 1 && (
+          <div className="flex items-center justify-between pt-4 border-t border-slate-100 bg-white px-2">
+            <span className="text-xs font-bold text-slate-500">
+              Showing {activeStart + 1} to {Math.min(activeStart + 5, filteredActive.length)} of {filteredActive.length} active cases
+            </span>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => setActivePage(currentActivePage - 1)}
+                disabled={currentActivePage === 1}
+                className="px-3 py-1.5 rounded-lg border border-slate-200 text-xs font-bold text-[#001e66] hover:bg-[#00aeef] hover:text-white disabled:opacity-50 disabled:hover:bg-transparent disabled:hover:text-[#001e66] transition-all cursor-pointer disabled:cursor-not-allowed select-none"
+              >
+                Previous
+              </button>
+              <span className="text-xs font-bold text-[#001e66]">
+                Page {currentActivePage} of {activeTotalPages}
+              </span>
+              <button
+                onClick={() => setActivePage(currentActivePage + 1)}
+                disabled={currentActivePage === activeTotalPages}
+                className="px-3 py-1.5 rounded-lg border border-slate-200 text-xs font-bold text-[#001e66] hover:bg-[#00aeef] hover:text-white disabled:opacity-50 disabled:hover:bg-transparent disabled:hover:text-[#001e66] transition-all cursor-pointer disabled:cursor-not-allowed select-none"
+              >
+                Next
+              </button>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* 2. Complaint History (Audit Trail) */}
@@ -275,12 +320,12 @@ export default function ReportsSection({
               <tr className="border-b border-slate-200 text-slate-500 font-bold uppercase tracking-wider">
                 <th className="py-3 px-4">Resolved Incident</th>
                 <th className="py-3 px-4">AI Class &amp; Urgency</th>
-                <th className="py-3 px-4">Coordinates</th>
+                <th className="py-3 px-4">Location</th>
                 <th className="py-3 px-4">Audit Details</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100 bg-slate-50/30">
-              {filteredResolved.map((c) => {
+              {paginatedResolved.map((c) => {
                 const assignedUser = users.find((u) => u.id === c.assignedToId);
                 return (
                   <tr key={c.id} className="hover:bg-slate-50/50 transition-colors">
@@ -323,8 +368,6 @@ export default function ReportsSection({
                       </div>
                     </td>
                     <td className="py-4 px-4 font-mono text-slate-500 font-bold space-y-1.5">
-                      <div>Lat: {c.latitude.toFixed(5)}</div>
-                      <div>Lng: {c.longitude.toFixed(5)}</div>
                       <button
                         onClick={() => handleViewLocation(c.id)}
                         className="flex items-center gap-1 bg-[#EEF4FA] hover:bg-[#00aeef] text-[#001e66] hover:text-white font-black text-[9px] py-1.5 px-3 rounded-lg border border-slate-200 hover:border-[#00aeef] uppercase tracking-wider transition-all cursor-pointer"
@@ -370,6 +413,33 @@ export default function ReportsSection({
             </tbody>
           </table>
         </div>
+
+        {resolvedTotalPages > 1 && (
+          <div className="flex items-center justify-between pt-4 border-t border-slate-100 bg-white px-2">
+            <span className="text-xs font-bold text-slate-500">
+              Showing {resolvedStart + 1} to {Math.min(resolvedStart + 5, filteredResolved.length)} of {filteredResolved.length} resolved cases
+            </span>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => setResolvedPage(currentResolvedPage - 1)}
+                disabled={currentResolvedPage === 1}
+                className="px-3 py-1.5 rounded-lg border border-slate-200 text-xs font-bold text-[#001e66] hover:bg-[#00aeef] hover:text-white disabled:opacity-50 disabled:hover:bg-transparent disabled:hover:text-[#001e66] transition-all cursor-pointer disabled:cursor-not-allowed select-none"
+              >
+                Previous
+              </button>
+              <span className="text-xs font-bold text-[#001e66]">
+                Page {currentResolvedPage} of {resolvedTotalPages}
+              </span>
+              <button
+                onClick={() => setResolvedPage(currentResolvedPage + 1)}
+                disabled={currentResolvedPage === resolvedTotalPages}
+                className="px-3 py-1.5 rounded-lg border border-slate-200 text-xs font-bold text-[#001e66] hover:bg-[#00aeef] hover:text-white disabled:opacity-50 disabled:hover:bg-transparent disabled:hover:text-[#001e66] transition-all cursor-pointer disabled:cursor-not-allowed select-none"
+              >
+                Next
+              </button>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );

@@ -4,6 +4,7 @@ import React, { useState, useEffect } from "react";
 import Link from "next/link";
 import { getSupabaseClient } from "../../lib/supabase";
 import { generateComplianceReport } from "../../lib/pdf-generator";
+import { motion, AnimatePresence } from "framer-motion";
 
 // Import Modular Sections
 import HomeSection from "./admin-sections/HomeSection";
@@ -153,6 +154,24 @@ export default function DashboardAdmin({
   const [aiTriageStrictness, setAiTriageStrictness] = useState(75);
   const [emailAlertsEnabled, setEmailAlertsEnabled] = useState(true);
   const [hotCacheTTL, setHotCacheTTL] = useState(60);
+  const [isDark, setIsDark] = useState(false);
+
+  useEffect(() => {
+    const root = window.document.documentElement;
+    const initialDark = root.classList.contains("dark") || localStorage.getItem("theme") === "dark";
+    setIsDark(initialDark);
+  }, []);
+
+  useEffect(() => {
+    const root = window.document.documentElement;
+    if (isDark) {
+      root.classList.add("dark");
+      localStorage.setItem("theme", "dark");
+    } else {
+      root.classList.remove("dark");
+      localStorage.setItem("theme", "light");
+    }
+  }, [isDark]);
 
   // Preset config handler
   useEffect(() => {
@@ -471,7 +490,7 @@ export default function DashboardAdmin({
       { nodeName: "Household Edge B", ph: 5.8, turbidity: 8.5, tds: 530, pressure: 14.5, timestamp: new Date().toISOString() },
     ];
     generateComplianceReport({ readings: dummyReadings });
-    showFeedback("success", "Compliance report downloaded successfully.");
+    showFeedback("success", "Water analytics report downloaded successfully.");
   };
 
   const handleCreateAdvisory = async (e: React.FormEvent) => {
@@ -535,7 +554,7 @@ export default function DashboardAdmin({
     setTimeout(() => setAlertMessage(null), 5000);
   };
 
-  const notifications = [];
+  const warningAdvisories = advisories.filter((ad) => ad.type === "warning");
 
   if (loading) {
     return (
@@ -591,7 +610,7 @@ export default function DashboardAdmin({
   }
 
   return (
-    <div className="min-h-screen bg-[#EEF4FA] text-[#001e66] flex flex-col font-sans relative w-full h-full overflow-x-hidden">
+    <div className="min-h-screen bg-[#EEF4FA] dark:bg-slate-950 text-[#001e66] dark:text-slate-100 flex flex-col font-sans relative w-full h-full overflow-x-hidden transition-colors duration-200">
       {/* 3-way Top Color Ribbon */}
       <div className="absolute inset-x-0 top-0 flex h-1.5 z-50" aria-hidden="true">
         <span className="flex-1 bg-[#001e66]" />
@@ -600,17 +619,17 @@ export default function DashboardAdmin({
       </div>
 
       {/* Top Header Card */}
-      <header className="m-[18px] mb-0 h-[86px] shrink-0 bg-white border border-slate-200 rounded-[16px] shadow-sm shadow-blue-100 flex items-center justify-between px-6 z-40 relative">
+      <header className="m-[18px] mb-0 h-[86px] shrink-0 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-[16px] shadow-sm shadow-blue-100 dark:shadow-none flex items-center justify-between px-6 z-40 relative">
         <div className="flex items-center space-x-4">
           <img src="/LOGO2.png" alt="AquaTrack Logo" className="h-14 w-auto object-contain" />
           <div className="flex flex-col">
-            <span className="text-xl font-black tracking-tight text-[#001e66] leading-none">
+            <span className="text-xl font-black tracking-tight text-[#001e66] dark:text-slate-100 leading-none">
               AQUA<span className="text-[#00aeef]">TRACK</span>
             </span>
-            <span className="text-[10px] font-black text-[#001e66] tracking-wider uppercase mt-1">
+            <span className="text-[10px] font-black text-[#001e66] dark:text-slate-200 tracking-wider uppercase mt-1">
               CITY OF SAN FERNANDO • EXECUTIVE GLOBAL COMMAND CENTER
             </span>
-            <span className="text-[10px] text-slate-500 font-bold mt-0.5">
+            <span className="text-[10px] text-slate-500 dark:text-slate-400 font-bold mt-0.5">
               Administrative & System Control Division
             </span>
           </div>
@@ -625,26 +644,42 @@ export default function DashboardAdmin({
                 setShowHelpModal(false);
                 setShowProfileMenu(false);
               }}
-              className="w-10 h-10 bg-white hover:bg-slate-50 border border-slate-200 rounded-xl flex items-center justify-center relative shadow-sm transition-all focus:outline-none"
+              className="px-3.5 h-10 bg-white dark:bg-slate-800 hover:bg-slate-50 dark:hover:bg-slate-700 border border-slate-200 dark:border-slate-700 rounded-xl flex items-center justify-center relative shadow-sm transition-all focus:outline-none text-xs font-black text-[#001e66] dark:text-slate-300"
             >
-              <svg className="w-5 h-5 text-[#001e66]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.3">
-                <path strokeLinecap="round" strokeLinejoin="round" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
-              </svg>
-              <span className="absolute -top-1 -right-1 bg-[#970006] text-white text-[9px] font-black w-4 h-4 rounded-full flex items-center justify-center shadow-sm">
-                0
+              <span>Alerts</span>
+              <span className="ml-1.5 bg-[#970006] text-white text-[9px] font-black w-4.5 h-4.5 rounded-full flex items-center justify-center shadow-sm">
+                {warningAdvisories.length}
               </span>
             </button>
 
             {/* Notification Dropdown */}
             {showNotificationMenu && (
-              <div className="absolute right-0 mt-2 w-80 bg-white border border-slate-200 rounded-2xl shadow-xl py-3 z-50 text-xs">
-                <div className="px-4 pb-2 border-b border-slate-100 flex justify-between items-center">
-                  <span className="font-extrabold text-[#001e66]">Active System Alarms</span>
-                  <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">0 Alerts</span>
+              <div className="absolute right-0 mt-2 w-80 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl shadow-xl py-3 z-50 text-xs text-slate-700 dark:text-slate-300">
+                <div className="px-4 pb-2 border-b border-slate-100 dark:border-slate-800 flex justify-between items-center">
+                  <span className="font-extrabold text-[#001e66] dark:text-slate-100">Active System Alarms</span>
+                  <span className="text-[10px] text-slate-400 dark:text-slate-500 font-bold uppercase tracking-wider">
+                    {warningAdvisories.length} Alerts
+                  </span>
                 </div>
-                <div className="p-4 text-center text-slate-400 italic">
-                  No active system alarms.
-                </div>
+                {warningAdvisories.length === 0 ? (
+                  <div className="p-4 text-center text-slate-400 dark:text-slate-500 italic">
+                    No active system alarms.
+                  </div>
+                ) : (
+                  <div className="divide-y divide-slate-100 dark:divide-slate-800 max-h-60 overflow-y-auto">
+                    {warningAdvisories.map((ad) => (
+                      <div key={ad.id} className="p-3 hover:bg-slate-50 dark:hover:bg-slate-850 transition-colors">
+                        <div className="flex justify-between items-start">
+                          <span className="font-bold text-red-650 dark:text-red-400">{ad.title}</span>
+                          <span className="text-[9px] text-slate-400 dark:text-slate-500">{ad.date}</span>
+                        </div>
+                        <p className="text-slate-500 dark:text-slate-400 mt-1 text-[11px] leading-tight">
+                          {ad.text}
+                        </p>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
             )}
           </div>
@@ -657,11 +692,20 @@ export default function DashboardAdmin({
                 setShowNotificationMenu(false);
                 setShowProfileMenu(false);
               }}
-              className="w-10 h-10 bg-white hover:bg-slate-50 border border-slate-200 rounded-xl flex items-center justify-center shadow-sm transition-all focus:outline-none"
+              className="px-3.5 h-10 bg-white hover:bg-slate-50 border border-slate-200 rounded-xl flex items-center justify-center shadow-sm transition-all focus:outline-none text-xs font-black text-[#001e66]"
             >
-              <svg className="w-5 h-5 text-[#001e66]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.3">
-                <path strokeLinecap="round" strokeLinejoin="round" d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-              </svg>
+              <span>Help</span>
+            </button>
+          </div>
+
+          {/* Dark Mode Toggle */}
+          <div>
+            <button
+              onClick={() => setIsDark(!isDark)}
+              className="px-3.5 h-10 bg-white hover:bg-slate-50 border border-slate-200 rounded-xl flex items-center justify-center shadow-sm transition-all focus:outline-none dark:bg-slate-800 dark:border-slate-700 dark:hover:bg-slate-700 text-xs font-black text-[#001e66] dark:text-slate-200"
+              title={isDark ? "Switch to Light Mode" : "Switch to Dark Mode"}
+            >
+              <span>{isDark ? "Light" : "Dark"}</span>
             </button>
           </div>
 
@@ -717,19 +761,17 @@ export default function DashboardAdmin({
           {/* Logout Button */}
           <button
             onClick={() => setShowLogoutModal(true)}
-            className="w-10 h-10 bg-red-50 hover:bg-red-100 border border-red-200 text-[#970006] rounded-xl flex items-center justify-center shadow-sm transition-all focus:outline-none"
+            className="h-10 px-4 bg-red-50 hover:bg-red-100 border border-red-200 text-[#970006] rounded-xl flex items-center justify-center font-bold text-xs uppercase tracking-wider shadow-sm transition-all focus:outline-none"
           >
-            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.3">
-              <path strokeLinecap="round" strokeLinejoin="round" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
-            </svg>
+            Logout
           </button>
         </div>
       </header>
 
       {/* Main Grid Viewport (Now with left aside sidebar console layout) */}
       <div className="flex-1 flex flex-col lg:flex-row overflow-y-auto lg:overflow-hidden p-[18px] gap-[18px] z-30">
-        <aside className="w-full lg:w-64 shrink-0 bg-white border border-slate-200 rounded-[18px] p-5 shadow-sm shadow-blue-100 flex flex-col gap-1.5 lg:overflow-y-auto">
-          <div className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-2 border-b border-slate-100 pb-2 px-3">
+        <aside className="w-full lg:w-64 shrink-0 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-[18px] p-5 shadow-sm shadow-blue-100 dark:shadow-none flex flex-col gap-1.5 lg:overflow-y-auto">
+          <div className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-2 border-b border-slate-100 dark:border-slate-800 pb-2 px-3">
             CONTROL CONSOLE
           </div>
           {[
@@ -760,7 +802,7 @@ export default function DashboardAdmin({
             },
             { 
               key: "analytics", 
-              label: "Water Compliance", 
+              label: "Water Analytics", 
               icon: "M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" 
             },
             { 
@@ -784,23 +826,22 @@ export default function DashboardAdmin({
               <button
                 key={item.key}
                 onClick={() => setActiveTab(item.key as any)}
-                className={`w-full flex items-center gap-3 px-4 py-2.5 rounded-xl text-xs font-black transition-all duration-200 hover:scale-[1.01] ${
+                className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-xs font-black transition-all duration-200 relative overflow-hidden group hover:scale-[1.01] ${
                   isActive
-                    ? "bg-[#08266D] text-white shadow-md shadow-blue-900/10"
-                    : "text-[#001e66] hover:bg-slate-50 hover:text-[#00aeef]"
+                    ? "bg-[#063A8C] text-white shadow-md shadow-blue-950/20"
+                    : "text-slate-600 hover:bg-slate-50 dark:hover:bg-slate-800 hover:text-[#00aeef]"
                 }`}
               >
-                <svg className={`w-4 h-4 shrink-0 ${isActive ? "text-white" : "text-[#00aeef]"}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.3">
-                  <path strokeLinecap="round" strokeLinejoin="round" d={item.icon} />
-                  {item.key === "config" && <circle cx="12" cy="12" r="3" strokeLinecap="round" strokeLinejoin="round" />}
-                </svg>
+                {isActive && (
+                  <span className="absolute left-0 top-0 bottom-0 w-1 bg-[#ffd800]" />
+                )}
                 <span>{item.label}</span>
               </button>
             );
           })}
         </aside>
 
-        <main className="flex-1 bg-white border border-slate-200 rounded-[18px] shadow-sm shadow-blue-100 p-6 flex flex-col lg:overflow-y-auto">
+        <main className="flex-1 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-[18px] shadow-sm shadow-blue-100 dark:shadow-none p-6 flex flex-col lg:overflow-y-auto">
           {alertMessage && (
             <div
               className={`p-4 rounded-xl border mb-6 flex items-start space-x-3 text-sm animate-fade-in ${
@@ -815,101 +856,114 @@ export default function DashboardAdmin({
           )}
 
           {/* Render Modular Sections */}
-          {activeTab === "home" && (
-            <HomeSection
-              stats={stats}
-              advisories={advisories}
-              setActiveDetailNews={setActiveDetailNews}
-              setActiveDetailEvent={setActiveDetailEvent}
-            />
-          )}
+          <AnimatePresence mode="wait">
+            <motion.div
+              key={activeTab}
+              initial={{ opacity: 0, y: 12 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -12 }}
+              transition={{ duration: 0.2, ease: "easeOut" }}
+              className="w-full"
+            >
+              {activeTab === "home" && (
+                <HomeSection
+                  stats={stats}
+                  advisories={advisories}
+                  setActiveDetailNews={setActiveDetailNews}
+                  setActiveDetailEvent={setActiveDetailEvent}
+                  complaints={complaints}
+                  nodes={nodes}
+                />
+              )}
 
-          {activeTab === "map" && (
-            <MapSection
-              nodes={nodes}
-              complaints={complaints.filter(c => c.status !== "RESOLVED")}
-              selectedNodeId={selectedNodeId}
-              selectedComplaintId={selectedComplaintId}
-              setSelectedNodeId={setSelectedNodeId}
-              setSelectedComplaintId={setSelectedComplaintId}
-            />
-          )}
+              {activeTab === "map" && (
+                <MapSection
+                  nodes={nodes}
+                  complaints={complaints.filter(c => c.status !== "RESOLVED")}
+                  selectedNodeId={selectedNodeId}
+                  selectedComplaintId={selectedComplaintId}
+                  setSelectedNodeId={setSelectedNodeId}
+                  setSelectedComplaintId={setSelectedComplaintId}
+                />
+              )}
 
-          {activeTab === "reports" && (
-            <ReportsSection
-              complaints={complaints}
-              complaintSearchQuery={complaintSearchQuery}
-              setComplaintSearchQuery={setComplaintSearchQuery}
-              updatingComplaintId={updatingComplaintId}
-              handleUpdateComplaintStatus={handleUpdateComplaintStatus}
-              users={users}
-              handleUpdateComplaintAssignment={handleUpdateComplaintAssignment}
-              handleViewLocation={handleViewLocation}
-            />
-          )}
+              {activeTab === "reports" && (
+                <ReportsSection
+                  complaints={complaints}
+                  complaintSearchQuery={complaintSearchQuery}
+                  setComplaintSearchQuery={setComplaintSearchQuery}
+                  updatingComplaintId={updatingComplaintId}
+                  handleUpdateComplaintStatus={handleUpdateComplaintStatus}
+                  users={users}
+                  handleUpdateComplaintAssignment={handleUpdateComplaintAssignment}
+                  handleViewLocation={handleViewLocation}
+                />
+              )}
 
-          {activeTab === "heatmaps" && <HeatmapsSection complaints={complaints} />}
+              {activeTab === "heatmaps" && <HeatmapsSection complaints={complaints} />}
 
-          {activeTab === "telemetry" && (
-            <TelemetrySection
-              nodes={nodes}
-              nodeSearchQuery={nodeSearchQuery}
-              setNodeSearchQuery={setNodeSearchQuery}
-              updatingNodeId={updatingNodeId}
-              handleUpdateNodeStatus={handleUpdateNodeStatus}
-            />
-          )}
+              {activeTab === "telemetry" && (
+                <TelemetrySection
+                  nodes={nodes}
+                  nodeSearchQuery={nodeSearchQuery}
+                  setNodeSearchQuery={setNodeSearchQuery}
+                  updatingNodeId={updatingNodeId}
+                  handleUpdateNodeStatus={handleUpdateNodeStatus}
+                />
+              )}
 
-          {activeTab === "analytics" && (
-            <AnalyticsSection handleDownloadReport={handleDownloadReport} />
-          )}
+              {activeTab === "analytics" && (
+                <AnalyticsSection handleDownloadReport={handleDownloadReport} />
+              )}
 
-          {activeTab === "users" && (
-            <UsersSection
-              users={users}
-              sessionUserId={session?.user?.id || ""}
-              userSearchQuery={userSearchQuery}
-              setUserSearchQuery={setUserSearchQuery}
-              updatingUserId={updatingUserId}
-              handleUpdateUserProfile={handleUpdateUserProfile}
-              handleDeleteUser={handleDeleteUser}
-            />
-          )}
+              {activeTab === "users" && (
+                <UsersSection
+                  users={users}
+                  sessionUserId={session?.user?.id || ""}
+                  userSearchQuery={userSearchQuery}
+                  setUserSearchQuery={setUserSearchQuery}
+                  updatingUserId={updatingUserId}
+                  handleUpdateUserProfile={handleUpdateUserProfile}
+                  handleDeleteUser={handleDeleteUser}
+                />
+              )}
 
-          {activeTab === "announcements" && (
-            <AnnouncementsSection
-              advisories={advisories}
-              newAdvisoryTitle={newAdvisoryTitle}
-              setNewAdvisoryTitle={setNewAdvisoryTitle}
-              newAdvisoryText={newAdvisoryText}
-              setNewAdvisoryText={setNewAdvisoryText}
-              newAdvisoryType={newAdvisoryType}
-              setNewAdvisoryType={setNewAdvisoryType}
-              newAdvisoryTargetRole={newAdvisoryTargetRole}
-              setNewAdvisoryTargetRole={setNewAdvisoryTargetRole}
-              handleCreateAdvisory={handleCreateAdvisory}
-              handleDeleteAdvisory={handleDeleteAdvisory}
-            />
-          )}
+              {activeTab === "announcements" && (
+                <AnnouncementsSection
+                  advisories={advisories}
+                  newAdvisoryTitle={newAdvisoryTitle}
+                  setNewAdvisoryTitle={setNewAdvisoryTitle}
+                  newAdvisoryText={newAdvisoryText}
+                  setNewAdvisoryText={setNewAdvisoryText}
+                  newAdvisoryType={newAdvisoryType}
+                  setNewAdvisoryType={setNewAdvisoryType}
+                  newAdvisoryTargetRole={newAdvisoryTargetRole}
+                  setNewAdvisoryTargetRole={setNewAdvisoryTargetRole}
+                  handleCreateAdvisory={handleCreateAdvisory}
+                  handleDeleteAdvisory={handleDeleteAdvisory}
+                />
+              )}
 
-          {activeTab === "config" && (
-            <ConfigSection
-              nodes={nodes}
-              selectedSimNodeId={selectedSimNodeId}
-              setSelectedSimNodeId={setSelectedSimNodeId}
-              simPreset={simPreset}
-              setSimPreset={setSimPreset}
-              simValues={simValues}
-              setSimValues={setSimValues}
-              aiTriageStrictness={aiTriageStrictness}
-              setAiTriageStrictness={setAiTriageStrictness}
-              emailAlertsEnabled={emailAlertsEnabled}
-              setEmailAlertsEnabled={setEmailAlertsEnabled}
-              hotCacheTTL={hotCacheTTL}
-              setHotCacheTTL={setHotCacheTTL}
-              handleTriggerSimulation={handleTriggerSimulation}
-            />
-          )}
+              {activeTab === "config" && (
+                <ConfigSection
+                  nodes={nodes}
+                  selectedSimNodeId={selectedSimNodeId}
+                  setSelectedSimNodeId={setSelectedSimNodeId}
+                  simPreset={simPreset}
+                  setSimPreset={setSimPreset}
+                  simValues={simValues}
+                  setSimValues={setSimValues}
+                  aiTriageStrictness={aiTriageStrictness}
+                  setAiTriageStrictness={setAiTriageStrictness}
+                  emailAlertsEnabled={emailAlertsEnabled}
+                  setEmailAlertsEnabled={setEmailAlertsEnabled}
+                  hotCacheTTL={hotCacheTTL}
+                  setHotCacheTTL={setHotCacheTTL}
+                  handleTriggerSimulation={handleTriggerSimulation}
+                />
+              )}
+            </motion.div>
+          </AnimatePresence>
         </main>
       </div>
 

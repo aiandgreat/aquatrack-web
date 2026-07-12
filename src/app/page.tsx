@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from "react";
 import Link from "next/link";
 import Navbar from "../components/Navbar";
+import { motion } from "framer-motion";
 
 function AnimatedCounter({ value, duration = 2000, suffix = "" }: { value: number; duration?: number; suffix?: string }) {
   const [count, setCount] = useState(0);
@@ -118,7 +119,12 @@ export default function Homepage() {
         <div className="relative max-w-7xl mx-auto w-full z-10 grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
           
           {/* Left Column: Tagline, Description, Action Buttons */}
-          <div className="flex flex-col space-y-6">
+          <motion.div
+            initial={{ opacity: 0, x: -30 }}
+            animate={{ opacity: 1, x: 0 }}
+            transition={{ duration: 0.7, ease: "easeOut" }}
+            className="flex flex-col space-y-6"
+          >
             {/* Tagline */}
             <h1 className="text-4xl md:text-5xl lg:text-6xl font-black leading-tight text-[#001e66]">
               Clean Water, One <span className="bg-[#ffd800] px-2 py-0.5 rounded text-[#001e66]">Smart</span> <span className="text-[#970006]">Drop</span> at a Time.
@@ -144,10 +150,15 @@ export default function Homepage() {
                 Register Account
               </Link>
             </div>
-          </div>
+          </motion.div>
 
           {/* Right Column: Main Features of AquaTrack (Contained in equal-sized white cards) */}
-          <div className="flex flex-col space-y-4 lg:pl-8">
+          <motion.div
+            initial={{ opacity: 0, x: 30 }}
+            animate={{ opacity: 1, x: 0 }}
+            transition={{ duration: 0.7, ease: "easeOut", delay: 0.15 }}
+            className="flex flex-col space-y-4 lg:pl-8"
+          >
             
             <div className="space-y-4 flex flex-col">
               
@@ -192,7 +203,7 @@ export default function Homepage() {
               </div>
 
             </div>
-          </div>
+          </motion.div>
 
         </div>
       </section>

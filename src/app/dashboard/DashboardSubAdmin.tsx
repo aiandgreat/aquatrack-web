@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from "react";
 import Link from "next/link";
 import { getSupabaseClient } from "../../lib/supabase";
+import { motion, AnimatePresence } from "framer-motion";
 import MapSection from "./admin-sections/MapSection";
 import TelemetrySection from "./admin-sections/TelemetrySection";
 import HomeSection from "./sub-admin-sections/HomeSection";
@@ -101,6 +102,25 @@ export default function DashboardSubAdmin({
   const [updatingNodeId, setUpdatingNodeId] = useState<string | null>(null);
   const [alertMessage, setAlertMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
   const [filterAssignedOnly, setFilterAssignedOnly] = useState(true);
+  const [advisoriesPage, setAdvisoriesPage] = useState(1);
+  const [isDark, setIsDark] = useState(false);
+
+  useEffect(() => {
+    const root = window.document.documentElement;
+    const initialDark = root.classList.contains("dark") || localStorage.getItem("theme") === "dark";
+    setIsDark(initialDark);
+  }, []);
+
+  useEffect(() => {
+    const root = window.document.documentElement;
+    if (isDark) {
+      root.classList.add("dark");
+      localStorage.setItem("theme", "dark");
+    } else {
+      root.classList.remove("dark");
+      localStorage.setItem("theme", "light");
+    }
+  }, [isDark]);
 
   // Auth and Role check
   useEffect(() => {
@@ -310,7 +330,7 @@ export default function DashboardSubAdmin({
   );
 
   return (
-    <div className="min-h-screen bg-[#EEF4FA] text-[#001e66] flex flex-col font-sans relative w-full h-full overflow-x-hidden">
+    <div className="min-h-screen bg-[#EEF4FA] dark:bg-slate-950 text-[#001e66] dark:text-slate-100 flex flex-col font-sans relative w-full h-full overflow-x-hidden transition-colors duration-200">
       {/* 3-way Top Color Ribbon */}
       <div className="absolute inset-x-0 top-0 flex h-1.5 z-50" aria-hidden="true">
         <span className="flex-1 bg-[#001e66]" />
@@ -319,29 +339,40 @@ export default function DashboardSubAdmin({
       </div>
 
       {/* Top Header Card */}
-      <header className="m-[18px] mb-0 h-[86px] shrink-0 bg-white border border-slate-200 rounded-[16px] shadow-sm shadow-blue-100 flex items-center justify-between px-6 z-40 relative">
+      <header className="m-[18px] mb-0 h-[86px] shrink-0 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-[16px] shadow-sm shadow-blue-100 dark:shadow-none flex items-center justify-between px-6 z-40 relative">
         <div className="flex items-center space-x-4">
           <img src="/LOGO2.png" alt="AquaTrack Logo" className="h-14 w-auto object-contain" />
           <div className="flex flex-col">
-            <span className="text-xl font-black tracking-tight text-[#001e66] leading-none">
+            <span className="text-xl font-black tracking-tight text-[#001e66] dark:text-slate-100 leading-none">
               AQUA<span className="text-[#00aeef]">TRACK</span>
             </span>
-            <span className="text-[10px] font-black text-[#001e66] tracking-wider uppercase mt-1">
+            <span className="text-[10px] font-black text-[#001e66] dark:text-slate-200 tracking-wider uppercase mt-1">
               CITY OF SAN FERNANDO • SUB-ADMIN MONITORING CENTER
             </span>
-            <span className="text-[10px] text-slate-500 font-bold mt-0.5">
+            <span className="text-[10px] text-slate-500 dark:text-slate-400 font-bold mt-0.5">
               Assigned Operations & Incident Coordination
             </span>
           </div>
         </div>
 
         <div className="flex items-center space-x-3 relative">
-          <div className="h-10 bg-white border border-slate-200 rounded-xl flex items-center pl-3 pr-4 space-x-3 shadow-sm select-none">
+          {/* Dark Mode Toggle */}
+          <div>
+            <button
+              onClick={() => setIsDark(!isDark)}
+              className="px-3.5 h-10 bg-white hover:bg-slate-50 border border-slate-200 rounded-xl flex items-center justify-center shadow-sm transition-all focus:outline-none dark:bg-slate-800 dark:border-slate-700 dark:hover:bg-slate-700 text-xs font-black text-[#001e66] dark:text-slate-200"
+              title={isDark ? "Switch to Light Mode" : "Switch to Dark Mode"}
+            >
+              <span>{isDark ? "Light" : "Dark"}</span>
+            </button>
+          </div>
+
+          <div className="h-10 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl flex items-center pl-3 pr-4 space-x-3 shadow-sm select-none">
             <div className="w-6 h-6 bg-[#00aeef] text-white font-black text-xs rounded-lg flex items-center justify-center">
               SA
             </div>
             <div className="text-left hidden sm:flex flex-col">
-              <span className="text-xs font-mono font-black text-[#001e66] leading-none">{session?.user?.email}</span>
+              <span className="text-xs font-mono font-black text-[#001e66] dark:text-slate-200 leading-none">{session?.user?.email}</span>
               <span className="text-[8px] font-black uppercase text-[#00aeef] mt-1 tracking-wider leading-none">
                 {currentUserRole}
               </span>
@@ -351,19 +382,17 @@ export default function DashboardSubAdmin({
           {/* Logout Button */}
           <button
             onClick={() => handleLogout()}
-            className="w-10 h-10 bg-red-50 hover:bg-red-100 border border-red-200 text-[#970006] rounded-xl flex items-center justify-center shadow-sm transition-all focus:outline-none"
+            className="h-10 px-4 bg-red-50 hover:bg-red-100 border border-red-200 text-[#970006] rounded-xl flex items-center justify-center font-bold text-xs uppercase tracking-wider shadow-sm transition-all focus:outline-none"
           >
-            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.3">
-              <path strokeLinecap="round" strokeLinejoin="round" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
-            </svg>
+            Logout
           </button>
         </div>
       </header>
 
       {/* Main Viewport Grid */}
       <div className="flex-1 flex flex-col lg:flex-row p-[18px] gap-[18px] z-30">
-        <aside className="w-full lg:w-64 shrink-0 bg-white border border-slate-200 rounded-[18px] p-5 shadow-sm shadow-blue-100 flex flex-col gap-1 z-20 h-fit lg:sticky lg:top-[18px]">
-          <div className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-2 border-b border-slate-100 pb-2 px-3">
+        <aside className="w-full lg:w-64 shrink-0 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-[18px] p-5 shadow-sm shadow-blue-100 dark:shadow-none flex flex-col gap-1 z-20 h-fit lg:sticky lg:top-[18px]">
+          <div className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-2 border-b border-slate-100 dark:border-slate-800 pb-2 px-3">
             STAFF CONSOLE
           </div>
           {[
@@ -379,12 +408,12 @@ export default function DashboardSubAdmin({
             },
             { 
               key: "complaints", 
-              label: "Assigned Complaints", 
+              label: "Complaints Triage", 
               icon: "M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" 
             },
             { 
               key: "telemetry", 
-              label: "IoT Telemetry Metrics", 
+              label: "IoT Telemetry Panel", 
               icon: "M9 3v2m6-2v2M9 19v2m6-2v2M5 9H3m2 6H3m18-6h-2m2 6h-2M7 19h10a2 2 0 002-2V7a2 2 0 00-2-2H7a2 2 0 00-2 2v10a2 2 0 002 2zM9 9h6v6H9V9z" 
             },
             { 
@@ -398,22 +427,22 @@ export default function DashboardSubAdmin({
               <button
                 key={item.key}
                 onClick={() => setActiveTab(item.key as any)}
-                className={`w-full flex items-center gap-3 px-4 py-2.5 rounded-xl text-xs font-black transition-all duration-200 hover:scale-[1.01] ${
+                className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-xs font-black transition-all duration-200 relative overflow-hidden group hover:scale-[1.01] ${
                   isActive
-                    ? "bg-[#08266D] text-white shadow-md shadow-blue-900/10"
-                    : "text-[#001e66] hover:bg-slate-50 hover:text-[#00aeef]"
+                    ? "bg-[#063A8C] text-white shadow-md shadow-blue-950/20"
+                    : "text-slate-600 hover:bg-slate-50 dark:hover:bg-slate-800 hover:text-[#00aeef]"
                 }`}
               >
-                <svg className={`w-4 h-4 shrink-0 ${isActive ? "text-white" : "text-[#00aeef]"}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.3">
-                  <path strokeLinecap="round" strokeLinejoin="round" d={item.icon} />
-                </svg>
+                {isActive && (
+                  <span className="absolute left-0 top-0 bottom-0 w-1 bg-[#ffd800]" />
+                )}
                 <span>{item.label}</span>
               </button>
             );
           })}
         </aside>
 
-        <main className="flex-1 bg-white border border-slate-200 rounded-[18px] shadow-sm shadow-blue-100 p-6 flex flex-col">
+        <main className="flex-1 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-[18px] shadow-sm shadow-blue-100 dark:shadow-none p-6 flex flex-col">
           {alertMessage && (
             <div
               className={`p-4 rounded-xl border mb-6 flex items-start space-x-3 text-sm animate-fade-in ${
@@ -427,93 +456,185 @@ export default function DashboardSubAdmin({
             </div>
           )}
 
-          {activeTab === "home" && (
-            <HomeSection
-              stats={stats}
-              assignedComplaints={assignedComplaints}
-              setActiveTab={setActiveTab}
-              email={session?.user?.email}
-            />
-          )}
+          <AnimatePresence mode="wait">
+            <motion.div
+              key={activeTab}
+              initial={{ opacity: 0, y: 12 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -12 }}
+              transition={{ duration: 0.2, ease: "easeOut" }}
+              className="w-full flex flex-col flex-1"
+            >
+              {activeTab === "home" && (
+                <HomeSection
+                  stats={stats}
+                  assignedComplaints={assignedComplaints}
+                  setActiveTab={setActiveTab}
+                  email={session?.user?.email}
+                />
+              )}
 
-          {activeTab === "map" && (
-            <MapSection
-              nodes={nodes}
-              complaints={complaints}
-              selectedNodeId={selectedNodeId}
-              selectedComplaintId={selectedComplaintId}
-              setSelectedNodeId={setSelectedNodeId}
-              setSelectedComplaintId={setSelectedComplaintId}
-            />
-          )}
+              {activeTab === "map" && (
+                <MapSection
+                  nodes={nodes}
+                  complaints={complaints}
+                  selectedNodeId={selectedNodeId}
+                  selectedComplaintId={selectedComplaintId}
+                  setSelectedNodeId={setSelectedNodeId}
+                  setSelectedComplaintId={setSelectedComplaintId}
+                />
+              )}
 
-          {activeTab === "complaints" && (
-            <ComplaintsSection
-              filteredComplaints={filteredComplaints}
-              complaintSearchQuery={complaintSearchQuery}
-              setComplaintSearchQuery={setComplaintSearchQuery}
-              filterAssignedOnly={filterAssignedOnly}
-              setFilterAssignedOnly={setFilterAssignedOnly}
-              updatingComplaintId={updatingComplaintId}
-              handleUpdateComplaintStatus={handleUpdateComplaintStatus}
-              handleViewLocation={handleViewLocation}
-            />
-          )}
+              {activeTab === "complaints" && (
+                <ComplaintsSection
+                  filteredComplaints={filteredComplaints}
+                  complaintSearchQuery={complaintSearchQuery}
+                  setComplaintSearchQuery={setComplaintSearchQuery}
+                  filterAssignedOnly={filterAssignedOnly}
+                  setFilterAssignedOnly={setFilterAssignedOnly}
+                  updatingComplaintId={updatingComplaintId}
+                  handleUpdateComplaintStatus={handleUpdateComplaintStatus}
+                  handleViewLocation={handleViewLocation}
+                />
+              )}
 
-          {activeTab === "telemetry" && (
-            <TelemetrySection
-              nodes={nodes}
-              nodeSearchQuery={nodeSearchQuery}
-              setNodeSearchQuery={setNodeSearchQuery}
-              updatingNodeId={updatingNodeId}
-              handleUpdateNodeStatus={handleUpdateNodeStatus}
-            />
-          )}
-          {activeTab === "advisories" && (
-            <div className="space-y-6">
-              <div className="pb-4 border-b border-slate-200">
-                <h2 className="text-lg font-black text-[#001e66] tracking-tight">Advisories &amp; Events</h2>
-                <p className="text-xs text-slate-500 font-bold">Service bulletins and operational notices from the district admin</p>
-              </div>
+              {activeTab === "telemetry" && (
+                <TelemetrySection
+                  nodes={nodes}
+                  nodeSearchQuery={nodeSearchQuery}
+                  setNodeSearchQuery={setNodeSearchQuery}
+                  updatingNodeId={updatingNodeId}
+                  handleUpdateNodeStatus={handleUpdateNodeStatus}
+                />
+              )}
 
-              <div className="space-y-4">
-                {advisories
-                  .filter((ad) =>
-                    ad.targetRole === "broadcast" ||
-                    ad.targetRole === "technicians"
-                  )
-                  .map((ad) => (
-                    <div key={ad.id} className="bg-slate-50 border border-slate-200 rounded-2xl p-5 space-y-2 shadow-sm">
-                      <div className="flex items-center gap-2">
-                        <span className="text-[10px] font-bold text-slate-400">{ad.date}</span>
-                        <span className={`text-[8px] font-black uppercase px-2 py-0.5 rounded ${
-                          ad.type === "warning"
-                            ? "bg-red-50 text-red-600 border border-red-200"
-                            : "bg-blue-50 text-blue-600 border border-blue-200"
-                        }`}>
-                          {ad.type}
-                        </span>
-                        <span className="text-[8px] font-black uppercase px-2 py-0.5 rounded bg-indigo-50 text-indigo-600 border border-indigo-200">
-                          {ad.targetRole === "technicians" ? "Technicians" : "All Staff"}
-                        </span>
-                      </div>
-                      <h3 className="font-extrabold text-[#001e66] text-sm">{ad.title}</h3>
-                      <p className="text-xs text-slate-500 leading-relaxed">{ad.text}</p>
+              {activeTab === "advisories" && (() => {
+                const filteredAdvisories = advisories.filter(
+                  (ad) => ad.targetRole === "broadcast" || ad.targetRole === "technicians"
+                );
+                const itemsPerPage = 5;
+                const maxPage = Math.max(1, Math.ceil(filteredAdvisories.length / itemsPerPage));
+                const currentPage = Math.min(advisoriesPage, maxPage);
+                const startIndex = (currentPage - 1) * itemsPerPage;
+                const paginatedAdvisories = filteredAdvisories.slice(startIndex, startIndex + itemsPerPage);
+
+                const getTypeIcon = (type: string) => {
+                  switch (type) {
+                    case "warning":
+                      return (
+                        <svg className="w-4 h-4 text-red-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5">
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                        </svg>
+                      );
+                    case "info":
+                      return (
+                        <svg className="w-4 h-4 text-blue-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5">
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                        </svg>
+                      );
+                    case "news":
+                      return (
+                        <svg className="w-4 h-4 text-emerald-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5">
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M19 20H5a2 2 0 01-2-2V6a2 2 0 012-2h10a2 2 0 012 2v1m2 13a2 2 0 01-2-2V7m2 13a2 2 0 002-2V9a2 2 0 00-2-2h-2m-4-3H9M7 16h6M7 8h6v4H7V8z" />
+                        </svg>
+                      );
+                    case "event":
+                      return (
+                        <svg className="w-4 h-4 text-purple-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5">
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 00-2 2z" />
+                        </svg>
+                      );
+                    default:
+                      return null;
+                  }
+                };
+
+                const getBorderColor = (type: string) => {
+                  switch (type) {
+                    case "warning": return "border-l-red-500";
+                    case "info": return "border-l-blue-500";
+                    case "news": return "border-l-emerald-500";
+                    case "event": return "border-l-purple-500";
+                    default: return "border-l-slate-400";
+                  }
+                };
+
+                return (
+                  <div className="space-y-6 animate-in fade-in duration-200">
+                    <div className="pb-4 border-b border-slate-200">
+                      <h2 className="text-lg font-black text-[#001e66] tracking-tight">Advisories &amp; Events</h2>
+                      <p className="text-xs text-slate-500 font-bold">Service bulletins and operational notices from the district admin</p>
                     </div>
-                  ))}
 
-                {advisories.filter((ad) =>
-                  ad.targetRole === "broadcast" || ad.targetRole === "technicians"
-                ).length === 0 && (
-                  <div className="py-12 text-center">
-                    <div className="text-4xl mb-3">📋</div>
-                    <p className="text-sm font-black text-slate-400">No advisories posted yet.</p>
-                    <p className="text-xs text-slate-400 mt-1">Check back for operational bulletins from the admin.</p>
+                    <div className="space-y-4">
+                      {paginatedAdvisories.map((ad) => (
+                        <div
+                          key={ad.id}
+                          className={`bg-white border border-slate-200 border-l-4 ${getBorderColor(ad.type)} rounded-xl p-5 space-y-2.5 shadow-[0_2px_8px_rgba(0,0,0,0.02)] hover:shadow-md transition-all`}
+                        >
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <div className="flex items-center space-x-1 text-slate-400">
+                              {getTypeIcon(ad.type)}
+                              <span className="text-[10px] font-bold">{ad.date}</span>
+                            </div>
+                            <span className={`text-[8px] font-black uppercase px-2 py-0.5 rounded border ${
+                              ad.type === "warning"
+                                ? "bg-red-50 text-red-600 border-red-200"
+                                : ad.type === "info"
+                                ? "bg-blue-50 text-blue-600 border-blue-200"
+                                : ad.type === "news"
+                                ? "bg-emerald-50 text-emerald-600 border-emerald-200"
+                                : "bg-purple-50 text-purple-600 border-purple-200"
+                            }`}>
+                              {ad.type}
+                            </span>
+                            <span className="text-[8px] font-black uppercase px-2 py-0.5 rounded bg-indigo-50 text-indigo-600 border border-indigo-200">
+                              {ad.targetRole === "technicians" ? "Technicians" : "All Staff"}
+                            </span>
+                          </div>
+                          <h3 className="font-extrabold text-[#001e66] text-sm">{ad.title}</h3>
+                          <p className="text-xs text-slate-500 leading-relaxed">{ad.text}</p>
+                        </div>
+                      ))}
+
+                      {filteredAdvisories.length === 0 && (
+                        <div className="py-12 text-center bg-slate-50 border border-dashed border-slate-200 rounded-2xl">
+                          <div className="text-4xl mb-3">📋</div>
+                          <p className="text-sm font-black text-slate-400">No advisories posted yet.</p>
+                          <p className="text-xs text-slate-400 mt-1">Check back for operational bulletins from the admin.</p>
+                        </div>
+                      )}
+
+                      {/* Pagination Controls */}
+                      {maxPage > 1 && (
+                        <div className="flex items-center justify-between pt-4 border-t border-slate-200 mt-4">
+                          <button
+                            type="button"
+                            disabled={currentPage === 1}
+                            onClick={() => setAdvisoriesPage((p) => Math.max(1, p - 1))}
+                            className="px-3.5 py-1.5 rounded-xl border border-slate-200 text-[#001e66] bg-white hover:bg-slate-50 disabled:opacity-40 text-xxs font-black tracking-wider uppercase transition-all shadow-sm flex items-center gap-1.5 cursor-pointer disabled:cursor-not-allowed"
+                          >
+                            ← Previous
+                          </button>
+                          <span className="text-xxs font-black text-slate-500 uppercase tracking-widest">
+                            Page {currentPage} of {maxPage}
+                          </span>
+                          <button
+                            type="button"
+                            disabled={currentPage === maxPage}
+                            onClick={() => setAdvisoriesPage((p) => Math.min(maxPage, p + 1))}
+                            className="px-3.5 py-1.5 rounded-xl border border-slate-200 text-[#001e66] bg-white hover:bg-slate-50 disabled:opacity-40 text-xxs font-black tracking-wider uppercase transition-all shadow-sm flex items-center gap-1.5 cursor-pointer disabled:cursor-not-allowed"
+                          >
+                            Next →
+                          </button>
+                        </div>
+                      )}
+                    </div>
                   </div>
-                )}
-              </div>
-            </div>
-          )}
+                );
+              })()}
+            </motion.div>
+          </AnimatePresence>
         </main>
       </div>
     </div>
