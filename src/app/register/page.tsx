@@ -18,17 +18,65 @@ export default function RegisterPage() {
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
   const [isDark, setIsDark] = useState(false);
+  const [checkingAuth, setCheckingAuth] = useState(true);
 
-  // Sync theme preference on component mount
+  // Sync theme preference and check active session on component mount
   useEffect(() => {
     const root = window.document.documentElement;
     const initialDark = root.classList.contains("dark") || localStorage.getItem("theme") === "dark";
     setIsDark(initialDark);
-  }, []);
+
+    const checkActiveSession = async () => {
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        if (session) {
+          const res = await fetch("/api/auth/profile", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ userId: session.user?.id }),
+          });
+          const profile = await res.json();
+          if (profile?.role === "ADMIN") {
+            router.replace("/admin");
+          } else {
+            router.replace("/dashboard");
+          }
+        } else {
+          setCheckingAuth(false);
+        }
+      } catch (err) {
+        console.error("Failed to check active session role:", err);
+        setCheckingAuth(false);
+      }
+    };
+    checkActiveSession();
+  }, [router]);
+
+  if (checkingAuth) {
+    return (
+      <div className="min-h-screen bg-slate-50 dark:bg-slate-950 flex flex-col font-sans transition-colors duration-200">
+
+        <div className="flex-1 flex items-center justify-center">
+          <div className="flex flex-col items-center space-y-4">
+            <div className="w-12 h-12 border-4 border-[#00aeef] border-t-transparent rounded-full animate-spin" />
+            <p className="text-[#001e66] dark:text-slate-200 font-black text-sm tracking-wider uppercase">
+              Checking session...
+            </p>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
+
+    // Ensure all fields are filled
+    if (!fullName.trim() || !email.trim() || !phone.trim() || !password || !confirmPassword) {
+      setError("All fields are mandatory. Please fill in all details.");
+      return;
+    }
 
     if (password !== confirmPassword) {
       setError("Passwords do not match. Please try again.");
@@ -37,6 +85,17 @@ export default function RegisterPage() {
 
     if (password.length < 8) {
       setError("Password must be at least 8 characters long.");
+      return;
+    }
+
+    // Password strength requirements (uppercase, lowercase, number, asterisk)
+    const hasUppercase = /[A-Z]/.test(password);
+    const hasLowercase = /[a-z]/.test(password);
+    const hasNumber = /[0-9]/.test(password);
+    const hasAsterisk = password.includes("*");
+
+    if (!hasUppercase || !hasLowercase || !hasNumber || !hasAsterisk) {
+      setError("Password must contain at least one uppercase letter, one lowercase letter, one number, and an asterisk (*).");
       return;
     }
 
@@ -56,6 +115,13 @@ export default function RegisterPage() {
     if (authError) {
       setLoading(false);
       setError(authError.message);
+      return;
+    }
+
+    // Check if the user already exists in Supabase (prevented enumeration returns success with empty identities)
+    if (authData?.user && (!authData.user.identities || authData.user.identities.length === 0)) {
+      setLoading(false);
+      setError("This email address is already registered. Please sign in or use a different email.");
       return;
     }
 
@@ -96,12 +162,7 @@ export default function RegisterPage() {
 
   return (
     <div className="min-h-screen bg-slate-50 dark:bg-slate-950 flex flex-col font-sans transition-colors duration-200">
-      {/* Top Brand Ribbon */}
-      <div className="flex h-1.5 shrink-0" aria-hidden="true">
-        <span className="flex-1 bg-[#001e66]" />
-        <span className="flex-1 bg-[#00aeef]" />
-        <span className="flex-1 bg-[#970006]" />
-      </div>
+
 
       {/* Floating Back Button */}
       <Link
@@ -115,83 +176,82 @@ export default function RegisterPage() {
       <div className="flex-1 flex flex-col md:flex-row">
         
         {/* Left Side: Water District Basic Info Card */}
-        <div className="w-full md:w-1/2 bg-gradient-to-br from-[#001e66] via-[#052e85] to-[#00aeef] text-white flex flex-col justify-between p-8 md:p-16 relative overflow-hidden">
+        <div className="w-full md:w-[40%] bg-gradient-to-br from-[#001e66] via-[#052e85] to-[#00aeef] text-white flex flex-col justify-between p-10 md:p-14 relative overflow-hidden">
           {/* Background Decorative Rings */}
           <div className="absolute top-0 right-0 w-[450px] h-[450px] bg-white/5 rounded-full blur-3xl pointer-events-none" />
           <div className="absolute bottom-0 left-0 w-[300px] h-[300px] bg-red-800/10 rounded-full blur-2xl pointer-events-none" />
 
-          {/* District Header & Logo */}
-          <div className="relative z-10 space-y-4">
-            <Link href="/" className="inline-block">
-              <img 
-                src="/LOGO2.png" 
-                alt="AquaTrack Logo" 
-                className="h-16 w-auto object-contain bg-white/10 p-2.5 rounded-2xl shadow-sm backdrop-blur-md" 
-              />
-            </Link>
-            <div>
-              <h1 className="text-3xl font-black tracking-tight">
-                AQUA<span className="text-[#ffd800]">TRACK</span>
-              </h1>
-              <p className="text-[10px] font-black uppercase tracking-widest text-[#ffd800] mt-0.5">
-                City of San Fernando Water District
-              </p>
+          {/* Group Header and Details together to control spacing */}
+          <div className="relative z-10 flex flex-col space-y-5 pt-12 md:pt-20">
+            {/* District Header & Logo */}
+            <div className="flex items-center space-x-5">
+              <Link href="/">
+                <img 
+                  src="/LOGO2.png" 
+                  alt="AquaTrack Logo" 
+                  className="h-22 w-auto object-contain" 
+                  style={{ filter: "brightness(0) invert(1)" }}
+                />
+              </Link>
+              <div className="flex flex-col justify-center">
+                <h1 className="text-4xl lg:text-5xl font-black tracking-tighter leading-none">
+                  AQUA<span className="text-[#ffd800]">TRACK</span>
+                </h1>
+                <p className="text-xs lg:text-sm font-black uppercase tracking-wider text-[#ffd800] mt-1.5 leading-snug">
+                  City of San Fernando Water District
+                </p>
+              </div>
             </div>
-          </div>
 
-          {/* Info Details */}
-          <div className="relative z-10 my-10 space-y-6">
-            <div className="space-y-2">
-              <span className="text-[10px] font-black uppercase bg-white/10 px-3 py-1 rounded-full tracking-wider border border-white/10">
-                Administrative Command Portal
-              </span>
-              <h2 className="text-2xl font-black tracking-tight text-white pt-2">
+            {/* Info Details */}
+            <div className="space-y-6 pt-2">
+              <h2 className="text-3xl lg:text-4xl font-black tracking-tight text-white leading-tight">
                 Executive Operations Control Center
               </h2>
-            </div>
-            <p className="text-sm text-slate-200 leading-relaxed max-w-md font-medium">
-              The AquaTrack command system centralizes smart municipal water supply monitoring. 
-              Staff can configure IoT telemetry nodes, coordinate field maintenance schedules, 
-              and review AI-triaged resident reports inside a unified global administration interface.
-            </p>
+              <p className="text-base lg:text-lg text-slate-100 leading-relaxed max-w-md font-medium">
+                The AquaTrack command system centralizes smart municipal water supply monitoring. 
+                Staff can configure IoT telemetry nodes, coordinate field maintenance schedules, 
+                and review AI-triaged resident reports inside a unified global administration interface.
+              </p>
 
-            {/* Fast Stats Highlight Grid */}
-            <div className="grid grid-cols-2 gap-6 pt-6 border-t border-white/15 max-w-sm">
-              <div>
-                <p className="text-[9px] font-bold text-slate-300 uppercase tracking-widest">Active Coverage</p>
-                <p className="text-xl font-black text-[#ffd800]">35+ Barangays</p>
-              </div>
-              <div>
-                <p className="text-[9px] font-bold text-slate-300 uppercase tracking-widest">System Health</p>
-                <p className="text-xl font-black text-[#ffd800]">24/7 Monitoring</p>
-              </div>
-              <div>
-                <p className="text-[9px] font-bold text-slate-300 uppercase tracking-widest">Triage Pipeline</p>
-                <p className="text-xl font-black text-[#ffd800]">AI Classified</p>
-              </div>
-              <div>
-                <p className="text-[9px] font-bold text-slate-300 uppercase tracking-widest">IoT Hardware</p>
-                <p className="text-xl font-black text-[#ffd800]">Live Telemetry</p>
+              {/* Fast Stats Highlight Grid */}
+              <div className="grid grid-cols-2 gap-6 pt-6 border-t border-white/15 max-w-sm">
+                <div>
+                  <p className="text-xs lg:text-sm font-bold text-slate-200 uppercase tracking-wider">Active Coverage</p>
+                  <p className="text-2xl lg:text-3xl font-extrabold text-[#ffd800] mt-1">35+ Barangays</p>
+                </div>
+                <div>
+                  <p className="text-xs lg:text-sm font-bold text-slate-200 uppercase tracking-wider">System Health</p>
+                  <p className="text-2xl lg:text-3xl font-extrabold text-[#ffd800] mt-1">24/7 Monitoring</p>
+                </div>
+                <div>
+                  <p className="text-xs lg:text-sm font-bold text-slate-200 uppercase tracking-wider">Triage Pipeline</p>
+                  <p className="text-2xl lg:text-3xl font-extrabold text-[#ffd800] mt-1">AI Classified</p>
+                </div>
+                <div>
+                  <p className="text-xs lg:text-sm font-bold text-slate-200 uppercase tracking-wider">IoT Hardware</p>
+                  <p className="text-2xl lg:text-3xl font-extrabold text-[#ffd800] mt-1">Live Telemetry</p>
+                </div>
               </div>
             </div>
           </div>
 
           {/* Bottom Coordinates & Hotline Metadata */}
-          <div className="relative z-10 pt-4 border-t border-white/15 text-[10px] font-bold text-slate-300 flex justify-between items-center gap-4 flex-wrap">
+          <div className="relative z-10 pt-4 border-t border-white/15 text-xs font-semibold text-slate-200 flex justify-between items-center gap-4 flex-wrap">
             <div>
-              <p className="uppercase tracking-wide text-slate-200">CSFWD HEADQUARTERS</p>
-              <p className="text-xs text-slate-400 font-medium font-bold mt-0.5">City of San Fernando, Pampanga</p>
+              <p className="text-[10px] uppercase tracking-wide text-slate-100 font-bold">CSFWD HEADQUARTERS</p>
+              <p className="text-sm text-slate-200 font-bold mt-0.5">City of San Fernando, Pampanga</p>
             </div>
             <div className="text-right">
-              <p className="font-mono text-slate-200">LAT: 15.0286 | LNG: 120.6942</p>
-              <p className="text-xs text-slate-400 font-medium font-bold mt-0.5">Operations Hotline: (045) 961-3546</p>
+              <p className="font-mono text-xs text-slate-100">LAT: 15.0286 | LNG: 120.6942</p>
+              <p className="text-sm text-slate-200 font-bold mt-0.5">Operations Hotline: (045) 961-3546</p>
             </div>
           </div>
         </div>
 
         {/* Right Side: Form Panel */}
-        <div className="w-full md:w-1/2 flex items-center justify-center p-6 md:p-12 bg-slate-50 dark:bg-slate-950 transition-colors duration-200">
-          <div className="w-full max-w-md space-y-6">
+        <div className="w-full md:w-[60%] flex items-center justify-center p-6 md:p-12 bg-slate-50 dark:bg-slate-950 transition-colors duration-200">
+          <div className="w-full max-w-md space-y-5">
             
             {/* Form Title */}
             <div>
@@ -205,7 +265,7 @@ export default function RegisterPage() {
 
             {/* Success view or Form card */}
             {success ? (
-              <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-8 shadow-sm shadow-blue-100 dark:shadow-none text-center space-y-5">
+              <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-6 shadow-sm shadow-blue-100 dark:shadow-none text-center space-y-4">
                 <div className="w-16 h-16 bg-emerald-100 dark:bg-emerald-950/30 rounded-full flex items-center justify-center mx-auto">
                   <svg className="w-8 h-8 text-emerald-600 dark:text-emerald-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5">
                     <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
@@ -225,7 +285,7 @@ export default function RegisterPage() {
                 </Link>
               </div>
             ) : (
-              <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-8 shadow-sm shadow-blue-100 dark:shadow-none space-y-6">
+              <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-6 shadow-sm shadow-blue-100 dark:shadow-none space-y-6">
                 <form onSubmit={handleRegister} className="space-y-4">
                   
                   {/* Error Alert */}
@@ -305,6 +365,9 @@ export default function RegisterPage() {
                         placeholder="Min. 8 chars"
                         className="w-full px-4 py-3 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 text-sm text-[#001e66] dark:text-slate-100 font-bold placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-[#00aeef]/40 focus:border-[#00aeef] transition-all"
                       />
+                      <p className="text-[10px] text-slate-400 font-bold mt-1 leading-tight">
+                        Must contain uppercase, lowercase, number, and *
+                      </p>
                     </div>
                     <div className="space-y-1.5">
                       <label htmlFor="register-confirm-password" className="block text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
@@ -328,7 +391,7 @@ export default function RegisterPage() {
                     id="register-submit"
                     type="submit"
                     disabled={loading}
-                    className="w-full bg-[#001e66] hover:bg-[#00aeef] disabled:opacity-60 disabled:cursor-not-allowed text-white font-extrabold py-3.5 rounded-xl transition-all duration-200 shadow-sm hover:shadow-md text-xs uppercase tracking-wider mt-4 cursor-pointer"
+                    className="w-full bg-[#001e66] hover:bg-[#00aeef] disabled:opacity-60 disabled:cursor-not-allowed text-white font-extrabold py-3.5 rounded-xl transition-all duration-200 shadow-sm hover:shadow-md text-xs uppercase tracking-wider mt-2 cursor-pointer"
                   >
                     {loading ? (
                       <span className="flex items-center justify-center space-x-2">

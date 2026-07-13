@@ -670,12 +670,7 @@ export default function DashboardClient({
 
   return (
     <div className="min-h-screen bg-[#EEF4FA] text-[#001e66] flex flex-col font-sans relative">
-      {/* 3-way Top Color Ribbon */}
-      <div className="absolute inset-x-0 top-0 flex h-1.5 z-50" aria-hidden="true">
-        <span className="flex-1 bg-[#001e66]" />
-        <span className="flex-1 bg-[#00aeef]" />
-        <span className="flex-1 bg-[#970006]" />
-      </div>
+
 
       {/* Header Container */}
       <header className="m-[18px] mb-0 h-[86px] shrink-0 bg-white border border-slate-200 rounded-[16px] shadow-sm shadow-blue-100 flex items-center justify-between px-6 z-40 relative">

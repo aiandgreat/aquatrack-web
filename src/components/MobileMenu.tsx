@@ -3,6 +3,7 @@
 import React, { useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { NavItem } from "./NavItems";
+import Link from "next/link";
 
 interface MobileMenuProps {
   isOpen: boolean;

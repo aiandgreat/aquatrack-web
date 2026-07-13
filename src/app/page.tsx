@@ -4,6 +4,8 @@ import React, { useState, useEffect } from "react";
 import Link from "next/link";
 import Navbar from "../components/Navbar";
 import { motion } from "framer-motion";
+import { useRouter } from "next/navigation";
+import { supabase } from "@/lib/supabase";
 
 function AnimatedCounter({ value, duration = 2000, suffix = "" }: { value: number; duration?: number; suffix?: string }) {
   const [count, setCount] = useState(0);
@@ -42,12 +44,66 @@ function AnimatedCounter({ value, duration = 2000, suffix = "" }: { value: numbe
 }
 
 export default function Homepage() {
+  const router = useRouter();
+  
+  // Curtain Split Splash Animation States
+  const [showSplash, setShowSplash] = useState(true);
+  const [curtainsSplit, setCurtainsSplit] = useState(false);
+  const [logoVisible, setLogoVisible] = useState(false);
+
+  useEffect(() => {
+    // 1. Fade in the brand logo & text
+    const logoTimer = setTimeout(() => {
+      setLogoVisible(true);
+    }, 150);
+
+    // 2. Split the curtains apart after showing the branding
+    const splitTimer = setTimeout(() => {
+      setCurtainsSplit(true);
+    }, 1800);
+
+    // 3. Remove the splash element from DOM once transition finishes
+    const endTimer = setTimeout(() => {
+      setShowSplash(false);
+    }, 2800);
+
+    return () => {
+      clearTimeout(logoTimer);
+      clearTimeout(splitTimer);
+      clearTimeout(endTimer);
+    };
+  }, []);
+
   // Custom Colors Mapping:
   // Dark Blue: #001e66
   // Vivid Azure: #00aeef
   // White: #ffffff
   // Yellow: #ffd800
   // Vivid Red: #970006
+
+  useEffect(() => {
+    const checkSessionAndRedirect = async () => {
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        if (session) {
+          const res = await fetch("/api/auth/profile", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ userId: session.user?.id }),
+          });
+          const profile = await res.json();
+          if (profile?.role === "ADMIN") {
+            router.replace("/admin");
+          } else {
+            router.replace("/dashboard");
+          }
+        }
+      } catch (err) {
+        console.error("Session check redirect error:", err);
+      }
+    };
+    checkSessionAndRedirect();
+  }, [router]);
 
   const advisories: any[] = [];
 
@@ -94,6 +150,71 @@ export default function Homepage() {
 
   return (
     <div className="min-h-screen bg-white text-[#001e66] font-sans flex flex-col">
+      {/* Cinematic Curtains Split Splash Screen */}
+      {showSplash && (
+        <div className="fixed inset-0 z-[9999] flex overflow-hidden">
+          {/* Left Curtain */}
+          <div 
+            className={`w-1/2 h-full relative overflow-hidden transition-transform duration-1000 ease-in-out bg-slate-50 ${
+              curtainsSplit ? "-translate-x-full" : "translate-x-0"
+            }`}
+          >
+            <img 
+              src="/san_fernando_map.jpg" 
+              alt="City of San Fernando Left Map" 
+              className="absolute top-0 left-0 w-[200vw] h-full object-cover max-w-none opacity-20 mix-blend-multiply"
+            />
+            <div className="absolute inset-0 bg-gradient-to-r from-slate-100/40 via-transparent to-transparent" />
+          </div>
+          
+          {/* Right Curtain */}
+          <div 
+            className={`w-1/2 h-full relative overflow-hidden transition-transform duration-1000 ease-in-out bg-slate-50 ${
+              curtainsSplit ? "translate-x-full" : "translate-x-0"
+            }`}
+          >
+            <img 
+              src="/san_fernando_map.jpg" 
+              alt="City of San Fernando Right Map" 
+              className="absolute top-0 right-0 w-[200vw] h-full object-cover max-w-none opacity-20 mix-blend-multiply"
+            />
+            <div className="absolute inset-0 bg-gradient-to-l from-slate-100/40 via-transparent to-transparent" />
+          </div>
+
+          {/* Logo overlay in the center */}
+          <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+            <div 
+              className={`flex flex-col items-center space-y-6 transition-all duration-1000 ease-out transform ${
+                logoVisible ? "opacity-100 scale-100" : "opacity-0 scale-75"
+              } ${
+                curtainsSplit ? "opacity-0 scale-125 translate-y-[-30px]" : ""
+              }`}
+            >
+              {/* Colored Logo Icon */}
+              <img 
+                src="/LOGO2.png" 
+                alt="AquaTrack Logo" 
+                className="h-32 w-auto object-contain animate-pulse drop-shadow-md" 
+              />
+              <div className="text-center flex flex-col items-center space-y-3">
+                <h1 className="text-5xl md:text-6xl font-black tracking-widest text-[#001e66] leading-none">
+                  AQUA<span className="text-[#00aeef]">TRACK</span>
+                </h1>
+                <p className="text-xs md:text-sm font-black uppercase tracking-widest text-slate-500">
+                  City of San Fernando Water District
+                </p>
+                {/* Brand Line */}
+                <div className="flex h-1 w-24 justify-center space-x-1" aria-hidden="true">
+                  <span className="w-1/3 bg-[#001e66] rounded-full" />
+                  <span className="w-1/3 bg-[#00aeef] rounded-full" />
+                  <span className="w-1/3 bg-[#970006] rounded-full" />
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       <Navbar />
 
       {/* 2. Hero Header Section with Premium Multi-Layer Overlay */}
