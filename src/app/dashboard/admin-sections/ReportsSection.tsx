@@ -44,7 +44,7 @@ export default function ReportsSection({
   handleUpdateComplaintAssignment,
   handleViewLocation,
 }: ReportsSectionProps) {
-  const [sortBy, setSortBy] = useState<"date" | "barangay-asc" | "barangay-desc" | "urgency">("date");
+  const [sortBy, setSortBy] = useState<"date" | "barangay-asc" | "barangay-desc" | "urgency" | "status">("status");
   const [filterBarangay, setFilterBarangay] = useState<string>("all");
   const [activePage, setActivePage] = useState(1);
   const [resolvedPage, setResolvedPage] = useState(1);
@@ -97,6 +97,15 @@ export default function ReportsSection({
         const bVal = priority[b.urgency] || 0;
         return bVal - aVal;
       }
+      if (sortBy === "status") {
+        const priority: Record<string, number> = { PENDING: 4, EVALUATING: 3, DISPATCHED: 2, ONGOING: 1, RESOLVED: 0 };
+        const aVal = priority[a.status] || 0;
+        const bVal = priority[b.status] || 0;
+        if (aVal !== bVal) {
+          return bVal - aVal;
+        }
+        return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+      }
       // default: newest date first
       return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
     });
@@ -146,6 +155,7 @@ export default function ReportsSection({
             onChange={(e) => setSortBy(e.target.value as any)}
             className="bg-white border border-slate-200 text-[#001e66] font-bold text-xs py-2 px-3.5 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#00aeef]/30 transition-all"
           >
+            <option value="status">Sort: Ticket Status</option>
             <option value="date">Sort: Newest First</option>
             <option value="barangay-asc">Sort: Barangay (A-Z)</option>
             <option value="barangay-desc">Sort: Barangay (Z-A)</option>

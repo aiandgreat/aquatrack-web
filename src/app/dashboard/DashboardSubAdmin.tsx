@@ -8,6 +8,7 @@ import MapSection from "./admin-sections/MapSection";
 import TelemetrySection from "./admin-sections/TelemetrySection";
 import HomeSection from "./sub-admin-sections/HomeSection";
 import ComplaintsSection from "./sub-admin-sections/ComplaintsSection";
+import MapPreviewModal from "../../components/MapPreviewModal";
 
 interface User {
   id: string;
@@ -98,6 +99,7 @@ export default function DashboardSubAdmin({
   const [nodeSearchQuery, setNodeSearchQuery] = useState("");
   const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null);
   const [selectedComplaintId, setSelectedComplaintId] = useState<string | null>(null);
+  const [previewComplaint, setPreviewComplaint] = useState<any | null>(null);
   const [updatingComplaintId, setUpdatingComplaintId] = useState<string | null>(null);
   const [updatingNodeId, setUpdatingNodeId] = useState<string | null>(null);
   const [alertMessage, setAlertMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
@@ -266,9 +268,10 @@ export default function DashboardSubAdmin({
   };
 
   const handleViewLocation = (complaintId: string) => {
-    setSelectedComplaintId(complaintId);
-    setSelectedNodeId(null);
-    setActiveTab("map");
+    const comp = complaints.find((c) => c.id === complaintId);
+    if (comp) {
+      setPreviewComplaint(comp);
+    }
   };
 
   const handleUpdateNodeStatus = async (nodeId: string, newStatus: string) => {
@@ -328,6 +331,14 @@ export default function DashboardSubAdmin({
       c.rawText.toLowerCase().includes(complaintSearchQuery.toLowerCase()) ||
       c.summary.toLowerCase().includes(complaintSearchQuery.toLowerCase())
   );
+
+  const sortedComplaints = [...filteredComplaints].sort((a, b) => {
+    const priority: Record<string, number> = { PENDING: 4, EVALUATING: 3, DISPATCHED: 2, ONGOING: 1, RESOLVED: 0 };
+    const aVal = priority[a.status] || 0;
+    const bVal = priority[b.status] || 0;
+    if (aVal !== bVal) return bVal - aVal;
+    return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+  });
 
   return (
     <div className="min-h-screen bg-[#EEF4FA] dark:bg-slate-950 text-[#001e66] dark:text-slate-100 flex flex-col font-sans relative w-full h-full overflow-x-hidden transition-colors duration-200">
@@ -487,7 +498,7 @@ export default function DashboardSubAdmin({
 
               {activeTab === "complaints" && (
                 <ComplaintsSection
-                  filteredComplaints={filteredComplaints}
+                  filteredComplaints={sortedComplaints}
                   complaintSearchQuery={complaintSearchQuery}
                   setComplaintSearchQuery={setComplaintSearchQuery}
                   filterAssignedOnly={filterAssignedOnly}
@@ -637,6 +648,13 @@ export default function DashboardSubAdmin({
           </AnimatePresence>
         </main>
       </div>
+
+      {/* Map Preview Modal */}
+      <MapPreviewModal
+        isOpen={previewComplaint !== null}
+        onClose={() => setPreviewComplaint(null)}
+        complaint={previewComplaint}
+      />
     </div>
   );
 }

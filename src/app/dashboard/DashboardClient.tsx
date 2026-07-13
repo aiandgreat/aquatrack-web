@@ -88,6 +88,8 @@ export default function DashboardClient({
   const [customLng, setCustomLng] = useState("120.6942");
   const [complaintImageUrl, setComplaintImageUrl] = useState("");
   const [addressSearchQuery, setAddressSearchQuery] = useState("");
+  const [mapError, setMapError] = useState(false);
+  const [lastSubmittedComplaint, setLastSubmittedComplaint] = useState<any | null>(null);
 
   const clientMapContainerRef = useRef<HTMLDivElement>(null);
   const clientMapRef = useRef<mapboxgl.Map | null>(null);
@@ -165,13 +167,16 @@ export default function DashboardClient({
 
   // Initialize and clean up Mapbox map for client report pinning
   useEffect(() => {
-    if (activeTab !== "file-complaint" || !clientMapContainerRef.current) return;
+    if (activeTab !== "file-complaint") return;
+
+    let mapLoadTimeout: NodeJS.Timeout | null = null;
 
     const timer = setTimeout(() => {
       if (!clientMapContainerRef.current) return;
 
       const lat = parseFloat(customLat) || 15.0285;
       const lng = parseFloat(customLng) || 120.6942;
+      setMapError(false);
 
       const map = new mapboxgl.Map({
         container: clientMapContainerRef.current,
@@ -179,6 +184,28 @@ export default function DashboardClient({
         center: [lng, lat],
         zoom: gpsPinpointActive ? 17 : 15.5,
       });
+
+      let loaded = false;
+      map.on("load", () => {
+        loaded = true;
+        setMapError(false);
+      });
+      map.on("style.load", () => {
+        loaded = true;
+        setMapError(false);
+      });
+
+      map.on("error", (e) => {
+        console.warn("Mapbox non-fatal warning:", e.error?.message || "Unknown error");
+      });
+
+      // 10-second timeout allows slow hotspot connections to load but catches true firewall blocks
+      mapLoadTimeout = setTimeout(() => {
+        if (!loaded) {
+          console.warn("Mapbox load timed out (firewall block suspected)");
+          setMapError(true);
+        }
+      }, 10000);
 
       clientMapRef.current = map;
 
@@ -210,10 +237,11 @@ export default function DashboardClient({
         setCustomLng(e.lngLat.lng.toFixed(6));
         setGpsPinpointActive(true);
       });
-    }, 100);
+    }, 300);
 
     return () => {
       clearTimeout(timer);
+      if (mapLoadTimeout) clearTimeout(mapLoadTimeout);
       if (clientMapRef.current) {
         clientMapRef.current.remove();
         clientMapRef.current = null;
@@ -258,6 +286,9 @@ export default function DashboardClient({
         if (data.barangay) {
           setDetectedBarangay(data.barangay);
           setDetectedDistanceM(data.distanceMeters);
+        } else {
+          setDetectedBarangay(null);
+          setDetectedDistanceM(null);
         }
       })
       .catch((err) => console.error("Barangay detect failed:", err))
@@ -311,7 +342,7 @@ export default function DashboardClient({
         });
 
         // Load complaints and advisories databases
-        await Promise.all([fetchUserComplaints(), fetchAdvisories()]);
+        await Promise.all([fetchUserComplaints(currentSession.user.id), fetchAdvisories()]);
       } catch (err) {
         console.error("Auth routing failure", err);
       } finally {
@@ -348,9 +379,11 @@ export default function DashboardClient({
     }
   }, [userProfile]);
 
-  const fetchUserComplaints = async () => {
+  const fetchUserComplaints = async (uid?: string) => {
     try {
-      const res = await fetch("/api/admin/complaints");
+      const targetUid = uid || userProfile?.id;
+      const url = "/api/admin/complaints" + (targetUid ? `?userId=${targetUid}` : "");
+      const res = await fetch(url);
       const data = await res.json();
       if (data.success) {
         setMyComplaints(data.complaints);
@@ -570,6 +603,7 @@ export default function DashboardClient({
         category: dbCategory,
         summary: dbSummary,
         translatedText: dbTranslatedText,
+        userId: userProfile?.id || null,
       };
 
       const res = await fetch("/api/complaints", {
@@ -580,6 +614,13 @@ export default function DashboardClient({
 
       if (res.ok) {
         const resData = await res.json();
+        setLastSubmittedComplaint({
+          rawText: complaintText,
+          imageUrl: complaintImageUrl || null,
+          barangay: resData.barangay || detectedBarangay,
+          latitude: lat,
+          longitude: lng,
+        });
         setSubmitSuccess(true);
         setDetectedBarangay(resData.barangay || detectedBarangay);
         setDetectedDistanceM(resData.distanceMeters ?? detectedDistanceM);
@@ -854,269 +895,371 @@ export default function DashboardClient({
                 <h2 className="text-xl font-black text-[#001e66] tracking-tight">File an Incident Report</h2>
                 <p className="text-xs text-slate-500 font-medium">Describe water flow pressure drops or quality deviations</p>
               </div>
+                        {submitSuccess ? (
+                <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-6 space-y-6 shadow-sm animate-fade-in max-w-2xl">
+                  <div className="flex items-center space-x-3 text-emerald-600 dark:text-emerald-450">
+                    <span className="text-2xl">🎉</span>
+                    <div>
+                      <h3 className="text-sm font-black uppercase tracking-wider text-emerald-800 dark:text-emerald-400 leading-none">
+                        Report Logged Successfully
+                      </h3>
+                      <p className="text-[10px] text-slate-500 font-bold mt-1.5">
+                        Your water issue ticket has been registered and is active in the dispatch queue.
+                      </p>
+                    </div>
+                  </div>
 
-              {submitSuccess && (
-                <div className="p-4 bg-emerald-50 border border-emerald-200 rounded-xl text-emerald-800 text-xs font-bold">
-                  ✓ Your complaint was logged successfully! The AI triage assistant is routing your ticket to field crews.
-                </div>
-              )}
-
-              {submitError && (
-                <div className="p-4 bg-red-50 border border-red-200 rounded-xl text-red-700 text-xs font-bold">
-                  ⚠ {submitError}
-                </div>
-              )}
-
-              <form onSubmit={handleCreateComplaint} className="space-y-6">
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 items-start">
-                  
-                  {/* Left Column: Complaint Details */}
-                  <div className="space-y-5">
-                    {/* Description Textarea */}
-                    <div className="space-y-1.5">
-                      <label className="text-xxs font-black text-slate-500 dark:text-slate-400 uppercase tracking-wider">Describe water issue</label>
-                      <textarea
-                        rows={5}
-                        value={complaintText}
-                        onChange={(e) => setComplaintText(e.target.value)}
-                        placeholder="e.g. Mahina ang tubig dito sa amin sa Del Pilar, halos walang tumutulo..."
-                        className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 text-[#001e66] dark:text-slate-100 font-bold text-xs py-3 px-4 rounded-xl focus:outline-none focus:border-[#00aeef] focus:ring-2 focus:ring-[#00aeef]/20 transition-all"
-                      />
-                      <p className="text-[10px] text-slate-400">Reports can be entered in Tagalog, Taglish, or English.</p>
+                  <div className="border-t border-b border-slate-100 dark:border-slate-800/80 py-4 space-y-4 text-xs">
+                    <div>
+                      <strong className="text-slate-450 uppercase tracking-widest text-[9px] block mb-1">
+                        Report Summary (AI Diagnostics)
+                      </strong>
+                      <p className="text-[#001e66] dark:text-slate-150 font-extrabold text-sm italic leading-relaxed">
+                        "{aiAnalysis?.summary || "Resident reported water quality concern."}"
+                      </p>
                     </div>
 
-                    {/* Complaint Photo Upload */}
-                    <div className="space-y-1.5">
-                      <label className="text-xxs font-black text-slate-500 dark:text-slate-400 uppercase tracking-wider">Attach Photo (Optional)</label>
-                      <input
-                        key="complaint-file-upload-input"
-                        id="complaint-file-upload-input"
-                        type="file"
-                        accept="image/*"
-                        onChange={handlePhotoUpload}
-                        disabled={uploadingPhoto || submitting}
-                        className="w-full text-xs text-slate-500 file:mr-4 file:py-2.5 file:px-4 file:rounded-xl file:border-0 file:text-xs file:font-black file:bg-[#00aeef]/10 file:text-[#00aeef] hover:file:bg-[#00aeef]/20 cursor-pointer"
-                      />
-                      {uploadingPhoto && (
-                        <p className="text-[10px] text-[#00aeef] animate-pulse mt-1">Uploading photo to Supabase Storage...</p>
-                      )}
-                      {complaintImageUrl && (
-                        <div className="mt-2.5 relative w-32 h-24 rounded-xl overflow-hidden border border-slate-200 dark:border-slate-800 shadow-sm">
-                          <img src={complaintImageUrl} alt="Preview" className="w-full h-full object-cover" />
-                          <button
-                            type="button"
-                            onClick={() => setComplaintImageUrl("")}
-                            className="absolute top-1.5 right-1.5 bg-red-600 hover:bg-red-700 text-white rounded-full w-5 h-5 flex items-center justify-center text-[10px] font-black shadow transition-colors cursor-pointer"
-                          >
-                            ✕
-                          </button>
-                        </div>
-                      )}
+                    <div>
+                      <strong className="text-slate-450 uppercase tracking-widest text-[9px] block mb-1">
+                        Your Detailed Description
+                      </strong>
+                      <p className="text-slate-650 dark:text-slate-350 bg-slate-50 dark:bg-slate-955 p-3.5 rounded-xl border border-slate-200 dark:border-slate-900 font-semibold leading-relaxed whitespace-pre-wrap">
+                        {lastSubmittedComplaint?.rawText}
+                      </p>
                     </div>
 
-                    {/* AI Triage Analysis Card */}
-                    {aiAnalysis && (
-                      <div className="bg-[#00aeef]/5 border border-[#00aeef]/20 rounded-2xl p-5 space-y-3 animate-fade-in">
-                        <div className="flex items-center justify-between">
-                          <div className="flex items-center space-x-2">
-                            <span className="text-xs font-black text-[#001e66] dark:text-slate-200">Gemini AI Diagnostics</span>
-                            <span className="bg-[#00aeef]/10 text-[#00aeef] text-[9px] font-black uppercase px-2 py-0.5 rounded">
-                              Active Triage
-                            </span>
-                          </div>
-                          <span className={`text-[10px] font-black px-2.5 py-0.5 rounded-full uppercase ${
-                            aiAnalysis.urgency === "URGENT" ? "bg-red-50 text-red-600 border border-red-200" : "bg-amber-50 text-amber-600 border border-amber-200"
-                          }`}>
-                            {aiAnalysis.urgency} Urgency
-                          </span>
-                        </div>
-                        <div className="text-xs text-slate-650 dark:text-slate-350 space-y-2 leading-relaxed font-semibold">
-                          <div>
-                            <span className="text-xxs font-bold text-slate-400 uppercase block">Category Classification</span>
-                            <span className="font-mono text-[#001e66] dark:text-slate-200 text-[10px]">{aiAnalysis.category}</span>
-                          </div>
-                          <div>
-                            <span className="text-xxs font-bold text-slate-400 uppercase block">Analysis Summary</span>
-                            <p className="text-slate-700 dark:text-slate-300 italic mt-0.5">"{aiAnalysis.summary}"</p>
-                          </div>
-                          {aiAnalysis.translatedText && aiAnalysis.translatedText !== complaintText && (
-                            <div>
-                              <span className="text-xxs font-bold text-slate-400 uppercase block">English Translation</span>
-                              <p className="text-slate-500 mt-0.5">{aiAnalysis.translatedText}</p>
-                            </div>
-                          )}
+                    {lastSubmittedComplaint?.imageUrl && (
+                      <div>
+                        <strong className="text-slate-450 uppercase tracking-widest text-[9px] block mb-1.5">
+                          Attached Photo
+                        </strong>
+                        <div className="w-40 h-28 rounded-xl overflow-hidden border border-slate-200 dark:border-slate-800">
+                          <img src={lastSubmittedComplaint.imageUrl} alt="Submitted incident photo" className="w-full h-full object-cover" />
                         </div>
                       </div>
                     )}
 
-                    {/* Submission Button Row */}
-                    <div>
-                      <button
-                        type="submit"
-                        disabled={submitting}
-                        className="bg-gradient-to-r from-[#001e66] to-[#00aeef] hover:from-[#00aeef] hover:to-[#001e66] text-white font-black text-xs px-6 py-3.5 rounded-xl uppercase tracking-wider shadow-md shadow-blue-900/10 hover:shadow-blue-500/20 active:scale-[0.98] transition-all duration-300 disabled:opacity-50 flex items-center space-x-2 cursor-pointer"
-                      >
-                        {submitting ? (
-                          <>
-                            <svg className="animate-spin w-4 h-4 text-white" fill="none" viewBox="0 0 24 24">
-                              <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                              <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
-                            </svg>
-                            <span>Filing &amp; Analyzing with AI…</span>
-                          </>
-                        ) : (
-                          "File Complaint"
-                        )}
-                      </button>
-                    </div>
-                  </div>
-
-                  {/* Right Column: Location & Mapping Details */}
-                  <div className="bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-800 rounded-2xl p-6 space-y-4">
-                    <div>
-                      <h3 className="text-xs font-black text-slate-450 dark:text-slate-400 uppercase tracking-wider border-b border-slate-200 dark:border-slate-800 pb-2">
-                        Geographic Dispatch Details
-                      </h3>
-                    </div>
-
-                    {/* GPS pinpoint stats */}
-                    <div className="flex items-start space-x-2">
-                      <div className="flex-1">
-                        <span className="font-extrabold text-[#001e66] dark:text-slate-200 block text-xs">Automated GPS Location Pinpoint</span>
-                        <span className="text-[10px] text-slate-500 font-medium">
-                          {gpsPinpointActive
-                            ? `High-precision GPS captured · ${customLat}, ${customLng}${
-                                gpsAccuracy ? ` · Accuracy: ${gpsAccuracy.toFixed(1)}m` : ""
-                              }`
-                            : "Requesting device GPS coordinates…"}
+                    <div className="grid grid-cols-2 gap-4 font-mono text-xxs border-t border-slate-100 dark:border-slate-800/50 pt-4">
+                      <div>
+                        <strong className="text-slate-400 uppercase tracking-widest block mb-0.5 text-[8px]">Barangay</strong>
+                        <span className="font-bold text-slate-700 dark:text-slate-200">
+                          {lastSubmittedComplaint?.barangay || "San Fernando"}
+                        </span>
+                      </div>
+                      <div>
+                        <strong className="text-slate-400 uppercase tracking-widest block mb-0.5 text-[8px]">Coordinates</strong>
+                        <span className="font-bold text-slate-700 dark:text-slate-200">
+                          {lastSubmittedComplaint?.latitude.toFixed(6)}, {lastSubmittedComplaint?.longitude.toFixed(6)}
+                        </span>
+                      </div>
+                      <div>
+                        <strong className="text-slate-400 uppercase tracking-widest block mb-0.5 text-[8px]">Urgency</strong>
+                        <span className="font-black text-rose-600 dark:text-rose-450 uppercase">
+                          {aiAnalysis?.urgency || "MEDIUM"}
+                        </span>
+                      </div>
+                      <div>
+                        <strong className="text-slate-400 uppercase tracking-widest block mb-0.5 text-[8px]">Category</strong>
+                        <span className="font-bold text-slate-700 dark:text-slate-200 uppercase">
+                          {aiAnalysis?.category?.replace(/_/g, " ") || "UNCLASSIFIED"}
                         </span>
                       </div>
                     </div>
+                  </div>
 
-                    {/* Address Search Bar */}
-                    <div className="space-y-1.5 pt-1">
-                      <label className="text-[9px] font-black text-slate-400 uppercase">Search Address, Street, or Landmark</label>
-                      <div className="flex gap-2">
-                        <input
-                          type="text"
-                          placeholder="e.g. Del Pilar Street, Sto. Rosario..."
-                          value={addressSearchQuery}
-                          onChange={(e) => setAddressSearchQuery(e.target.value)}
-                          onKeyDown={(e) => {
-                            if (e.key === "Enter") {
-                              e.preventDefault();
-                              handleAddressSearch();
-                            }
-                          }}
-                          className="flex-1 bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-800 text-[#001e66] dark:text-slate-100 font-bold text-xs py-2 px-3 rounded-lg focus:outline-none focus:border-[#00aeef] focus:ring-1 focus:ring-[#00aeef]/30"
-                        />
-                        <button
-                          type="button"
-                          onClick={handleAddressSearch}
-                          className="bg-[#001e66] hover:bg-[#00aeef] text-white font-extrabold text-xs px-5 py-2 rounded-lg uppercase tracking-wider active:scale-95 transition-all shadow-sm cursor-pointer"
-                        >
-                          Search
-                        </button>
-                      </div>
-                    </div>
-
-                    {/* Interactive Map Pinning Container */}
-                    <div className="w-full h-52 rounded-xl border border-slate-200 dark:border-slate-800 overflow-hidden relative shadow-inner">
-                      <div ref={clientMapContainerRef} className="absolute inset-0 w-full h-full" />
-                      <div className="absolute bottom-2 left-2 z-10 bg-slate-900/90 text-white text-[9px] font-mono px-2 py-0.5 rounded border border-slate-700/60 backdrop-blur-sm">
-                        Drag marker or click map to pin exact location
-                      </div>
-                    </div>
-
-                    {/* Locate Me button */}
+                  <div className="flex flex-col sm:flex-row gap-3 pt-2">
                     <button
-                      type="button"
-                      onClick={handleRequestLocation}
-                      className="w-full bg-gradient-to-r from-[#00aeef] to-[#08266D] hover:from-[#08266D] hover:to-[#00aeef] text-white font-black text-[10px] py-2.5 px-3 rounded-lg uppercase tracking-wider shadow-sm hover:shadow-blue-500/10 active:scale-[0.99] transition-all duration-300 flex items-center justify-center gap-1.5 cursor-pointer"
+                      onClick={() => {
+                        setSubmitSuccess(false);
+                        setAiAnalysis(null);
+                        setLastSubmittedComplaint(null);
+                      }}
+                      className="flex-1 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-[#001e66] dark:text-slate-200 font-black text-xs py-3 px-6 rounded-xl uppercase tracking-wider transition-all cursor-pointer text-center"
                     >
-                      Pin My Current Device Location
+                      File Another Report
                     </button>
-
-                    {/* Editable coordinates inputs */}
-                    <div className="grid grid-cols-2 gap-3 pt-1">
-                      <div className="space-y-1">
-                        <label className="text-[9px] font-black text-slate-400 uppercase">Latitude</label>
-                        <input
-                          type="text"
-                          value={customLat}
-                          onChange={(e) => {
-                            userHasManuallyPinnedRef.current = true;
-                            setCustomLat(e.target.value);
-                            setGpsPinpointActive(true);
-                          }}
-                          className="w-full bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-800 text-[#001e66] dark:text-slate-100 font-mono text-[10px] py-1.5 px-3 rounded-lg focus:outline-none focus:border-[#00aeef] focus:ring-1 focus:ring-[#00aeef]/30"
-                        />
-                      </div>
-                      <div className="space-y-1">
-                        <label className="text-[9px] font-black text-slate-400 uppercase">Longitude</label>
-                        <input
-                          type="text"
-                          value={customLng}
-                          onChange={(e) => {
-                            userHasManuallyPinnedRef.current = true;
-                            setCustomLng(e.target.value);
-                            setGpsPinpointActive(true);
-                          }}
-                          className="w-full bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-800 text-[#001e66] dark:text-slate-100 font-mono text-[10px] py-1.5 px-3 rounded-lg focus:outline-none focus:border-[#00aeef] focus:ring-1 focus:ring-[#00aeef]/30"
-                        />
-                      </div>
+                    <button
+                      onClick={() => {
+                        setSubmitSuccess(false);
+                        setAiAnalysis(null);
+                        setLastSubmittedComplaint(null);
+                        setActiveTab("track-complaint");
+                      }}
+                      className="flex-1 bg-gradient-to-r from-[#001e66] to-[#00aeef] hover:from-[#00aeef] hover:to-[#001e66] text-white font-black text-xs py-3 px-6 rounded-xl uppercase tracking-wider transition-all cursor-pointer text-center"
+                    >
+                      Track Active Tickets
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <>
+                  {submitError && (
+                    <div className="p-4 bg-red-50 border border-red-200 rounded-xl text-red-700 text-xs font-bold mb-4">
+                      ⚠ {submitError}
                     </div>
+                  )}
 
-                    {/* PostGIS Barangay Detection Result */}
-                    <div className={`flex items-center justify-between rounded-lg px-3 py-2 border ${
-                      barangayLoading
-                        ? "bg-blue-50 border-blue-200 dark:bg-blue-950/20 dark:border-blue-900/40"
-                        : detectedBarangay
-                        ? "bg-emerald-50 border-emerald-200 dark:bg-emerald-950/20 dark:border-emerald-900/40"
-                        : gpsPinpointActive && !barangayLoading
-                        ? "bg-amber-50 border-amber-200 dark:bg-amber-950/20 dark:border-amber-900/40"
-                        : "bg-slate-100 border-slate-200 dark:bg-slate-850 dark:border-slate-800"
-                    }`}>
-                      <div className="flex items-center gap-2">
-                        <div>
-                          <div className="text-[10px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-wider">
-                            PostGIS · Nominatim Barangay Detection
-                          </div>
-                          <div className={`text-xs font-black ${
-                            gpsPinpointActive && !detectedBarangay && !barangayLoading
-                              ? "text-amber-700 dark:text-amber-400"
-                              : "text-[#001e66] dark:text-slate-200"
-                          }`}>
-                            {barangayLoading
-                              ? "Identifying barangay via Nominatim + PostGIS…"
-                              : detectedBarangay
-                              ? `Brgy. ${detectedBarangay}`
-                              : gpsPinpointActive
-                              ? "Outside City of San Fernando service area"
-                              : "Awaiting GPS fix…"}
-                          </div>
-                          {gpsPinpointActive && !detectedBarangay && !barangayLoading && (
-                            <div className="text-[9px] text-amber-600 dark:text-amber-400 font-bold mt-0.5">
-                              Your location does not match any of the 35 San Fernando barangays.
+                  <form onSubmit={handleCreateComplaint} className="space-y-6">
+                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 items-start">
+                      
+                      {/* Left Column: Complaint Details */}
+                      <div className="space-y-5">
+                        {/* Description Textarea */}
+                        <div className="space-y-1.5">
+                          <label className="text-xxs font-black text-slate-500 dark:text-slate-400 uppercase tracking-wider">Describe water issue</label>
+                          <textarea
+                            rows={5}
+                            value={complaintText}
+                            onChange={(e) => setComplaintText(e.target.value)}
+                            placeholder="e.g. Mahina ang tubig dito sa amin sa Del Pilar, halos walang tumutulo..."
+                            className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 text-[#001e66] dark:text-slate-100 font-bold text-xs py-3 px-4 rounded-xl focus:outline-none focus:border-[#00aeef] focus:ring-2 focus:ring-[#00aeef]/20 transition-all"
+                          />
+                          <p className="text-[10px] text-slate-400">Reports can be entered in Tagalog, Taglish, or English.</p>
+                        </div>
+
+                        {/* Complaint Photo Upload */}
+                        <div className="space-y-1.5">
+                          <label className="text-xxs font-black text-slate-500 dark:text-slate-400 uppercase tracking-wider">Attach Photo (Optional)</label>
+                          <input
+                            key="complaint-file-upload-input"
+                            id="complaint-file-upload-input"
+                            type="file"
+                            accept="image/*"
+                            onChange={handlePhotoUpload}
+                            disabled={uploadingPhoto || submitting}
+                            className="w-full text-xs text-slate-500 file:mr-4 file:py-2.5 file:px-4 file:rounded-xl file:border-0 file:text-xs file:font-black file:bg-[#00aeef]/10 file:text-[#00aeef] hover:file:bg-[#00aeef]/20 cursor-pointer"
+                          />
+                          {uploadingPhoto && (
+                            <p className="text-[10px] text-[#00aeef] animate-pulse mt-1">Uploading photo to Supabase Storage...</p>
+                          )}
+                          {complaintImageUrl && (
+                            <div className="mt-2.5 relative w-32 h-24 rounded-xl overflow-hidden border border-slate-200 dark:border-slate-800 shadow-sm">
+                              <img src={complaintImageUrl} alt="Preview" className="w-full h-full object-cover" />
+                              <button
+                                type="button"
+                                onClick={() => setComplaintImageUrl("")}
+                                className="absolute top-1.5 right-1.5 bg-red-600 hover:bg-red-700 text-white rounded-full w-5 h-5 flex items-center justify-center text-[10px] font-black shadow transition-colors cursor-pointer"
+                              >
+                                ✕
+                              </button>
                             </div>
                           )}
                         </div>
-                      </div>
-                      {detectedBarangay && detectedDistanceM !== null && detectedDistanceM > 0 && !barangayLoading && (
-                        <span className="text-[9px] font-black text-emerald-700 bg-emerald-100 dark:text-emerald-400 dark:bg-emerald-950 px-2 py-0.5 rounded-full shrink-0">
-                          ~{detectedDistanceM}m · PostGIS
-                        </span>
-                      )}
-                      {detectedBarangay && (detectedDistanceM === 0 || detectedDistanceM === null) && !barangayLoading && (
-                        <span className="text-[9px] font-black text-blue-700 bg-blue-100 dark:text-blue-400 dark:bg-blue-950 px-2 py-0.5 rounded-full shrink-0">
-                          Nominatim verified
-                        </span>
-                      )}
-                    </div>
-                  </div>
 
-                </div>
-              </form>
+                        {/* AI Triage Analysis Card */}
+                        {aiAnalysis && (
+                          <div className="bg-[#00aeef]/5 border border-[#00aeef]/20 rounded-2xl p-5 space-y-3 animate-fade-in">
+                            <div className="flex items-center justify-between">
+                              <div className="flex items-center space-x-2">
+                                <span className="text-xs font-black text-[#001e66] dark:text-slate-200">Gemini AI Diagnostics</span>
+                                <span className="bg-[#00aeef]/10 text-[#00aeef] text-[9px] font-black uppercase px-2 py-0.5 rounded">
+                                  Active Triage
+                                </span>
+                              </div>
+                              <span className={`text-[10px] font-black px-2.5 py-0.5 rounded-full uppercase ${
+                                aiAnalysis.urgency === "URGENT" ? "bg-red-50 text-red-600 border border-red-200" : "bg-amber-50 text-amber-600 border border-amber-200"
+                              }`}>
+                                {aiAnalysis.urgency} Urgency
+                              </span>
+                            </div>
+                            <div className="text-xs text-slate-650 dark:text-slate-350 space-y-2 leading-relaxed font-semibold">
+                              <div>
+                                <span className="text-xxs font-bold text-slate-400 uppercase block">Category Classification</span>
+                                <span className="font-mono text-[#001e66] dark:text-slate-200 text-[10px]">{aiAnalysis.category}</span>
+                              </div>
+                              <div>
+                                <span className="text-xxs font-bold text-slate-400 uppercase block">Analysis Summary</span>
+                                <p className="text-slate-700 dark:text-slate-300 italic mt-0.5">"{aiAnalysis.summary}"</p>
+                              </div>
+                              {aiAnalysis.translatedText && aiAnalysis.translatedText !== complaintText && (
+                                <div>
+                                  <span className="text-xxs font-bold text-slate-400 uppercase block">English Translation</span>
+                                  <p className="text-slate-500 mt-0.5">{aiAnalysis.translatedText}</p>
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                        )}
+
+                        {/* Submission Button Row */}
+                        <div>
+                          <button
+                            type="submit"
+                            disabled={submitting}
+                            className="bg-gradient-to-r from-[#001e66] to-[#00aeef] hover:from-[#00aeef] hover:to-[#001e66] text-white font-black text-xs px-6 py-3.5 rounded-xl uppercase tracking-wider shadow-md shadow-blue-900/10 hover:shadow-blue-500/20 active:scale-[0.98] transition-all duration-300 disabled:opacity-50 flex items-center space-x-2 cursor-pointer"
+                          >
+                            {submitting ? (
+                              <>
+                                <svg className="animate-spin w-4 h-4 text-white" fill="none" viewBox="0 0 24 24">
+                                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                                </svg>
+                                <span>Filing &amp; Analyzing with AI…</span>
+                              </>
+                            ) : (
+                              "File Complaint"
+                            )}
+                          </button>
+                        </div>
+                      </div>
+
+                      {/* Right Column: Location & Mapping Details */}
+                      <div className="bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-800 rounded-2xl p-6 space-y-4">
+                        <div>
+                          <h3 className="text-xs font-black text-slate-450 dark:text-slate-400 uppercase tracking-wider border-b border-slate-200 dark:border-slate-800 pb-2">
+                            Geographic Dispatch Details
+                          </h3>
+                        </div>
+
+                        {/* GPS pinpoint stats */}
+                        <div className="flex items-start space-x-2">
+                          <div className="flex-1">
+                            <span className="font-extrabold text-[#001e66] dark:text-slate-200 block text-xs">Automated GPS Location Pinpoint</span>
+                            <span className="text-[10px] text-slate-500 font-medium">
+                              {gpsPinpointActive
+                                ? `High-precision GPS captured · ${customLat}, ${customLng}${
+                                    gpsAccuracy ? ` · Accuracy: ${gpsAccuracy.toFixed(1)}m` : ""
+                                  }`
+                                : "Requesting device GPS coordinates…"}
+                            </span>
+                          </div>
+                        </div>
+
+                        {/* Address Search Bar */}
+                        <div className="space-y-1.5 pt-1">
+                          <label className="text-[9px] font-black text-slate-400 uppercase">Search Address, Street, or Landmark</label>
+                          <div className="flex gap-2">
+                            <input
+                              type="text"
+                              placeholder="e.g. Del Pilar Street, Sto. Rosario..."
+                              value={addressSearchQuery}
+                              onChange={(e) => setAddressSearchQuery(e.target.value)}
+                              onKeyDown={(e) => {
+                                if (e.key === "Enter") {
+                                  e.preventDefault();
+                                  handleAddressSearch();
+                                }
+                              }}
+                              className="flex-1 bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-800 text-[#001e66] dark:text-slate-100 font-bold text-xs py-2 px-3 rounded-lg focus:outline-none focus:border-[#00aeef]"
+                            />
+                            <button
+                              type="button"
+                              onClick={handleAddressSearch}
+                              className="bg-[#001e66] hover:bg-[#00aeef] text-white font-extrabold text-xs px-5 py-2 rounded-lg uppercase tracking-wider active:scale-95 transition-all shadow-sm cursor-pointer"
+                            >
+                              Search
+                            </button>
+                          </div>
+                        </div>
+
+                        {/* Interactive Map Pinning Container */}
+                        <div className="w-full h-52 rounded-xl border border-slate-200 dark:border-slate-800 overflow-hidden relative shadow-inner">
+                          <div ref={clientMapContainerRef} className="absolute inset-0 w-full h-full" />
+                          {mapError ? (
+                            <div className="absolute inset-0 bg-slate-900/95 flex flex-col items-center justify-center p-4 text-center z-10">
+                              <span className="text-xl">🗺️</span>
+                              <span className="text-xs font-bold text-slate-200 mt-2">Map Connection Unreachable</span>
+                              <span className="text-[10px] text-slate-400 mt-1 max-w-[240px]">
+                                If you are using a restricted network (e.g., school or public Wi-Fi), map services may be blocked. You can still type your address manually below!
+                              </span>
+                            </div>
+                          ) : (
+                            <div className="absolute bottom-2 left-2 z-10 bg-slate-900/90 text-white text-[9px] font-mono px-2 py-0.5 rounded border border-slate-700/60 backdrop-blur-sm">
+                              Drag marker or click map to pin exact location
+                            </div>
+                          )}
+                        </div>
+
+                        {/* Locate Me button */}
+                        <button
+                          type="button"
+                          onClick={handleRequestLocation}
+                          className="w-full bg-gradient-to-r from-[#00aeef] to-[#08266D] hover:from-[#08266D] hover:to-[#00aeef] text-white font-black text-[10px] py-2.5 px-3 rounded-lg uppercase tracking-wider shadow-sm hover:shadow-blue-500/10 active:scale-[0.99] transition-all duration-300 flex items-center justify-center gap-1.5 cursor-pointer"
+                        >
+                          Pin My Current Device Location
+                        </button>
+
+                        <div className="grid grid-cols-2 gap-3 pt-2">
+                          <div className="space-y-1">
+                            <label className="text-[8px] font-black text-slate-400 uppercase">Latitude</label>
+                            <input
+                              type="text"
+                              value={customLat}
+                              onChange={(e) => {
+                                userHasManuallyPinnedRef.current = true;
+                                setCustomLat(e.target.value);
+                                setGpsPinpointActive(true);
+                              }}
+                              className="w-full bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-800 text-[#001e66] dark:text-slate-100 font-mono text-[10px] py-1.5 px-3 rounded-lg focus:outline-none focus:border-[#00aeef] focus:ring-1 focus:ring-[#00aeef]/30"
+                            />
+                          </div>
+                          <div className="space-y-1">
+                            <label className="text-[8px] font-black text-slate-400 uppercase">Longitude</label>
+                            <input
+                              type="text"
+                              value={customLng}
+                              onChange={(e) => {
+                                userHasManuallyPinnedRef.current = true;
+                                setCustomLng(e.target.value);
+                                setGpsPinpointActive(true);
+                              }}
+                              className="w-full bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-800 text-[#001e66] dark:text-slate-100 font-mono text-[10px] py-1.5 px-3 rounded-lg focus:outline-none focus:border-[#00aeef] focus:ring-1 focus:ring-[#00aeef]/30"
+                            />
+                          </div>
+                        </div>
+
+                        {/* PostGIS Barangay Detection Result */}
+                        <div className={`flex items-center justify-between rounded-lg px-3 py-2 border ${
+                          barangayLoading
+                            ? "bg-blue-50 border-blue-200 dark:bg-blue-950/20 dark:border-blue-900/40"
+                            : detectedBarangay
+                            ? "bg-emerald-50 border-emerald-200 dark:bg-emerald-950/20 dark:border-emerald-900/40"
+                            : gpsPinpointActive && !barangayLoading
+                            ? "bg-amber-50 border-amber-200 dark:bg-amber-950/20 dark:border-amber-900/40"
+                            : "bg-slate-100 border-slate-200 dark:bg-slate-850 dark:border-slate-800"
+                        }`}>
+                          <div className="flex items-center gap-2">
+                            <div>
+                              <div className="text-[10px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-wider">
+                                PostGIS · Nominatim Barangay Detection
+                              </div>
+                              <div className={`text-xs font-black ${
+                                gpsPinpointActive && !detectedBarangay && !barangayLoading
+                                  ? "text-amber-700 dark:text-amber-400"
+                                  : "text-[#001e66] dark:text-slate-200"
+                              }`}>
+                                {barangayLoading
+                                  ? "Identifying barangay via Nominatim + PostGIS…"
+                                  : detectedBarangay
+                                  ? `Brgy. ${detectedBarangay}`
+                                  : gpsPinpointActive
+                                  ? "Outside City of San Fernando service area"
+                                  : "Awaiting GPS fix…"}
+                              </div>
+                              {gpsPinpointActive && !detectedBarangay && !barangayLoading && (
+                                <div className="text-[9px] text-amber-600 dark:text-amber-400 font-bold mt-0.5">
+                                  Your location does not match any of the 35 San Fernando barangays.
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                          {detectedBarangay && detectedDistanceM !== null && detectedDistanceM > 0 && !barangayLoading && (
+                            <span className="text-[9px] font-black text-emerald-700 bg-emerald-100 dark:text-emerald-400 dark:bg-emerald-950 px-2 py-0.5 rounded-full shrink-0">
+                              ~{detectedDistanceM}m · PostGIS
+                            </span>
+                          )}
+                          {detectedBarangay && (detectedDistanceM === 0 || detectedDistanceM === null) && !barangayLoading && (
+                            <span className="text-[9px] font-black text-blue-700 bg-blue-100 dark:text-blue-400 dark:bg-blue-950 px-2 py-0.5 rounded-full shrink-0">
+                              Nominatim verified
+                            </span>
+                          )}
+                        </div>
+                      </div>
+
+                    </div>
+                  </form>
+                </>
+              )}
             </div>
           )}
 

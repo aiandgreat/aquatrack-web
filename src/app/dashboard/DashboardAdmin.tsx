@@ -16,6 +16,7 @@ import AnalyticsSection from "./admin-sections/AnalyticsSection";
 import UsersSection from "./admin-sections/UsersSection";
 import AnnouncementsSection from "./admin-sections/AnnouncementsSection";
 import ConfigSection from "./admin-sections/ConfigSection";
+import MapPreviewModal from "../../components/MapPreviewModal";
 
 interface User {
   id: string;
@@ -119,6 +120,7 @@ export default function DashboardAdmin({
   const [complaintSearchQuery, setComplaintSearchQuery] = useState("");
   const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null);
   const [selectedComplaintId, setSelectedComplaintId] = useState<string | null>(null);
+  const [previewComplaint, setPreviewComplaint] = useState<any | null>(null);
 
   // Operation Loading States
   const [updatingUserId, setUpdatingUserId] = useState<string | null>(null);
@@ -372,9 +374,10 @@ export default function DashboardAdmin({
   };
 
   const handleViewLocation = (complaintId: string) => {
-    setSelectedComplaintId(complaintId);
-    setSelectedNodeId(null);
-    setActiveTab("map");
+    const comp = complaints.find((c) => c.id === complaintId);
+    if (comp) {
+      setPreviewComplaint(comp);
+    }
   };
 
   const handleUpdateNodeStatus = async (nodeId: string, newStatus: string) => {
@@ -1074,6 +1077,13 @@ export default function DashboardAdmin({
           </div>
         </div>
       )}
+
+      {/* Map Preview Modal */}
+      <MapPreviewModal
+        isOpen={previewComplaint !== null}
+        onClose={() => setPreviewComplaint(null)}
+        complaint={previewComplaint}
+      />
     </div>
   );
 }

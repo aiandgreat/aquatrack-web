@@ -134,7 +134,7 @@ async function detectBarangayFromCoords(longitude: number, latitude: number): Pr
 
 export async function POST(req: Request) {
   try {
-    const { rawText, latitude, longitude, imageUrl, urgency, category, summary, translatedText } = await req.json();
+    const { rawText, latitude, longitude, imageUrl, urgency, category, summary, translatedText, userId } = await req.json();
 
     if (!rawText || latitude === undefined || longitude === undefined) {
       return NextResponse.json({ error: "Missing parameters" }, { status: 400 });
@@ -157,7 +157,7 @@ export async function POST(req: Request) {
     const created: any[] = await prisma.$queryRaw`
       INSERT INTO "Complaint" (
         id, "rawText", latitude, longitude, "imageUrl", barangay, status, "aiStatus", geom, "updatedAt",
-        urgency, category, summary, "translatedText"
+        urgency, category, summary, "translatedText", "userId"
       )
       VALUES (
         gen_random_uuid(),
@@ -173,7 +173,8 @@ export async function POST(req: Request) {
         CAST(${urgency || null} AS "UrgencyLevel"),
         CAST(${category || null} AS "IssueCategory"),
         ${summary || null},
-        ${translatedText || null}
+        ${translatedText || null},
+        ${userId || null}
       )
       RETURNING id;
     `;

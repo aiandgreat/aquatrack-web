@@ -7,31 +7,63 @@ const pool = new Pool({ connectionString: process.env.DATABASE_URL });
 const adapter = new PrismaPg(pool);
 const prisma = new PrismaClient({ adapter });
 
-export async function GET() {
+export async function GET(req: Request) {
   try {
-    const complaints: any[] = await prisma.$queryRaw`
-      SELECT 
-        c.id, 
-        c."rawText", 
-        c."translatedText", 
-        c.summary, 
-        c.urgency, 
-        c.category, 
-        c.status, 
-        c."aiStatus", 
-        c."imageUrl", 
-        c."createdAt", 
-        c."assignedToId",
-        c.barangay,
-        u.name AS "userName",
-        u.email AS "userEmail",
-        u."serviceAccountNo" AS "serviceAccountNo",
-        ST_X(c.geom) AS longitude,
-        ST_Y(c.geom) AS latitude
-      FROM "Complaint" c
-      LEFT JOIN "User" u ON c."userId" = u.id
-      ORDER BY c."createdAt" DESC
-    `;
+    const { searchParams } = new URL(req.url);
+    const userId = searchParams.get("userId");
+
+    let complaints: any[];
+
+    if (userId) {
+      complaints = await prisma.$queryRaw`
+        SELECT 
+          c.id, 
+          c."rawText", 
+          c."translatedText", 
+          c.summary, 
+          c.urgency, 
+          c.category, 
+          c.status, 
+          c."aiStatus", 
+          c."imageUrl", 
+          c."createdAt", 
+          c."assignedToId",
+          c.barangay,
+          u.name AS "userName",
+          u.email AS "userEmail",
+          u."serviceAccountNo" AS "serviceAccountNo",
+          ST_X(c.geom) AS longitude,
+          ST_Y(c.geom) AS latitude
+        FROM "Complaint" c
+        LEFT JOIN "User" u ON c."userId" = u.id
+        WHERE c."userId" = ${userId}
+        ORDER BY c."createdAt" DESC
+      `;
+    } else {
+      complaints = await prisma.$queryRaw`
+        SELECT 
+          c.id, 
+          c."rawText", 
+          c."translatedText", 
+          c.summary, 
+          c.urgency, 
+          c.category, 
+          c.status, 
+          c."aiStatus", 
+          c."imageUrl", 
+          c."createdAt", 
+          c."assignedToId",
+          c.barangay,
+          u.name AS "userName",
+          u.email AS "userEmail",
+          u."serviceAccountNo" AS "serviceAccountNo",
+          ST_X(c.geom) AS longitude,
+          ST_Y(c.geom) AS latitude
+        FROM "Complaint" c
+        LEFT JOIN "User" u ON c."userId" = u.id
+        ORDER BY c."createdAt" DESC
+      `;
+    }
 
     const serializedComplaints = complaints.map((c) => ({
       id: c.id,
