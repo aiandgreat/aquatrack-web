@@ -125,7 +125,8 @@ test("POST returns 202 and inserts complaint, triggering webhook on success", as
   expect(webhookBody).toEqual({
     complaintId: "generated-uuid",
     latitude: 14.56,
-    longitude: 121.02
+    longitude: 121.02,
+    rawText: "Water pipe burst!"
   });
 });
 

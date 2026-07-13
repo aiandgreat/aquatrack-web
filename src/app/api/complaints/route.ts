@@ -190,7 +190,7 @@ export async function POST(req: Request) {
           "Content-Type": "application/json",
           "Authorization": `Bearer ${process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY}`,
         },
-        body: JSON.stringify({ complaintId, latitude, longitude }),
+        body: JSON.stringify({ complaintId, latitude, longitude, rawText }),
       }).catch(err => console.error("Async webhook trigger failed", err));
     }
 

@@ -4,6 +4,7 @@ import { PrismaPg } from "@prisma/adapter-pg";
 import { Pool } from "pg";
 import { generateText } from "ai";
 import { createGoogle } from "@ai-sdk/google";
+import { redis } from "../../../../lib/redis";
 
 const pool = new Pool({ connectionString: process.env.DATABASE_URL });
 const adapter = new PrismaPg(pool);
@@ -18,6 +19,22 @@ export async function GET(req: Request) {
       return NextResponse.json({ error: "Missing barangay parameter" }, { status: 400 });
     }
 
+    // Try fetching from Upstash Redis cache first
+    const cacheKey = `barangay-summary:${barangay}`;
+    try {
+      const cached = await redis.get<{ summary: string; status: string }>(cacheKey);
+      if (cached) {
+        return NextResponse.json({
+          success: true,
+          summary: cached.summary,
+          status: cached.status,
+          cached: true
+        });
+      }
+    } catch (redisErr) {
+      console.warn("Redis read error, bypassing cache:", redisErr);
+    }
+
     // Fetch all complaints in this barangay
     const complaints = await prisma.complaint.findMany({
       where: { barangay },
@@ -25,11 +42,17 @@ export async function GET(req: Request) {
     });
 
     if (complaints.length === 0) {
-      return NextResponse.json({
+      const noComplaintsResult = {
         success: true,
         summary: "No complaints have been reported in this barangay. Water service is operating under normal parameters.",
         status: "NORMAL"
-      });
+      };
+      try {
+        await redis.set(cacheKey, { summary: noComplaintsResult.summary, status: noComplaintsResult.status }, { ex: 3600 });
+      } catch (redisErr) {
+        console.warn("Redis write error for empty complaints:", redisErr);
+      }
+      return NextResponse.json(noComplaintsResult);
     }
 
     let summary = "";
@@ -42,7 +65,7 @@ export async function GET(req: Request) {
       }
 
       const googleProvider = createGoogle({ apiKey });
-      const model = googleProvider("gemini-3.5-flash");
+      const model = googleProvider("gemini-3.1-flash-lite");
 
       const prompt = `You are a municipal utility analyst. Here is a list of citizen complaints for Barangay ${barangay} in San Fernando, Pampanga:
 ${complaints.map((c, i) => `${i + 1}. [Urgency: ${c.urgency}, Category: ${c.category}] "${c.rawText}"`).join("\n")}
@@ -76,6 +99,13 @@ Based on the complaints list, return ONLY a raw JSON object matching this schema
 
       status = criticalCount > 0 ? "CRITICAL" : highCount > 0 ? "MODERATE" : "LOW_RISK";
       summary = `Sector has ${total} active report${total !== 1 ? "s" : ""} highlighting ${uniqueCategories.join(" and ")}. There are ${criticalCount} critical and ${highCount} high-urgency reports under evaluation.`;
+    }
+
+    // Cache the result in Upstash Redis with a 1-hour TTL
+    try {
+      await redis.set(cacheKey, { summary, status }, { ex: 3600 });
+    } catch (redisErr) {
+      console.warn("Redis write error:", redisErr);
     }
 
     return NextResponse.json({
