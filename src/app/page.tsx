@@ -92,21 +92,33 @@ export default function Homepage() {
   useEffect(() => {
     if (hasPlayedSplash) return;
 
-    // 1. Falling droplet hits center after 800ms
+    // 1. Falling droplet hits center after 500ms
     const impactTimer = setTimeout(() => {
       setSplashStep(1);
-    }, 800);
+    }, 500);
 
-    // 2. Hide splash screen after expansion finishes (1700ms total)
+    // 2. Hide splash screen after expansion finishes (1300ms total)
     const hideTimer = setTimeout(() => {
       setSplashStep(2);
       hasPlayedSplash = true;
-    }, 1700);
+    }, 1300);
 
     return () => {
       clearTimeout(impactTimer);
       clearTimeout(hideTimer);
     };
+  }, []);
+
+  const [scrolled, setScrolled] = useState(false);
+
+  useEffect(() => {
+    const handleScroll = () => {
+      if (window.scrollY > 15) {
+        setScrolled(true);
+      }
+    };
+    window.addEventListener("scroll", handleScroll, { passive: true });
+    return () => window.removeEventListener("scroll", handleScroll);
   }, []);
 
   // Custom Colors Mapping:
@@ -140,7 +152,31 @@ export default function Homepage() {
     checkSessionAndRedirect();
   }, [router]);
 
-  const advisories: any[] = [];
+  const [advisories, setAdvisories] = useState<any[]>([]);
+  const [advisoryIndex, setAdvisoryIndex] = useState(0);
+
+  useEffect(() => {
+    fetch("/api/advisories")
+      .then((res) => res.json())
+      .then((data) => {
+        if (data.success) {
+          // Filter to show only the advisories broadcast to all
+          const publicAdvisories = data.advisories.filter(
+            (ad: any) => ad.targetRole === "broadcast" || !ad.targetRole
+          );
+          setAdvisories(publicAdvisories);
+        }
+      })
+      .catch((err) => console.error("Failed to load public advisories:", err));
+  }, []);
+
+  useEffect(() => {
+    if (advisories.length <= 1) return;
+    const timer = setInterval(() => {
+      setAdvisoryIndex((prev) => (prev + 1) % advisories.length);
+    }, 5000);
+    return () => clearInterval(timer);
+  }, [advisories.length]);
 
   // City of San Fernando Water District (CSFWD) Offices data
   const districtOffices = [
@@ -190,9 +226,9 @@ export default function Homepage() {
         <motion.div 
           initial={{ opacity: 1 }}
           animate={splashStep === 1 ? { opacity: 0 } : { opacity: 1 }}
-          transition={{ duration: 0.75, ease: "easeInOut" }}
+          transition={{ duration: 0.6, ease: "easeOut", delay: 0.25 }}
           className="fixed inset-0 z-[9999] bg-[#001e66] flex items-center justify-center overflow-hidden"
-          style={{ pointerEvents: splashStep === 1 ? "none" : "auto" }}
+          style={{ pointerEvents: splashStep === 1 ? "none" : "auto", willChange: "opacity" }}
         >
           {/* Droplet & Brand Container */}
           <div className="relative flex items-center justify-center w-full h-full">
@@ -207,10 +243,11 @@ export default function Homepage() {
             {/* Falling Droplet (SVG) */}
             {splashStep === 0 && (
               <motion.div
-                initial={{ y: -300, scale: 0.8, opacity: 0 }}
+                initial={{ y: -350, scale: 0.7, opacity: 0 }}
                 animate={{ y: 0, scale: 1, opacity: 1 }}
-                transition={{ duration: 0.55, ease: "easeIn" }}
+                transition={{ duration: 0.48, ease: [0.25, 0.46, 0.45, 0.94] }}
                 className="text-[#00aeef] z-20"
+                style={{ willChange: "transform, opacity" }}
               >
                 <svg className="w-12 h-12 fill-current drop-shadow-[0_0_15px_rgba(0,174,239,0.4)]" viewBox="0 0 24 24">
                   <path d="M12 2.69l5.66 5.66a8 8 0 1 1-11.31 0z" />
@@ -222,9 +259,10 @@ export default function Homepage() {
             {splashStep === 1 && (
               <motion.div
                 initial={{ scale: 0, opacity: 1 }}
-                animate={{ scale: 50, opacity: 0 }}
-                transition={{ duration: 0.85, ease: [0.16, 1, 0.3, 1] }}
+                animate={{ scale: 12, opacity: 0 }}
+                transition={{ duration: 0.75, ease: "easeOut" }}
                 className="absolute w-16 h-16 rounded-full bg-[#00aeef] z-20 pointer-events-none"
+                style={{ willChange: "transform, opacity" }}
               />
             )}
 
@@ -232,39 +270,38 @@ export default function Homepage() {
             {splashStep === 1 && (
               <>
                 <motion.div
-                  initial={{ scale: 0, opacity: 0.6 }}
-                  animate={{ scale: 6, opacity: 0 }}
-                  transition={{ duration: 0.9, ease: "easeOut" }}
+                  initial={{ scale: 0, opacity: 0.7 }}
+                  animate={{ scale: 4.5, opacity: 0 }}
+                  transition={{ duration: 0.7, ease: "easeOut" }}
                   className="absolute w-16 h-16 rounded-full border-2 border-[#00aeef] z-10 pointer-events-none"
+                  style={{ willChange: "transform, opacity" }}
                 />
                 <motion.div
-                  initial={{ scale: 0, opacity: 0.4 }}
-                  animate={{ scale: 9, opacity: 0 }}
-                  transition={{ duration: 1.1, ease: "easeOut", delay: 0.08 }}
+                  initial={{ scale: 0, opacity: 0.5 }}
+                  animate={{ scale: 7, opacity: 0 }}
+                  transition={{ duration: 0.85, ease: "easeOut", delay: 0.06 }}
                   className="absolute w-16 h-16 rounded-full border border-[#00aeef]/60 z-10 pointer-events-none"
+                  style={{ willChange: "transform, opacity" }}
                 />
               </>
             )}
 
             {/* Elegant Minimal Logo Text */}
             <motion.div
-              initial={{ opacity: 0, scale: 0.9 }}
-              animate={splashStep === 0 ? { opacity: 1, scale: 1 } : { opacity: 0, scale: 1.05 }}
-              transition={{ duration: 0.5, delay: 0.15 }}
-              className="absolute flex flex-col items-center space-y-3 pointer-events-none text-center z-10"
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={splashStep === 0 ? { opacity: 1, scale: 1 } : { opacity: 0, scale: 1.02 }}
+              transition={{ duration: 0.45 }}
+              className="absolute flex flex-col items-center pointer-events-none text-center z-10"
+              style={{ willChange: "transform, opacity" }}
             >
-              <h1 className="text-4xl md:text-5xl font-black tracking-[0.2em] text-white leading-none pl-[0.2em]">
-                AQUA<span className="text-[#00aeef]">TRACK</span>
-              </h1>
-              <p className="text-[10px] md:text-xs font-bold uppercase tracking-widest text-[#00aeef]/80">
+              <img 
+                src="/LOGO3.png" 
+                alt="AquaTrack Logo" 
+                className="h-64 md:h-80 w-auto object-contain drop-shadow-[0_0_30px_rgba(0,174,239,0.45)]"
+              />
+              <p className="text-[10px] md:text-xs font-bold uppercase tracking-widest text-[#00aeef]/80 -mt-3 md:-mt-4">
                 City of San Fernando Water District
               </p>
-              {/* Thin branding line */}
-              <div className="flex h-0.5 w-20 justify-center space-x-1 pt-1" aria-hidden="true">
-                <span className="w-1/3 bg-[#001e66] rounded-full" />
-                <span className="w-1/3 bg-[#00aeef] rounded-full" />
-                <span className="w-1/3 bg-[#970006] rounded-full" />
-              </div>
             </motion.div>
 
           </div>
@@ -284,8 +321,8 @@ export default function Homepage() {
           style={{ backgroundImage: "url('https://greenempowerment.org/wp-content/uploads/2020/09/kids-water.jpg')" }}
         ></div>
 
-        {/* 1. Horizontal Linear Gradient Overlay (Fades left-to-right) */}
-        <div className="absolute inset-0 bg-gradient-to-r from-white via-white/30 to-transparent pointer-events-none"></div>
+        {/* 1. Horizontal Linear Gradient Overlay (Fades left-to-right, invisible on right side) */}
+        <div className="absolute inset-0 bg-gradient-to-r from-white via-white/5 to-transparent pointer-events-none"></div>
 
         {/* 2. Subtle Dotted Water Grid Wave Overlay */}
         <div className="absolute inset-0 opacity-[0.08] bg-[radial-gradient(#00aeef_1.5px,transparent_1.5px)] [background-size:24px_24px] pointer-events-none"></div>
@@ -303,8 +340,126 @@ export default function Homepage() {
             className="flex flex-col items-center text-center space-y-6 max-w-3xl mx-auto"
           >
             {/* Tagline */}
-            <h1 className="text-4xl md:text-5xl lg:text-6xl font-black leading-tight text-[#001e66]">
-              Clean Water, One <span className="bg-[#ffd800] px-2 py-0.5 rounded text-[#001e66]">Smart</span> <span className="text-[#970006]">Drop</span> at a Time.
+            <h1 className="text-4xl sm:text-5xl md:text-6xl lg:text-7xl font-black tracking-tighter leading-none pb-2 select-none text-[#001e66]">
+              Clean Water, One Smart{" "}
+              <span className="relative inline-block px-1">
+                Drop
+                {/* 1. Permanent realistic water puddle backdrop (with bubbles & splash ripples) left behind on scroll */}
+                {scrolled && (
+                  <motion.span
+                    initial={{ scale: 0.8, opacity: 0 }}
+                    animate={{ scale: 1.15, opacity: 1 }}
+                    transition={{ duration: 0.6, ease: "easeOut" }}
+                    className="absolute inset-0 z-[-1] pointer-events-none flex items-center justify-center"
+                  >
+                    <svg viewBox="0 0 120 60" className="absolute w-36 h-18 drop-shadow-[0_0_6px_rgba(0,174,239,0.4)]">
+                      {/* Organic wavy puddle base */}
+                      <path 
+                        d="M 15,30 C 25,14 42,6 60,6 C 78,6 95,14 105,30 C 110,38 100,50 82,53 C 65,55 45,55 28,53 C 12,50 8,38 15,30 Z" 
+                        fill="#00aeef" 
+                        opacity="0.25" 
+                      />
+                      
+                      {/* Splash concentric water ripples / rings */}
+                      <ellipse cx="60" cy="30" rx="42" ry="19" fill="none" stroke="#00aeef" strokeWidth="1.25" opacity="0.3" />
+                      <ellipse cx="63" cy="32" rx="22" ry="10" fill="none" stroke="#00aeef" strokeWidth="0.8" opacity="0.4" />
+                      <ellipse cx="40" cy="24" rx="6" ry="3" fill="none" stroke="#00aeef" strokeWidth="0.5" opacity="0.45" />
+
+                      {/* Liquid Droplets / Bubbles with specular highlights */}
+                      {/* Bubble 1 (left) */}
+                      <circle cx="28" cy="20" r="3.5" fill="#00aeef" opacity="0.45" />
+                      <circle cx="27" cy="19" r="1" fill="#ffffff" opacity="0.75" />
+                      
+                      {/* Bubble 2 (bottom-center) */}
+                      <circle cx="55" cy="46" r="3" fill="#00aeef" opacity="0.45" />
+                      <circle cx="54" cy="45" r="0.75" fill="#ffffff" opacity="0.75" />
+                      
+                      {/* Bubble 3 (right) */}
+                      <circle cx="92" cy="40" r="4" fill="#00aeef" opacity="0.4" />
+                      <circle cx="90.5" cy="38.5" r="1.2" fill="#ffffff" opacity="0.8" />
+                      
+                      {/* Bubble 4 (top-right) */}
+                      <circle cx="82" cy="18" r="2.5" fill="#00aeef" opacity="0.45" />
+                      <circle cx="81.2" cy="17.2" r="0.75" fill="#ffffff" opacity="0.75" />
+
+                      {/* Bubble 5 (far-left splash out) */}
+                      <circle cx="10" cy="32" r="2" fill="#00aeef" opacity="0.4" />
+                      <circle cx="9.4" cy="31.4" r="0.6" fill="#ffffff" opacity="0.75" />
+
+                      {/* Bubble 6 (far-right splash out) */}
+                      <circle cx="110" cy="34" r="3" fill="#00aeef" opacity="0.4" />
+                      <circle cx="109" cy="33" r="0.85" fill="#ffffff" opacity="0.75" />
+
+                      {/* Bubble 7 (top-left splash out) */}
+                      <circle cx="42" cy="10" r="2.5" fill="#00aeef" opacity="0.4" />
+                      <circle cx="41.2" cy="9.2" r="0.75" fill="#ffffff" opacity="0.75" />
+
+                      {/* Bubble 8 (bottom-left splash out) */}
+                      <circle cx="20" cy="44" r="2" fill="#00aeef" opacity="0.4" />
+                      <circle cx="19.4" cy="43.4" r="0.6" fill="#ffffff" opacity="0.75" />
+                    </svg>
+                  </motion.span>
+                )}
+
+                {/* 2. Realistic Water Splash Spray Overlay on Scroll */}
+                {scrolled && (
+                  <motion.div
+                    initial={{ scale: 0.3, y: 15, opacity: 0 }}
+                    animate={{ 
+                      scale: [0.3, 1.25, 1], 
+                      y: [15, -20, -5], 
+                      opacity: [0, 1, 0] 
+                    }}
+                    transition={{ 
+                      duration: 0.9, 
+                      ease: [0.25, 0.46, 0.45, 0.94],
+                      times: [0, 0.3, 1]
+                    }}
+                    className="absolute -top-14 left-1/2 -translate-x-1/2 w-28 h-28 pointer-events-none z-10"
+                  >
+                    <svg viewBox="0 0 100 100" className="w-full h-full fill-[#00aeef] drop-shadow-[0_0_10px_rgba(0,174,239,0.6)]">
+                      {/* Central dynamic water arcs */}
+                      <path d="M 50,85 C 46,65 32,50 25,40 C 22,35 28,33 30,37 C 35,45 46,60 50,72 C 54,60 65,45 70,37 C 72,33 78,35 75,40 C 68,50 54,65 50,85 Z" />
+                      
+                      {/* Secondary lateral splashes */}
+                      <path d="M 50,80 C 44,70 24,65 14,60 C 11,58 15,53 18,55 C 25,58 43,65 50,72 Z" />
+                      <path d="M 50,80 C 56,70 76,65 86,60 C 89,58 85,53 82,55 C 75,58 57,65 50,72 Z" />
+
+                      {/* Realistic flying water droplets of varying sizes */}
+                      {/* Center top spray */}
+                      <circle cx="50" cy="14" r="4" />
+                      <circle cx="50" cy="26" r="2.5" />
+                      
+                      {/* Left angle spray */}
+                      <circle cx="20" cy="25" r="3.5" />
+                      <circle cx="10" cy="38" r="2.5" />
+                      
+                      {/* Right angle spray */}
+                      <circle cx="80" cy="25" r="3.5" />
+                      <circle cx="90" cy="38" r="2.5" />
+
+                      {/* Fine mist particles */}
+                      <circle cx="33" cy="22" r="1.5" />
+                      <circle cx="67" cy="22" r="1.5" />
+                      <circle cx="50" cy="40" r="1.5" />
+                    </svg>
+                  </motion.div>
+                )}
+
+                {/* 3. Concentric Expanding Ripple Ring */}
+                {scrolled && (
+                  <motion.span 
+                    initial={{ scale: 0.8, opacity: 0.9 }}
+                    animate={{ scale: 1.8, opacity: 0 }}
+                    transition={{ duration: 0.85, ease: "easeOut" }}
+                    className="absolute inset-0 rounded-full bg-[#00aeef]/60 pointer-events-none"
+                  />
+                )}
+              </span>{" "}
+              at a{" "}
+              <span className="bg-gradient-to-r from-[#ffd800] to-[#970006] bg-clip-text text-transparent inline-block align-baseline">
+                Time.
+              </span>
             </h1>
             
             {/* Description */}
@@ -545,29 +700,110 @@ export default function Homepage() {
             <p className="mt-2 text-slate-500 text-sm">Active notifications dispatched from our operational console</p>
           </div>
 
-          <div className="space-y-4 max-w-3xl mx-auto">
-            {advisories.map((ad, idx) => (
-              <div key={idx} className="bg-white/50 backdrop-blur-md p-5 rounded-xl border border-white/40 shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-4">
-                <div className="flex-1">
-                  <div className="flex items-center space-x-2">
-                    <span className="text-[10px] font-mono text-slate-400 font-bold">{ad.date}</span>
-                    <span className={`text-[9px] font-extrabold px-2 py-0.5 rounded ${
-                      ad.type === "warning" ? "bg-red-50 text-red-600" : "bg-blue-50 text-blue-600"
-                    }`}>
-                      {ad.type.toUpperCase()}
-                    </span>
-                  </div>
-                  <h4 className="font-bold text-sm text-[#001e66] mt-1.5">{ad.title}</h4>
-                  <p className="text-xs text-slate-600 mt-1 leading-relaxed">{ad.text}</p>
+          {advisories.length > 0 ? (
+            <div className="relative max-w-4xl mx-auto px-1 md:px-12 flex flex-col items-center">
+              
+              {/* Carousel Controls & Active Card */}
+              <div className="w-full flex items-center justify-between gap-4">
+                {advisories.length > 1 && (
+                  <button 
+                    onClick={() => setAdvisoryIndex((prev) => (prev - 1 + advisories.length) % advisories.length)}
+                    className="w-11 h-11 rounded-full border border-slate-200 bg-white shadow-md flex items-center justify-center text-[#001e66] hover:bg-slate-50 transition-all duration-200 hover:scale-105 select-none shrink-0"
+                    title="Previous Advisory"
+                  >
+                    <svg className="w-5 h-5 stroke-current" fill="none" strokeWidth="2.5" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 19.5L8.25 12l7.5-7.5" />
+                    </svg>
+                  </button>
+                )}
+
+                {/* Center Transition Card */}
+                <div className="w-full max-w-3xl min-h-[260px] flex items-center justify-center">
+                  <AnimatePresence mode="wait">
+                    <motion.div
+                      key={advisoryIndex}
+                      initial={{ opacity: 0, scale: 0.97, y: 5 }}
+                      animate={{ opacity: 1, scale: 1, y: 0 }}
+                      exit={{ opacity: 0, scale: 0.97, y: -5 }}
+                      transition={{ duration: 0.25, ease: "easeInOut" }}
+                      className={`bg-white backdrop-blur-lg border border-slate-200/60 shadow-lg rounded-3xl p-8 md:p-10 relative overflow-hidden w-full text-left ${
+                        advisories[advisoryIndex].type === "warning" ? "border-t-4 border-t-[#970006]" : "border-t-4 border-t-[#00aeef]"
+                      }`}
+                    >
+                      {/* Top Header of Card */}
+                      <div className="flex items-center justify-between gap-4">
+                        {advisories[advisoryIndex].type === "warning" ? (
+                          <svg className="w-11 h-11 text-[#970006] bg-red-50 p-2.5 rounded-2xl shrink-0" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                          </svg>
+                        ) : (
+                          <svg className="w-11 h-11 text-[#00aeef] bg-blue-50 p-2.5 rounded-2xl shrink-0" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M11.25 11.25l.041-.02a.75.75 0 111.063.852l-.708 2.836a.75.75 0 001.063.852l.041-.021M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                          </svg>
+                        )}
+                        <span className="text-xs md:text-sm font-extrabold text-[#001e66] bg-slate-100/90 px-3.5 py-1.5 rounded-xl border border-slate-200/60 flex items-center gap-1.5 shadow-sm">
+                          <svg className="w-4 h-4 text-[#00aeef]" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M6.75 3v2.25M17.25 3v2.25M3 18.75V7.5a2.25 2.25 0 012.25-2.25h13.5A2.25 2.25 0 0121 7.5v11.25m-18 0A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75m-18 0v-7.5A2.25 2.25 0 015.25 9h13.5A2.25 2.25 0 0121 11.25v7.5" />
+                          </svg>
+                          <span>{advisories[advisoryIndex].date}</span>
+                        </span>
+                      </div>
+
+                      {/* Info type indicator badge */}
+                      <div className="flex items-center space-x-2 mt-5">
+                        <span className={`text-[10px] font-extrabold px-3 py-1 rounded-full uppercase tracking-wider ${
+                          advisories[advisoryIndex].type === "warning" ? "bg-red-50 text-[#970006]" : "bg-blue-50 text-[#00aeef]"
+                        }`}>
+                          {advisories[advisoryIndex].type}
+                        </span>
+                      </div>
+
+                      {/* Content details */}
+                      <h4 className="font-black text-xl md:text-2xl text-[#001e66] mt-4 leading-snug">
+                        {advisories[advisoryIndex].title}
+                      </h4>
+                      <p className="text-sm md:text-base text-slate-600 mt-3 leading-relaxed">
+                        {advisories[advisoryIndex].text}
+                      </p>
+                    </motion.div>
+                  </AnimatePresence>
                 </div>
+
+                {advisories.length > 1 && (
+                  <button 
+                    onClick={() => setAdvisoryIndex((prev) => (prev + 1) % advisories.length)}
+                    className="w-11 h-11 rounded-full border border-slate-200 bg-white shadow-md flex items-center justify-center text-[#001e66] hover:bg-slate-50 transition-all duration-200 hover:scale-105 select-none shrink-0"
+                    title="Next Advisory"
+                  >
+                    <svg className="w-5 h-5 stroke-current" fill="none" strokeWidth="2.5" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" />
+                    </svg>
+                  </button>
+                )}
               </div>
-            ))}
-            {advisories.length === 0 && (
-              <div className="bg-white/40 backdrop-blur-md p-6 rounded-xl border border-white/30 shadow-sm text-center">
-                <p className="text-slate-500 italic text-xs font-semibold">No active notices broadcasted.</p>
-              </div>
-            )}
-          </div>
+
+              {/* Dot Pagination indicators */}
+              {advisories.length > 1 && (
+                <div className="flex justify-center space-x-2 mt-6">
+                  {advisories.map((_, idx) => (
+                    <button
+                      key={idx}
+                      onClick={() => setAdvisoryIndex(idx)}
+                      className={`h-2 rounded-full transition-all duration-300 ${
+                        idx === advisoryIndex ? "w-6 bg-[#001e66]" : "w-2 bg-slate-300 hover:bg-slate-400"
+                      }`}
+                      title={`Go to slide ${idx + 1}`}
+                    />
+                  ))}
+                </div>
+              )}
+
+            </div>
+          ) : (
+            <div className="bg-white/40 backdrop-blur-md p-6 rounded-xl border border-white/30 shadow-sm text-center max-w-xl mx-auto">
+              <p className="text-slate-500 italic text-xs font-semibold">No active notices broadcasted.</p>
+            </div>
+          )}
         </div>
       </section>
 

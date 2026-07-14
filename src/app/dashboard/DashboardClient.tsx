@@ -692,12 +692,12 @@ export default function DashboardClient({
   );
 
   return (
-    <div className="min-h-screen bg-[#F8FAFC] text-[#001e66] flex flex-col font-sans">
+    <div className="h-screen bg-[#F8FAFC] text-[#001e66] flex flex-col font-sans overflow-hidden">
 
 
       {/* ── Header ── */}
-      <header className="h-16 shrink-0 bg-white border-b border-slate-100 sticky top-0 z-50 flex items-center justify-between px-6">
-        {/* Left: logo + wordmark */}
+      <header className="h-20 shrink-0 bg-white border-b border-slate-100 sticky top-0 z-50 flex items-center justify-between px-6">
+        {/* Left: logo */}
         <div className="flex items-center space-x-3">
           <button
             onClick={() => setIsMobileSidebarOpen(true)}
@@ -708,15 +708,11 @@ export default function DashboardClient({
               <path strokeLinecap="round" strokeLinejoin="round" d="M4 6h16M4 12h16M4 18h16" />
             </svg>
           </button>
-          <img src="/LOGO2.png" alt="AquaTrack Logo" className="h-9 w-auto object-contain" />
-          <div className="flex flex-col leading-none">
-            <span className="text-base font-black tracking-tight text-[#001e66]">
-              AQUA<span className="text-[#00aeef]">TRACK</span>
-            </span>
-            <span className="text-[9px] font-semibold text-slate-400 tracking-wider uppercase mt-0.5">
-              Resident Consumer Portal
-            </span>
-          </div>
+          <img
+            src="/LOGO2.png"
+            alt="AquaTrack Logo"
+            className="h-25 w-auto translate-y-1 hover:opacity-90 transition-opacity shrink-0"
+          />
         </div>
 
         {/* Right: user info + dark mode toggle + logout */}
@@ -757,10 +753,10 @@ export default function DashboardClient({
       </header>
 
       {/* ── Body: sidebar + main ── */}
-      <div className="flex flex-1 overflow-hidden">
+      <div className="flex flex-1 overflow-hidden p-4 gap-4 bg-slate-50">
 
         {/* ── Left Sidebar ── */}
-        <aside className="hidden lg:flex w-56 shrink-0 bg-white border-r border-slate-100 flex-col sticky top-16 h-[calc(100vh-4rem)] overflow-y-auto">
+        <aside className="hidden lg:flex w-56 shrink-0 bg-white border border-slate-100 flex flex-col h-full rounded-2xl overflow-hidden shadow-sm">
           {/* Nav section */}
           <div className="flex-1 py-3 px-2">
             <p className="text-[9px] font-semibold uppercase tracking-widest text-slate-400 px-3 mb-1 mt-3">
@@ -924,7 +920,7 @@ export default function DashboardClient({
         </AnimatePresence>
 
         {/* ── Main Content Area ── */}
-        <main className="flex-1 bg-[#F8FAFC] overflow-y-auto p-8">
+        <main className="flex-1 bg-white border border-slate-100/80 overflow-y-auto p-8 rounded-2xl shadow-sm">
           <AnimatePresence mode="wait">
             <motion.div
               key={activeTab}
@@ -986,10 +982,10 @@ export default function DashboardClient({
                       </div>
                       <div>
                         <p className="text-sm font-black text-[#001e66] dark:text-slate-100 line-clamp-1">
-                          {advisories[0]?.title || "No active notices"}
+                          {filteredAdvisories[0]?.title || "No active notices"}
                         </p>
                         <p className="text-[10px] text-slate-500 dark:text-slate-400 font-bold uppercase tracking-wider mt-1">
-                          {advisories[0]?.date || "Up to date"}
+                          {filteredAdvisories[0]?.date || "Up to date"}
                         </p>
                       </div>
                     </div>

@@ -51,6 +51,18 @@ export default function FieldCrewPortal() {
   });
   const [confirming, setConfirming] = useState<"start" | "resolve" | null>(null);
   const [sessionEmail, setSessionEmail] = useState<string | null>(null);
+  const [advisories, setAdvisories] = useState<any[]>([]);
+
+  useEffect(() => {
+    fetch("/api/advisories")
+      .then((res) => res.json())
+      .then((data) => {
+        if (data.success) {
+          setAdvisories(data.advisories);
+        }
+      })
+      .catch((err) => console.error("Failed to load crew advisories:", err));
+  }, []);
 
   useEffect(() => {
     const root = window.document.documentElement;
@@ -285,6 +297,41 @@ export default function FieldCrewPortal() {
                 </svg>
                 <span className="text-sm font-semibold text-emerald-700">Job Completed</span>
               </div>
+            )}
+          </div>
+        </div>
+
+        {/* Staff & Broadcast Bulletins Card */}
+        <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-100 dark:border-slate-800 shadow-sm p-6 space-y-4">
+          <div className="border-b border-slate-100 dark:border-slate-800 pb-3 flex items-center space-x-2">
+            <svg className="w-4 h-4 text-[#00aeef] shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M11 5.882V19.24a1.76 1.76 0 01-3.417.592l-2.147-6.15M18 13a3 3 0 100-6M5.436 13.683A4.001 4.001 0 017 6h1.832c4.1 0 7.625-1.234 9.168-3v14c-1.543-1.766-5.067-3-9.168-3H7a3.988 3.988 0 01-1.564-.317z" />
+            </svg>
+            <h3 className="text-xs font-black uppercase tracking-wider text-slate-400">
+              Staff &amp; Broadcast Bulletins
+            </h3>
+          </div>
+          <div className="space-y-3 max-h-72 overflow-y-auto pr-1">
+            {advisories
+              .filter(ad => !ad.targetRole || ad.targetRole === "broadcast" || ad.targetRole === "technicians")
+              .map((ad) => (
+                <div key={ad.id} className="p-3.5 bg-slate-50 dark:bg-slate-950/40 border border-slate-100 dark:border-slate-800/80 rounded-xl space-y-1">
+                  <div className="flex items-center justify-between">
+                    <span className="text-[9px] font-mono text-slate-400 font-bold">{ad.date}</span>
+                    <span className={`text-[8px] font-black uppercase px-2 py-0.5 rounded border ${
+                      ad.type === "warning"
+                        ? "bg-red-50 text-red-600 border-red-200"
+                        : "bg-blue-50 text-blue-600 border-blue-200"
+                    }`}>
+                      {ad.type}
+                    </span>
+                  </div>
+                  <h4 className="font-extrabold text-slate-700 dark:text-slate-200 text-xs mt-1">{ad.title}</h4>
+                  <p className="text-[11px] text-slate-500 leading-relaxed mt-0.5">{ad.text}</p>
+                </div>
+              ))}
+            {advisories.filter(ad => !ad.targetRole || ad.targetRole === "broadcast" || ad.targetRole === "technicians").length === 0 && (
+              <p className="text-slate-400 italic text-xs text-center py-2">No bulletins broadcasted.</p>
             )}
           </div>
         </div>

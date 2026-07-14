@@ -405,11 +405,11 @@ export default function DashboardSubAdmin({
   ] as const;
 
   return (
-    <div className="min-h-screen bg-[#F8FAFC] text-slate-800 flex flex-col font-sans w-full overflow-x-hidden">
+    <div className="h-screen bg-[#F8FAFC] text-slate-800 flex flex-col font-sans w-full overflow-hidden">
 
       {/* ── Header ─────────────────────────────────────────────────────────── */}
-      <header className="sticky top-0 z-50 h-16 bg-white border-b border-slate-100 flex items-center justify-between px-6 shrink-0">
-        {/* Left: Logo + Wordmark */}
+      <header className="sticky top-0 z-50 h-20 bg-white border-b border-slate-100 flex items-center justify-between px-6 shrink-0">
+        {/* Left: Logo */}
         <div className="flex items-center gap-3">
           <button
             onClick={() => setIsMobileSidebarOpen(true)}
@@ -420,15 +420,11 @@ export default function DashboardSubAdmin({
               <path strokeLinecap="round" strokeLinejoin="round" d="M4 6h16M4 12h16M4 18h16" />
             </svg>
           </button>
-          <img src="/LOGO2.png" alt="AquaTrack Logo" className="h-8 w-auto object-contain" />
-          <div className="flex flex-col leading-none">
-            <span className="text-base font-black tracking-tight text-[#001e66]">
-              AQUA<span className="text-[#00aeef]">TRACK</span>
-            </span>
-            <span className="text-[9px] font-semibold uppercase tracking-widest text-slate-400 mt-0.5">
-              Field Technician Portal
-            </span>
-          </div>
+          <img
+            src="/LOGO2.png"
+            alt="AquaTrack Logo"
+            className="h-25 w-auto translate-y-1 hover:opacity-90 transition-opacity shrink-0"
+          />
         </div>
 
         {/* Right: Controls */}
@@ -474,10 +470,10 @@ export default function DashboardSubAdmin({
       </header>
 
       {/* ── Body ────────────────────────────────────────────────────────────── */}
-      <div className="flex flex-1 overflow-hidden">
+      <div className="flex flex-1 overflow-hidden p-4 gap-4 bg-slate-50">
 
         {/* ── Sidebar ───────────────────────────────────────────────────────── */}
-        <aside className="hidden lg:flex w-56 shrink-0 bg-white border-r border-slate-100 flex flex-col sticky top-16 self-start h-[calc(100vh-4rem)] overflow-y-auto">
+        <aside className="hidden lg:flex w-56 shrink-0 bg-white border border-slate-100 flex flex-col h-full rounded-2xl overflow-hidden shadow-sm">
           <div className="flex-1 py-3 px-3">
             {/* Section label */}
             <p className="text-[9px] font-semibold uppercase tracking-widest text-slate-400 px-3 mb-2 mt-2">
@@ -636,7 +632,7 @@ export default function DashboardSubAdmin({
         </AnimatePresence>
 
         {/* ── Main Content ──────────────────────────────────────────────────── */}
-        <main className="flex-1 bg-[#F8FAFC] overflow-y-auto p-6 flex flex-col">
+        <main className="flex-1 bg-white border border-slate-100/80 overflow-y-auto p-6 flex flex-col rounded-2xl shadow-sm">
           {alertMessage && (
             <div
               className={`p-4 rounded-xl border mb-6 flex items-start space-x-3 text-sm animate-fade-in ${
