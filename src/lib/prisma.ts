@@ -13,9 +13,9 @@ let pool: Pool;
 if (!globalForPrisma.pool) {
   globalForPrisma.pool = new Pool({
     connectionString: process.env.DATABASE_URL,
-    max: 6, // Limit connection pool size per instance to prevent exhausting DB limits
-    idleTimeoutMillis: 15000,
-    connectionTimeoutMillis: 5000,
+    max: 12, // Increase maximum connections to handle parallel requests
+    idleTimeoutMillis: 30000, // Reclaim connections after 30s idle
+    connectionTimeoutMillis: 30000, // Increase connection timeout to 30s to prevent network latency timeout errors
   });
 }
 pool = globalForPrisma.pool;

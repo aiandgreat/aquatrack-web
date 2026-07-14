@@ -5,59 +5,59 @@ import DashboardWrapper from "./DashboardWrapper";
 export const dynamic = "force-dynamic";
 
 export default async function DashboardPage() {
-  // 1. Fetch users from database
-  const users = await prisma.user.findMany({
-    orderBy: { name: "asc" },
-  });
+  // 1. Fetch users, nodes, and complaints in parallel to optimize load latency
+  const [users, nodes, complaints] = await Promise.all([
+    prisma.user.findMany({
+      orderBy: { name: "asc" },
+    }),
+    prisma.telemetryNode.findMany({
+      orderBy: { name: "asc" },
+    }),
+    prisma.$queryRaw`
+      SELECT 
+        c.id, 
+        c."rawText", 
+        c."translatedText", 
+        c.summary, 
+        c.urgency, 
+        c.category, 
+        c.status, 
+        c."aiStatus", 
+        c."imageUrl", 
+        c."createdAt", 
+        c."assignedToId",
+        c.barangay,
+        u.name AS "userName",
+        u.email AS "userEmail",
+        u."serviceAccountNo" AS "serviceAccountNo",
+        ST_X(c.geom) AS longitude,
+        ST_Y(c.geom) AS latitude
+      FROM "Complaint" c
+      LEFT JOIN "User" u ON c."userId" = u.id
+      ORDER BY c."createdAt" DESC
+      LIMIT 50
+    ` as Promise<any[]>
+  ]);
 
-  // 2. Fetch telemetry nodes from database
-  const nodes = await prisma.telemetryNode.findMany({
-    orderBy: { name: "asc" },
-  });
-
-  // 3. Fetch active complaints from database using raw SQL to read PostGIS geom coordinates directly
-  const complaints: any[] = await prisma.$queryRaw`
-    SELECT 
-      c.id, 
-      c."rawText", 
-      c."translatedText", 
-      c.summary, 
-      c.urgency, 
-      c.category, 
-      c.status, 
-      c."aiStatus", 
-      c."imageUrl", 
-      c."createdAt", 
-      c."assignedToId",
-      c.barangay,
-      u.name AS "userName",
-      u.email AS "userEmail",
-      u."serviceAccountNo" AS "serviceAccountNo",
-      ST_X(c.geom) AS longitude,
-      ST_Y(c.geom) AS latitude
-    FROM "Complaint" c
-    LEFT JOIN "User" u ON c."userId" = u.id
-    ORDER BY c."createdAt" DESC
-    LIMIT 50
-  `;
-
-  // 4. Fetch latest telemetry readings for nodes
+  // 2. Fetch latest telemetry readings for nodes in parallel (resolves N+1 query waterfall)
   const nodeReadings: Record<string, any[]> = {};
-  for (const node of nodes) {
-    const readings = await prisma.telemetryReading.findMany({
-      where: { nodeId: node.id },
-      orderBy: { timestamp: "desc" },
-      take: 5,
-    });
-    // Reverse to show chronologically left-to-right
-    nodeReadings[node.id] = readings.reverse().map((r) => ({
-      timestamp: r.timestamp.toISOString(),
-      pressure: r.pressure,
-      ph: r.ph,
-      turbidity: r.turbidity,
-      tds: r.tds,
-    }));
-  }
+  await Promise.all(
+    nodes.map(async (node) => {
+      const readings = await prisma.telemetryReading.findMany({
+        where: { nodeId: node.id },
+        orderBy: { timestamp: "desc" },
+        take: 5,
+      });
+      // Reverse to show chronologically left-to-right
+      nodeReadings[node.id] = readings.reverse().map((r) => ({
+        timestamp: r.timestamp.toISOString(),
+        pressure: r.pressure,
+        ph: r.ph,
+        turbidity: r.turbidity,
+        tds: r.tds,
+      }));
+    })
+  );
 
   // Format data types for client serialization
   const serializedUsers = users.map((u) => ({

@@ -40,6 +40,7 @@ export default function MapboxMap({
   const mapRef = useRef<mapboxgl.Map | null>(null);
   const markersRef = useRef<Record<string, mapboxgl.Marker>>({});
   const [mapStyle, setMapStyle] = useState<"streets" | "satellite" | "dark">("streets");
+  const [show3D, setShow3D] = useState(true);
   const [hoveredComplaintId, setHoveredComplaintId] = useState<string | null>(null);
   const isFirstStyleRender = useRef(true);
   const isMapMovingRef = useRef(false);
@@ -76,6 +77,144 @@ export default function MapboxMap({
 
     // Re-add layers when style loads/changes
     map.on("style.load", () => {
+      // --- 1. 3D Terrain & Elevation ---
+      if (!map.getSource("mapbox-dem")) {
+        map.addSource("mapbox-dem", {
+          type: "raster-dem",
+          url: "mapbox://mapbox.mapbox-terrain-dem-v1",
+          tileSize: 512,
+          maxzoom: 14,
+        });
+        if (show3D) {
+          map.setTerrain({ source: "mapbox-dem", exaggeration: 1.2 });
+        }
+      }
+
+      // --- 2. 3D Building Extrusions ---
+      if (!map.getLayer("3d-buildings")) {
+        map.addLayer({
+          id: "3d-buildings",
+          source: "composite",
+          "source-layer": "building",
+          filter: ["==", "extrude", "true"],
+          type: "fill-extrusion",
+          minzoom: 15,
+          layout: {
+            "visibility": show3D ? "visible" : "none"
+          },
+          paint: {
+            "fill-extrusion-color": mapStyle === "dark" ? "#1e293b" : "#cbd5e1",
+            "fill-extrusion-height": [
+              "interpolate",
+              ["linear"],
+              ["zoom"],
+              15,
+              0,
+              15.05,
+              ["get", "height"]
+            ],
+            "fill-extrusion-base": [
+              "interpolate",
+              ["linear"],
+              ["zoom"],
+              15,
+              0,
+              15.05,
+              ["get", "min_height"]
+            ],
+            "fill-extrusion-opacity": 0.55
+          }
+        });
+      }
+
+      // --- 3. Complaints Cluster Layers ---
+      if (!map.getSource("complaints-source")) {
+        map.addSource("complaints-source", {
+          type: "geojson",
+          data: {
+            type: "FeatureCollection",
+            features: [],
+          },
+          cluster: true,
+          clusterMaxZoom: 14,
+          clusterRadius: 45,
+        });
+
+        // Cluster circles
+        map.addLayer({
+          id: "complaints-clusters",
+          type: "circle",
+          source: "complaints-source",
+          filter: ["has", "point_count"],
+          paint: {
+            "circle-color": [
+              "step",
+              ["get", "point_count"],
+              "#f43f5e", // Light rose for < 5 complaints
+              5,
+              "#e11d48", // Rose for 5-15 complaints
+              15,
+              "#be123c", // Deep red for 15+ complaints
+            ],
+            "circle-radius": [
+              "step",
+              ["get", "point_count"],
+              18,
+              5,
+              24,
+              15,
+              30,
+            ],
+            "circle-stroke-width": 2,
+            "circle-stroke-color": "#ffffff",
+            "circle-opacity": 0.85,
+          },
+        });
+
+        // Cluster counts
+        map.addLayer({
+          id: "complaints-cluster-count",
+          type: "symbol",
+          source: "complaints-source",
+          filter: ["has", "point_count"],
+          layout: {
+            "text-field": ["get", "point_count"],
+            "text-font": ["DIN Offc Pro Medium", "Arial Unicode MS Bold"],
+            "text-size": 11,
+          },
+          paint: {
+            "text-color": "#ffffff",
+          },
+        });
+
+        // Expand cluster on click
+        map.on("click", "complaints-clusters", (e) => {
+          const features = map.queryRenderedFeatures(e.point, {
+            layers: ["complaints-clusters"],
+          });
+          const clusterId = features[0].properties?.cluster_id;
+          const source = map.getSource("complaints-source") as mapboxgl.GeoJSONSource;
+          if (source && clusterId) {
+            source.getClusterExpansionZoom(clusterId, (err, zoom) => {
+              if (err) return;
+              const coordinates = (features[0].geometry as any).coordinates;
+              map.easeTo({
+                center: coordinates,
+                zoom: zoom || 15,
+              });
+            });
+          }
+        });
+
+        map.on("mouseenter", "complaints-clusters", () => {
+          map.getCanvas().style.cursor = "pointer";
+        });
+        map.on("mouseleave", "complaints-clusters", () => {
+          map.getCanvas().style.cursor = "";
+        });
+      }
+
+      // --- 4. Water main pipelines ---
       if (!map.getSource("pipelines")) {
         map.addSource("pipelines", {
           type: "geojson",
@@ -220,6 +359,7 @@ export default function MapboxMap({
         });
       }
 
+      // --- 5. Scan proximity ring ---
       if (!map.getSource("scan-ring")) {
         map.addSource("scan-ring", {
           type: "geojson",
@@ -272,19 +412,60 @@ export default function MapboxMap({
     }
   }, [mapStyle]);
 
+  // Toggle 3D Terrain and Building Extrusions dynamically
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map) return;
+
+    const update3DState = () => {
+      // 1. Terrain Mesh
+      if (map.getSource("mapbox-dem")) {
+        if (show3D) {
+          map.setTerrain({ source: "mapbox-dem", exaggeration: 1.2 });
+        } else {
+          map.setTerrain(null);
+        }
+      }
+
+      // 2. Building Extrusions Layer
+      if (map.getLayer("3d-buildings")) {
+        map.setLayoutProperty("3d-buildings", "visibility", show3D ? "visible" : "none");
+      }
+    };
+
+    if (map.isStyleLoaded()) {
+      update3DState();
+    } else {
+      map.once("style.load", update3DState);
+    }
+  }, [show3D]);
+
   // Update Markers when nodes/complaints list changes
   useEffect(() => {
     const map = mapRef.current;
     if (!map) return;
 
-    // Clear old markers
+    // 1. Update complaints GeoJSON source data for clusters
+    const source = map.getSource("complaints-source") as mapboxgl.GeoJSONSource;
+    if (source) {
+      source.setData({
+        type: "FeatureCollection",
+        features: complaints.map((c) => ({
+          type: "Feature",
+          properties: { id: c.id, urgency: c.urgency, summary: c.summary },
+          geometry: { type: "Point", coordinates: [c.longitude, c.latitude] },
+        })),
+      });
+    }
+
+    // 2. Clear old markers
     Object.values(markersRef.current).forEach((m) => m.remove());
     markersRef.current = {};
 
-    // Helper to generate GeoJSON circle for 500m scan buffer
+    // 3. Helper to generate GeoJSON circle for 500m scan buffer
     const updateScanRing = (lng: number, lat: number) => {
-      const source = map.getSource("scan-ring") as mapboxgl.GeoJSONSource;
-      if (!source) return;
+      const ringSource = map.getSource("scan-ring") as mapboxgl.GeoJSONSource;
+      if (!ringSource) return;
 
       const points = 64;
       const radiusInKm = 0.5; // 500 meters
@@ -300,7 +481,7 @@ export default function MapboxMap({
       }
       coords.push(coords[0]); // Close polygon
 
-      source.setData({
+      ringSource.setData({
         type: "Feature",
         geometry: {
           type: "Polygon",
@@ -310,7 +491,7 @@ export default function MapboxMap({
       });
     };
 
-    // Plot Telemetry Nodes
+    // 4. Plot Telemetry Nodes
     nodes.forEach((node) => {
       const el = document.createElement("div");
       el.className = `w-6 h-6 rounded-full flex items-center justify-center border-2 border-slate-900 cursor-pointer shadow-lg transition-transform hover:scale-125 ${
@@ -340,7 +521,7 @@ export default function MapboxMap({
       markersRef.current[`node-${node.id}`] = marker;
     });
 
-    // Plot Citizen Complaints
+    // 5. Plot Citizen Complaints
     complaints.forEach((comp) => {
       // Outer stable hitbox wrapper (prevents boundary shifts/glitching during hover/scale events)
       const el = document.createElement("div");
@@ -375,6 +556,30 @@ export default function MapboxMap({
 
       markersRef.current[`comp-${comp.id}`] = marker;
     });
+
+    // 6. Dynamic zoom visibility sync for individual markers vs clusters (prevents clutter)
+    const syncMarkerVisibility = () => {
+      const zoom = map.getZoom();
+      complaints.forEach((comp) => {
+        const marker = markersRef.current[`comp-${comp.id}`];
+        if (marker) {
+          const el = marker.getElement();
+          if (zoom < 14.5) {
+            el.style.display = "none";
+          } else {
+            el.style.display = "flex";
+          }
+        }
+      });
+    };
+
+    map.on("zoom", syncMarkerVisibility);
+    // Execute immediately to sync initial load zoom levels
+    syncMarkerVisibility();
+
+    return () => {
+      map.off("zoom", syncMarkerVisibility);
+    };
   }, [nodes, complaints]);
 
   // Dynamic selection and hover visual styling updates (prevents map marker teardown/flickering)
@@ -432,22 +637,36 @@ export default function MapboxMap({
       {/* Container for Mapbox GL JS */}
       <div ref={mapContainerRef} className="absolute inset-0 w-full h-full" />
 
-      {/* Floating Style Switcher */}
-      <div className="absolute top-4 left-4 z-10 bg-slate-900/90 border border-slate-700/60 rounded-xl p-1.5 flex gap-1 shadow-lg backdrop-blur-md">
-        {(["streets", "satellite", "dark"] as const).map((style) => (
-          <button
-            key={style}
-            type="button"
-            onClick={() => setMapStyle(style)}
-            className={`px-3 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-wider transition-all ${
-              mapStyle === style
-                ? "bg-[#00aeef] text-white"
-                : "text-slate-400 hover:text-white hover:bg-slate-800"
-            }`}
-          >
-            {style}
-          </button>
-        ))}
+      {/* Floating Style & 3D Switcher */}
+      <div className="absolute top-4 left-4 z-10 flex gap-2">
+        <div className="bg-slate-900/90 border border-slate-700/60 rounded-xl p-1.5 flex gap-1 shadow-lg backdrop-blur-md">
+          {(["streets", "satellite", "dark"] as const).map((style) => (
+            <button
+              key={style}
+              type="button"
+              onClick={() => setMapStyle(style)}
+              className={`px-3 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-wider transition-all ${
+                mapStyle === style
+                  ? "bg-[#00aeef] text-white"
+                  : "text-slate-400 hover:text-white hover:bg-slate-800"
+              }`}
+            >
+              {style}
+            </button>
+          ))}
+        </div>
+
+        <button
+          type="button"
+          onClick={() => setShow3D(!show3D)}
+          className={`bg-slate-900/90 border border-slate-700/60 rounded-xl px-3 py-1.5 text-[10px] font-black uppercase tracking-wider transition-all shadow-lg backdrop-blur-md ${
+            show3D
+              ? "text-[#00aeef]"
+              : "text-slate-400 hover:text-white"
+          }`}
+        >
+          3D: {show3D ? "ON" : "OFF"}
+        </button>
       </div>
 
       {/* HUD Layer Grid (top transparent layer) */}

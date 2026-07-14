@@ -5,40 +5,38 @@ import DashboardAdmin from "@/app/dashboard/DashboardAdmin";
 export const dynamic = "force-dynamic";
 
 export default async function AdminPage() {
-  // 1. Fetch users from database
-  const users = await prisma.user.findMany({
-    orderBy: { name: "asc" },
-  });
-
-  // 2. Fetch telemetry nodes from database
-  const nodes = await prisma.telemetryNode.findMany({
-    orderBy: { name: "asc" },
-  });
-
-  // 3. Fetch complaints from database using raw SQL to read PostGIS geom coordinates directly
-  const complaints: any[] = await prisma.$queryRaw`
-    SELECT 
-      c.id, 
-      c."rawText", 
-      c."translatedText", 
-      c.summary, 
-      c.urgency, 
-      c.category, 
-      c.status, 
-      c."aiStatus", 
-      c."imageUrl", 
-      c."createdAt", 
-      c."assignedToId",
-      c.barangay,
-      u.name AS "userName",
-      u.email AS "userEmail",
-      u."serviceAccountNo" AS "serviceAccountNo",
-      ST_X(c.geom) AS longitude,
-      ST_Y(c.geom) AS latitude
-    FROM "Complaint" c
-    LEFT JOIN "User" u ON c."userId" = u.id
-    ORDER BY c."createdAt" DESC
-  `;
+  // 1. Fetch users, nodes, and complaints in parallel to optimize load latency
+  const [users, nodes, complaints] = await Promise.all([
+    prisma.user.findMany({
+      orderBy: { name: "asc" },
+    }),
+    prisma.telemetryNode.findMany({
+      orderBy: { name: "asc" },
+    }),
+    prisma.$queryRaw`
+      SELECT 
+        c.id, 
+        c."rawText", 
+        c."translatedText", 
+        c.summary, 
+        c.urgency, 
+        c.category, 
+        c.status, 
+        c."aiStatus", 
+        c."imageUrl", 
+        c."createdAt", 
+        c."assignedToId",
+        c.barangay,
+        u.name AS "userName",
+        u.email AS "userEmail",
+        u."serviceAccountNo" AS "serviceAccountNo",
+        ST_X(c.geom) AS longitude,
+        ST_Y(c.geom) AS latitude
+      FROM "Complaint" c
+      LEFT JOIN "User" u ON c."userId" = u.id
+      ORDER BY c."createdAt" DESC
+    ` as Promise<any[]>
+  ]);
 
   // 4. Format data types for client serialization
   const totalUsers = users.length;
