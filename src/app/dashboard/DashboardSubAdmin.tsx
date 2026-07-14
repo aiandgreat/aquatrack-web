@@ -106,6 +106,7 @@ export default function DashboardSubAdmin({
   const [filterAssignedOnly, setFilterAssignedOnly] = useState(true);
   const [advisoriesPage, setAdvisoriesPage] = useState(1);
   const [isDark, setIsDark] = useState(false);
+  const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
 
   useEffect(() => {
     const root = window.document.documentElement;
@@ -308,14 +309,21 @@ export default function DashboardSubAdmin({
     setTimeout(() => setAlertMessage(null), 5000);
   };
 
+  // ── Loading Screen ──────────────────────────────────────────────────────────
   if (loading) {
     return (
-      <div className="min-h-screen bg-[#EEF4FA] flex items-center justify-center">
-        <div className="flex flex-col items-center space-y-4">
-          <div className="w-12 h-12 border-4 border-[#00aeef] border-t-transparent rounded-full animate-spin" />
-          <p className="text-[#001e66] font-black text-sm tracking-wider uppercase">
-            Loading Sub-Admin Command Center...
-          </p>
+      <div className="min-h-screen bg-[#F8FAFC] flex items-center justify-center">
+        <div className="flex flex-col items-center gap-4">
+          <div className="relative w-14 h-14">
+            <div className="absolute inset-0 rounded-full border-4 border-slate-100" />
+            <div className="absolute inset-0 rounded-full border-4 border-t-[#00aeef] border-r-transparent border-b-transparent border-l-transparent animate-spin" />
+          </div>
+          <div className="text-center">
+            <p className="text-sm font-semibold text-[#001e66] tracking-wide">
+              Loading Field Technician Portal
+            </p>
+            <p className="text-xs text-slate-400 mt-1">Verifying session and syncing data...</p>
+          </div>
         </div>
       </div>
     );
@@ -340,47 +348,117 @@ export default function DashboardSubAdmin({
     return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
   });
 
+  // Derive initials from email for profile chip
+  const userEmail = session?.user?.email ?? "";
+  const initials = userEmail ? userEmail.substring(0, 2).toUpperCase() : "FT";
+
+  // Staff ID: first segment of email before @
+  const staffId = userEmail ? userEmail.split("@")[0] : "unknown";
+
+  // Nav items definition
+  const navItems = [
+    {
+      key: "home",
+      label: "Dashboard Home",
+      icon: (
+        <svg className="w-4 h-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+          <path strokeLinecap="round" strokeLinejoin="round" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
+        </svg>
+      ),
+    },
+    {
+      key: "map",
+      label: "Live Monitoring Map",
+      icon: (
+        <svg className="w-4 h-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+          <path strokeLinecap="round" strokeLinejoin="round" d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7" />
+        </svg>
+      ),
+    },
+    {
+      key: "complaints",
+      label: "Complaints Triage",
+      icon: (
+        <svg className="w-4 h-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+          <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+        </svg>
+      ),
+    },
+    {
+      key: "telemetry",
+      label: "IoT Telemetry Panel",
+      icon: (
+        <svg className="w-4 h-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+          <path strokeLinecap="round" strokeLinejoin="round" d="M9 3v2m6-2v2M9 19v2m6-2v2M5 9H3m2 6H3m18-6h-2m2 6h-2M7 19h10a2 2 0 002-2V7a2 2 0 00-2-2H7a2 2 0 00-2 2v10a2 2 0 002 2zM9 9h6v6H9V9z" />
+        </svg>
+      ),
+    },
+    {
+      key: "advisories",
+      label: "Advisories & Events",
+      icon: (
+        <svg className="w-4 h-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+          <path strokeLinecap="round" strokeLinejoin="round" d="M11 5.882V19.24a1.76 1.76 0 01-3.417.592l-2.147-6.15M18 13a3 3 0 100-6M5.436 13.683A4.001 4.001 0 017 6h1.832c4.1 0 7.625-1.234 9.168-3v14c-1.543-1.766-5.067-3-9.168-3H7a3.988 3.988 0 01-1.564-.317z" />
+        </svg>
+      ),
+    },
+  ] as const;
+
   return (
-    <div className="min-h-screen bg-[#EEF4FA] dark:bg-slate-950 text-[#001e66] dark:text-slate-100 flex flex-col font-sans relative w-full h-full overflow-x-hidden transition-colors duration-200">
+    <div className="min-h-screen bg-[#F8FAFC] text-slate-800 flex flex-col font-sans w-full overflow-x-hidden">
 
-
-      {/* Top Header Card */}
-      <header className="m-[18px] mb-0 h-[86px] shrink-0 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-[16px] shadow-sm shadow-blue-100 dark:shadow-none flex items-center justify-between px-6 z-40 relative">
-        <div className="flex items-center space-x-4">
-          <img src="/LOGO2.png" alt="AquaTrack Logo" className="h-14 w-auto object-contain" />
-          <div className="flex flex-col">
-            <span className="text-xl font-black tracking-tight text-[#001e66] dark:text-slate-100 leading-none">
+      {/* ── Header ─────────────────────────────────────────────────────────── */}
+      <header className="sticky top-0 z-50 h-16 bg-white border-b border-slate-100 flex items-center justify-between px-6 shrink-0">
+        {/* Left: Logo + Wordmark */}
+        <div className="flex items-center gap-3">
+          <button
+            onClick={() => setIsMobileSidebarOpen(true)}
+            className="lg:hidden p-1.5 text-slate-500 hover:text-[#001e66] hover:bg-slate-50 rounded-xl transition-all focus:outline-none cursor-pointer"
+            aria-label="Open navigation sidebar"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M4 6h16M4 12h16M4 18h16" />
+            </svg>
+          </button>
+          <img src="/LOGO2.png" alt="AquaTrack Logo" className="h-8 w-auto object-contain" />
+          <div className="flex flex-col leading-none">
+            <span className="text-base font-black tracking-tight text-[#001e66]">
               AQUA<span className="text-[#00aeef]">TRACK</span>
             </span>
-            <span className="text-[10px] font-black text-[#001e66] dark:text-slate-200 tracking-wider uppercase mt-1">
-              CITY OF SAN FERNANDO • SUB-ADMIN MONITORING CENTER
-            </span>
-            <span className="text-[10px] text-slate-500 dark:text-slate-400 font-bold mt-0.5">
-              Assigned Operations & Incident Coordination
+            <span className="text-[9px] font-semibold uppercase tracking-widest text-slate-400 mt-0.5">
+              Field Technician Portal
             </span>
           </div>
         </div>
 
-        <div className="flex items-center space-x-3 relative">
-          {/* Dark Mode Toggle */}
-          <div>
-            <button
-              onClick={() => setIsDark(!isDark)}
-              className="px-3.5 h-10 bg-white hover:bg-slate-50 border border-slate-200 rounded-xl flex items-center justify-center shadow-sm transition-all focus:outline-none dark:bg-slate-800 dark:border-slate-700 dark:hover:bg-slate-700 text-xs font-black text-[#001e66] dark:text-slate-200"
-              title={isDark ? "Switch to Light Mode" : "Switch to Dark Mode"}
-            >
-              <span>{isDark ? "Light" : "Dark"}</span>
-            </button>
-          </div>
+        {/* Right: Controls */}
+        <div className="flex items-center gap-3">
+          {/* Dark Mode Toggle - icon only */}
+          <button
+            onClick={() => setIsDark(!isDark)}
+            title={isDark ? "Switch to Light Mode" : "Switch to Dark Mode"}
+            className="w-9 h-9 rounded-xl border border-slate-100 bg-white hover:bg-slate-50 flex items-center justify-center text-slate-500 hover:text-[#001e66] transition-all focus:outline-none"
+          >
+            {isDark ? (
+              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M12 3v1m0 16v1m8.66-9h-1M4.34 12h-1m15.07-6.07-.71.71M6.34 17.66l-.71.71m12.73 0-.71-.71M6.34 6.34l-.71-.71M12 5a7 7 0 100 14A7 7 0 0012 5z" />
+              </svg>
+            ) : (
+              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M21 12.79A9 9 0 1111.21 3 7 7 0 0021 12.79z" />
+              </svg>
+            )}
+          </button>
 
-          <div className="h-10 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl flex items-center pl-3 pr-4 space-x-3 shadow-sm select-none">
-            <div className="w-6 h-6 bg-[#00aeef] text-white font-black text-xs rounded-lg flex items-center justify-center">
-              SA
+          {/* Staff Profile Chip */}
+          <div className="flex items-center gap-2 h-9 px-3 rounded-xl border border-slate-100 bg-white select-none">
+            <div className="w-6 h-6 rounded-lg bg-[#001e66] text-white text-[10px] font-bold flex items-center justify-center shrink-0">
+              {initials}
             </div>
-            <div className="text-left hidden sm:flex flex-col">
-              <span className="text-xs font-mono font-black text-[#001e66] dark:text-slate-200 leading-none">{session?.user?.email}</span>
-              <span className="text-[8px] font-black uppercase text-[#00aeef] mt-1 tracking-wider leading-none">
-                {currentUserRole}
+            <div className="hidden sm:flex flex-col leading-none">
+              <span className="text-xs font-semibold text-[#001e66] truncate max-w-[160px]">{userEmail}</span>
+              <span className="text-[9px] font-semibold uppercase tracking-wider text-[#00aeef] mt-0.5">
+                {currentUserRole ?? "Field Technician"}
               </span>
             </div>
           </div>
@@ -388,67 +466,177 @@ export default function DashboardSubAdmin({
           {/* Logout Button */}
           <button
             onClick={() => handleLogout()}
-            className="h-10 px-4 bg-red-50 hover:bg-red-100 border border-red-200 text-[#970006] rounded-xl flex items-center justify-center font-bold text-xs uppercase tracking-wider shadow-sm transition-all focus:outline-none"
+            className="h-9 px-4 bg-[#001e66] text-white rounded-xl text-sm font-semibold hover:bg-[#00aeef] transition-all focus:outline-none"
           >
             Logout
           </button>
         </div>
       </header>
 
-      {/* Main Viewport Grid */}
-      <div className="flex-1 flex flex-col lg:flex-row p-[18px] gap-[18px] z-30">
-        <aside className="w-full lg:w-64 shrink-0 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-[18px] p-5 shadow-sm shadow-blue-100 dark:shadow-none flex flex-col gap-1 z-20 h-fit lg:sticky lg:top-[18px]">
-          <div className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-2 border-b border-slate-100 dark:border-slate-800 pb-2 px-3">
-            STAFF CONSOLE
+      {/* ── Body ────────────────────────────────────────────────────────────── */}
+      <div className="flex flex-1 overflow-hidden">
+
+        {/* ── Sidebar ───────────────────────────────────────────────────────── */}
+        <aside className="hidden lg:flex w-56 shrink-0 bg-white border-r border-slate-100 flex flex-col sticky top-16 self-start h-[calc(100vh-4rem)] overflow-y-auto">
+          <div className="flex-1 py-3 px-3">
+            {/* Section label */}
+            <p className="text-[9px] font-semibold uppercase tracking-widest text-slate-400 px-3 mb-2 mt-2">
+              Staff Console
+            </p>
+
+            {/* Nav Items */}
+            <nav className="flex flex-col gap-0.5">
+              {navItems.map((item) => {
+                const isActive = activeTab === item.key;
+                return (
+                  <button
+                    key={item.key}
+                    onClick={() => setActiveTab(item.key as any)}
+                    className={`w-full flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-sm font-medium transition-all duration-150 relative ${
+                      isActive
+                        ? "bg-[#001e66]/5 text-[#001e66] font-semibold"
+                        : "text-slate-500 hover:text-[#001e66] hover:bg-slate-50"
+                    }`}
+                  >
+                    {/* Active left indicator bar */}
+                    {isActive && (
+                      <span className="absolute left-0 top-1/2 -translate-y-1/2 w-0.5 h-4 bg-[#00aeef] rounded-full" />
+                    )}
+                    <span className={isActive ? "text-[#001e66]" : "text-slate-400"}>
+                      {item.icon}
+                    </span>
+                    <span className="truncate">{item.label}</span>
+                  </button>
+                );
+              })}
+            </nav>
           </div>
-          {[
-            { 
-              key: "home", 
-              label: "Dashboard Home", 
-              icon: "M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" 
-            },
-            { 
-              key: "map", 
-              label: "Live Monitoring Map", 
-              icon: "M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7" 
-            },
-            { 
-              key: "complaints", 
-              label: "Complaints Triage", 
-              icon: "M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" 
-            },
-            { 
-              key: "telemetry", 
-              label: "IoT Telemetry Panel", 
-              icon: "M9 3v2m6-2v2M9 19v2m6-2v2M5 9H3m2 6H3m18-6h-2m2 6h-2M7 19h10a2 2 0 002-2V7a2 2 0 00-2-2H7a2 2 0 00-2 2v10a2 2 0 002 2zM9 9h6v6H9V9z" 
-            },
-            { 
-              key: "advisories", 
-              label: "Advisories & Events", 
-              icon: "M11 5.882V19.24a1.76 1.76 0 01-3.417.592l-2.147-6.15M18 13a3 3 0 100-6M5.436 13.683A4.001 4.001 0 017 6h1.832c4.1 0 7.625-1.234 9.168-3v14c-1.543-1.766-5.067-3-9.168-3H7a3.988 3.988 0 01-1.564-.317z" 
-            },
-          ].map((item) => {
-            const isActive = activeTab === item.key;
-            return (
-              <button
-                key={item.key}
-                onClick={() => setActiveTab(item.key as any)}
-                className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-xs font-black transition-all duration-200 relative overflow-hidden group hover:scale-[1.01] ${
-                  isActive
-                    ? "bg-[#063A8C] text-white shadow-md shadow-blue-950/20"
-                    : "text-slate-600 hover:bg-slate-50 dark:hover:bg-slate-800 hover:text-[#00aeef]"
-                }`}
-              >
-                {isActive && (
-                  <span className="absolute left-0 top-0 bottom-0 w-1 bg-[#ffd800]" />
-                )}
-                <span>{item.label}</span>
-              </button>
-            );
-          })}
+
+          {/* Sidebar Bottom — Assigned count badge + Staff ID */}
+          <div className="px-4 py-4 border-t border-slate-100 flex flex-col gap-3">
+            <div className="flex items-center justify-between">
+              <span className="text-xs text-slate-500 font-medium">Assigned</span>
+              <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
+                assignedComplaints.length > 0
+                  ? "bg-[#970006]/10 text-[#970006]"
+                  : "bg-slate-100 text-slate-500"
+              }`}>
+                {assignedComplaints.length} complaint{assignedComplaints.length !== 1 ? "s" : ""}
+              </span>
+            </div>
+            <div className="flex items-center gap-2">
+              <div className="w-6 h-6 rounded-lg bg-[#001e66] text-white text-[10px] font-bold flex items-center justify-center shrink-0">
+                {initials}
+              </div>
+              <div className="flex flex-col leading-none min-w-0">
+                <span className="text-[10px] font-semibold text-[#001e66] truncate">{staffId}</span>
+                <span className="text-[9px] text-slate-400 mt-0.5">Staff ID</span>
+              </div>
+            </div>
+          </div>
         </aside>
 
-        <main className="flex-1 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-[18px] shadow-sm shadow-blue-100 dark:shadow-none p-6 flex flex-col">
+        {/* ── Mobile Sidebar Drawer ── */}
+        <AnimatePresence>
+          {isMobileSidebarOpen && (
+            <>
+              {/* Backdrop */}
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 0.4 }}
+                exit={{ opacity: 0 }}
+                onClick={() => setIsMobileSidebarOpen(false)}
+                className="fixed inset-0 bg-slate-950 z-50 lg:hidden"
+              />
+              {/* Drawer Content */}
+              <motion.aside
+                initial={{ x: "-100%" }}
+                animate={{ x: 0 }}
+                exit={{ x: "-100%" }}
+                transition={{ type: "tween", duration: 0.2 }}
+                className="fixed inset-y-0 left-0 w-64 bg-white border-r border-slate-100 z-50 flex flex-col lg:hidden h-full overflow-y-auto"
+              >
+                {/* Drawer Header */}
+                <div className="h-16 border-b border-slate-100 flex items-center justify-between px-5 shrink-0">
+                  <div className="flex items-center gap-3">
+                    <img src="/LOGO2.png" alt="AquaTrack Logo" className="h-8 w-auto object-contain" />
+                    <span className="text-base font-black tracking-tight text-[#001e66]">
+                      AQUA<span className="text-[#00aeef]">TRACK</span>
+                    </span>
+                  </div>
+                  <button
+                    onClick={() => setIsMobileSidebarOpen(false)}
+                    className="p-1.5 text-slate-400 hover:text-slate-600 rounded-xl hover:bg-slate-50 cursor-pointer"
+                  >
+                    <svg xmlns="http://www.w3.org/2000/svg" className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                  </button>
+                </div>
+
+                {/* Drawer Nav Items */}
+                <div className="flex-1 py-3 px-3">
+                  <p className="text-[9px] font-semibold uppercase tracking-widest text-slate-400 px-3 mb-2 mt-2">
+                    Staff Console
+                  </p>
+                  <nav className="flex flex-col gap-0.5">
+                    {navItems.map((item) => {
+                      const isActive = activeTab === item.key;
+                      return (
+                        <button
+                          key={item.key}
+                          onClick={() => {
+                            setActiveTab(item.key as any);
+                            setIsMobileSidebarOpen(false);
+                          }}
+                          className={`w-full flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-sm font-medium transition-all duration-150 relative ${
+                            isActive
+                              ? "bg-[#001e66]/5 text-[#001e66] font-semibold"
+                              : "text-slate-500 hover:text-[#001e66] hover:bg-slate-50"
+                          }`}
+                        >
+                          {isActive && (
+                            <span className="absolute left-0 top-1/2 -translate-y-1/2 w-0.5 h-4 bg-[#00aeef] rounded-full" />
+                          )}
+                          <span className={isActive ? "text-[#001e66]" : "text-slate-400"}>
+                            {item.icon}
+                          </span>
+                          <span className="truncate">{item.label}</span>
+                        </button>
+                      );
+                    })}
+                  </nav>
+                </div>
+
+                {/* Drawer Bottom */}
+                <div className="px-4 py-4 border-t border-slate-100 flex flex-col gap-3 shrink-0">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs text-slate-500 font-medium">Assigned</span>
+                    <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
+                      assignedComplaints.length > 0
+                        ? "bg-[#970006]/10 text-[#970006]"
+                        : "bg-slate-100 text-slate-500"
+                    }`}>
+                      {assignedComplaints.length} complaint{assignedComplaints.length !== 1 ? "s" : ""}
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <div className="w-6 h-6 rounded-lg bg-[#001e66] text-white text-[10px] font-bold flex items-center justify-center shrink-0">
+                      {initials}
+                    </div>
+                    <div className="flex flex-col leading-none min-w-0">
+                      <span className="text-[10px] font-semibold text-[#001e66] truncate">{staffId}</span>
+                      <span className="text-[9px] text-slate-400 mt-0.5">Staff ID</span>
+                    </div>
+                  </div>
+                </div>
+              </motion.aside>
+            </>
+          )}
+        </AnimatePresence>
+
+        {/* ── Main Content ──────────────────────────────────────────────────── */}
+        <main className="flex-1 bg-[#F8FAFC] overflow-y-auto p-6 flex flex-col">
           {alertMessage && (
             <div
               className={`p-4 rounded-xl border mb-6 flex items-start space-x-3 text-sm animate-fade-in ${
@@ -568,7 +756,7 @@ export default function DashboardSubAdmin({
                 return (
                   <div className="space-y-6 animate-in fade-in duration-200">
                     <div className="pb-4 border-b border-slate-200">
-                      <h2 className="text-lg font-black text-[#001e66] tracking-tight">Advisories &amp; Events</h2>
+                      <h2 className="text-lg font-semibold text-[#001e66] tracking-tight">Advisories &amp; Events</h2>
                       <p className="text-xs text-slate-500 font-bold">Service bulletins and operational notices from the district admin</p>
                     </div>
 
@@ -576,14 +764,14 @@ export default function DashboardSubAdmin({
                       {paginatedAdvisories.map((ad) => (
                         <div
                           key={ad.id}
-                          className={`bg-white border border-slate-200 border-l-4 ${getBorderColor(ad.type)} rounded-xl p-5 space-y-2.5 shadow-[0_2px_8px_rgba(0,0,0,0.02)] hover:shadow-md transition-all`}
+                          className={`bg-white border border-slate-100 border-l-4 ${getBorderColor(ad.type)} rounded-2xl p-5 space-y-2.5 shadow-sm hover:shadow-md transition-all`}
                         >
                           <div className="flex items-center gap-2 flex-wrap">
                             <div className="flex items-center space-x-1 text-slate-400">
                               {getTypeIcon(ad.type)}
                               <span className="text-[10px] font-bold">{ad.date}</span>
                             </div>
-                            <span className={`text-[8px] font-black uppercase px-2 py-0.5 rounded border ${
+                            <span className={`text-[8px] font-black uppercase px-2 py-0.5 rounded-full border ${
                               ad.type === "warning"
                                 ? "bg-red-50 text-red-600 border-red-200"
                                 : ad.type === "info"
@@ -594,11 +782,11 @@ export default function DashboardSubAdmin({
                             }`}>
                               {ad.type}
                             </span>
-                            <span className="text-[8px] font-black uppercase px-2 py-0.5 rounded bg-indigo-50 text-indigo-600 border border-indigo-200">
+                            <span className="text-[8px] font-black uppercase px-2 py-0.5 rounded-full bg-indigo-50 text-indigo-600 border border-indigo-200">
                               {ad.targetRole === "technicians" ? "Technicians" : "All Staff"}
                             </span>
                           </div>
-                          <h3 className="font-extrabold text-[#001e66] text-sm">{ad.title}</h3>
+                          <h3 className="font-semibold text-[#001e66] text-sm">{ad.title}</h3>
                           <p className="text-xs text-slate-500 leading-relaxed">{ad.text}</p>
                         </div>
                       ))}
@@ -606,32 +794,32 @@ export default function DashboardSubAdmin({
                       {filteredAdvisories.length === 0 && (
                         <div className="py-12 text-center bg-slate-50 border border-dashed border-slate-200 rounded-2xl">
                           <div className="text-4xl mb-3">📋</div>
-                          <p className="text-sm font-black text-slate-400">No advisories posted yet.</p>
+                          <p className="text-sm font-semibold text-slate-400">No advisories posted yet.</p>
                           <p className="text-xs text-slate-400 mt-1">Check back for operational bulletins from the admin.</p>
                         </div>
                       )}
 
                       {/* Pagination Controls */}
                       {maxPage > 1 && (
-                        <div className="flex items-center justify-between pt-4 border-t border-slate-200 mt-4">
+                        <div className="flex items-center justify-between pt-4 border-t border-slate-100 mt-4">
                           <button
                             type="button"
                             disabled={currentPage === 1}
                             onClick={() => setAdvisoriesPage((p) => Math.max(1, p - 1))}
-                            className="px-3.5 py-1.5 rounded-xl border border-slate-200 text-[#001e66] bg-white hover:bg-slate-50 disabled:opacity-40 text-xxs font-black tracking-wider uppercase transition-all shadow-sm flex items-center gap-1.5 cursor-pointer disabled:cursor-not-allowed"
+                            className="px-3.5 py-1.5 rounded-xl border border-slate-100 text-[#001e66] bg-white hover:bg-slate-50 disabled:opacity-40 text-xs font-semibold transition-all shadow-sm flex items-center gap-1.5 cursor-pointer disabled:cursor-not-allowed"
                           >
-                            ← Previous
+                            Previous
                           </button>
-                          <span className="text-xxs font-black text-slate-500 uppercase tracking-widest">
+                          <span className="text-xs font-medium text-slate-500">
                             Page {currentPage} of {maxPage}
                           </span>
                           <button
                             type="button"
                             disabled={currentPage === maxPage}
                             onClick={() => setAdvisoriesPage((p) => Math.min(maxPage, p + 1))}
-                            className="px-3.5 py-1.5 rounded-xl border border-slate-200 text-[#001e66] bg-white hover:bg-slate-50 disabled:opacity-40 text-xxs font-black tracking-wider uppercase transition-all shadow-sm flex items-center gap-1.5 cursor-pointer disabled:cursor-not-allowed"
+                            className="px-3.5 py-1.5 rounded-xl border border-slate-100 text-[#001e66] bg-white hover:bg-slate-50 disabled:opacity-40 text-xs font-semibold transition-all shadow-sm flex items-center gap-1.5 cursor-pointer disabled:cursor-not-allowed"
                           >
-                            Next →
+                            Next
                           </button>
                         </div>
                       )}

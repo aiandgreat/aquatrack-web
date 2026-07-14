@@ -84,6 +84,11 @@ export default function HeatmapsSection({ complaints = [] }: HeatmapsSectionProp
   const [loading, setLoading] = useState(true);
   const [selectedBarangay, setSelectedBarangay] = useState<BarangayData | null>(null);
 
+  // Search, Filter and Sort States for managing spatial heatmap data
+  const [searchQuery, setSearchQuery] = useState("");
+  const [severityFilter, setSeverityFilter] = useState<"all" | "critical" | "moderate" | "low" | "clean">("all");
+  const [sortBy, setSortBy] = useState<"alphabetical" | "count">("alphabetical");
+
   // Gemini AI summary states
   const [summaryLoading, setSummaryLoading] = useState(false);
   const [aiSummary, setAiSummary] = useState<string | null>(null);
@@ -380,6 +385,30 @@ export default function HeatmapsSection({ complaints = [] }: HeatmapsSectionProp
   const totalComplaints = barangays.reduce((s, b) => s + b.count, 0);
   const hotspotCount = barangays.filter((b) => b.count >= 16).length;
 
+  const filteredBarangays = barangays
+    .filter((b) => {
+      const matchesSearch = b.name.toLowerCase().includes(searchQuery.toLowerCase());
+      
+      let matchesSeverity = true;
+      if (severityFilter === "critical") {
+        matchesSeverity = b.count >= 16;
+      } else if (severityFilter === "moderate") {
+        matchesSeverity = b.count >= 10 && b.count < 16;
+      } else if (severityFilter === "low") {
+        matchesSeverity = b.count > 0 && b.count < 10;
+      } else if (severityFilter === "clean") {
+        matchesSeverity = b.count === 0;
+      }
+
+      return matchesSearch && matchesSeverity;
+    })
+    .sort((a, b) => {
+      if (sortBy === "count") {
+        return b.count - a.count;
+      } else {
+        return a.name.localeCompare(b.name);
+      }
+    });
   // Custom styles for pulsing halos on complaint markers
   const pulseStyle = `
     @keyframes map-pulse-red {
@@ -527,32 +556,116 @@ export default function HeatmapsSection({ complaints = [] }: HeatmapsSectionProp
           <div className="w-8 h-8 border-4 border-[#00aeef] border-t-transparent rounded-full animate-spin" />
         </div>
       ) : (
-        <div>
-          <h3 className="text-xs font-black text-slate-400 uppercase tracking-wider mb-3">
-            City Barangay Grid — Click cell to zoom map
-          </h3>
-          <div className="grid grid-cols-5 sm:grid-cols-7 gap-2">
-            {barangays.map((brgy) => {
-              const colorClass = getHeatColor(brgy.count);
-              const isSelected = selectedBarangay?.name === brgy.name;
+        <div className="space-y-4">
+          <div className="flex flex-col md:flex-row md:items-center justify-between gap-3.5 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-4 shadow-sm">
+            
+            {/* Left: Search Input */}
+            <div className="relative flex-1 max-w-sm">
+              <input
+                type="text"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                placeholder="Search barangay..."
+                className="w-full pl-9 pr-4 py-2 text-xs font-bold rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 focus:outline-none focus:ring-2 focus:ring-[#00aeef]/30 focus:border-[#00aeef] transition-all text-[#001e66] dark:text-slate-100 placeholder:text-slate-400"
+              />
+              <svg
+                className="absolute left-3 top-2.5 w-4 h-4 text-slate-400"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+                strokeWidth="2.5"
+              >
+                <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+              </svg>
+            </div>
+
+            {/* Right: Sorting Select & Reset */}
+            <div className="flex flex-wrap items-center gap-3">
+              <div className="flex items-center gap-2">
+                <span className="text-[10px] font-black text-slate-400 uppercase tracking-wider">Sort by</span>
+                <select
+                  value={sortBy}
+                  onChange={(e) => setSortBy(e.target.value as "alphabetical" | "count")}
+                  className="px-3 py-1.5 text-xs font-bold rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 focus:outline-none focus:ring-2 focus:ring-[#00aeef]/30 transition-all text-[#001e66] dark:text-slate-100 cursor-pointer"
+                >
+                  <option value="alphabetical">A-Z Name</option>
+                  <option value="count">Most Incidents</option>
+                </select>
+              </div>
+
+              {(searchQuery || severityFilter !== "all" || sortBy !== "alphabetical") && (
+                <button
+                  onClick={() => {
+                    setSearchQuery("");
+                    setSeverityFilter("all");
+                    setSortBy("alphabetical");
+                  }}
+                  className="px-3 py-1.5 text-[10px] font-black uppercase tracking-wider text-slate-500 hover:text-slate-700 bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl transition-all cursor-pointer"
+                >
+                  Clear Filters
+                </button>
+              )}
+            </div>
+
+          </div>
+
+          {/* Severity filter chips row */}
+          <div className="flex flex-wrap items-center gap-2">
+            {[
+              { id: "all", label: "All Sectors", color: "border-slate-200 bg-white text-slate-600 dark:text-slate-300 dark:bg-slate-950 dark:border-slate-800" },
+              { id: "critical", label: "Critical (16+)", color: "border-red-200 bg-red-50 text-red-700 dark:bg-red-950/20 dark:border-red-900/40" },
+              { id: "moderate", label: "Moderate (10-15)", color: "border-orange-200 bg-orange-50 text-orange-700 dark:bg-orange-950/20 dark:border-orange-900/40" },
+              { id: "low", label: "Low Risk (1-9)", color: "border-yellow-200 bg-yellow-50 text-yellow-800 dark:bg-yellow-950/20 dark:border-yellow-900/40" },
+              { id: "clean", label: "Clean (0)", color: "border-slate-200 bg-slate-50 text-slate-400 dark:bg-slate-950/20 dark:border-slate-800" }
+            ].map((chip) => {
+              const active = severityFilter === chip.id;
               return (
                 <button
-                  key={brgy.name}
-                  onClick={() => setSelectedBarangay(isSelected ? null : brgy)}
-                  title={`${brgy.name}: ${brgy.count} complaint${brgy.count !== 1 ? "s" : ""}`}
-                  className={`relative border-2 rounded-xl p-2 flex flex-col items-center justify-center gap-1 transition-all cursor-pointer hover:scale-105 hover:shadow-md ${colorClass} ${
-                    isSelected ? "ring-2 ring-offset-1 ring-[#001e66] scale-105 shadow-md" : ""
+                  key={chip.id}
+                  onClick={() => setSeverityFilter(chip.id as any)}
+                  className={`px-3 py-1.5 rounded-xl border text-[10px] font-black uppercase tracking-wider transition-all cursor-pointer hover:scale-[1.02] ${chip.color} ${
+                    active ? "ring-2 ring-[#00aeef] scale-[1.02] shadow-sm font-black" : "opacity-75 hover:opacity-100"
                   }`}
-                  style={{ minHeight: "72px" }}
                 >
-                  <span className="text-[9px] font-black leading-tight text-center break-words hyphens-auto">
-                    {brgy.name}
-                  </span>
-                  <span className="text-base font-black leading-none">{brgy.count}</span>
+                  {chip.label}
                 </button>
               );
             })}
           </div>
+
+          <h3 className="text-xs font-black text-slate-400 uppercase tracking-wider pt-2 flex items-center justify-between">
+            <span>City Barangay Grid — Click cell to zoom map</span>
+            <span className="text-[10px] text-slate-500 font-bold normal-case">Showing {filteredBarangays.length} of {barangays.length} barangays</span>
+          </h3>
+
+          {filteredBarangays.length === 0 ? (
+            <div className="bg-slate-50 dark:bg-slate-900/40 border border-dashed border-slate-200 dark:border-slate-800 rounded-2xl py-10 text-center">
+              <p className="text-xs text-slate-400 font-bold">No barangays match the active search or filters.</p>
+            </div>
+          ) : (
+            <div className="grid grid-cols-5 sm:grid-cols-7 gap-2">
+              {filteredBarangays.map((brgy) => {
+                const colorClass = getHeatColor(brgy.count);
+                const isSelected = selectedBarangay?.name === brgy.name;
+                return (
+                  <button
+                    key={brgy.name}
+                    onClick={() => setSelectedBarangay(isSelected ? null : brgy)}
+                    title={`${brgy.name}: ${brgy.count} complaint${brgy.count !== 1 ? "s" : ""}`}
+                    className={`relative border-2 rounded-xl p-2 flex flex-col items-center justify-center gap-1 transition-all cursor-pointer hover:scale-105 hover:shadow-md ${colorClass} ${
+                      isSelected ? "ring-2 ring-offset-1 ring-[#001e66] scale-105 shadow-md" : ""
+                    }`}
+                    style={{ minHeight: "72px" }}
+                  >
+                    <span className="text-[9px] font-black leading-tight text-center break-words hyphens-auto">
+                      {brgy.name}
+                    </span>
+                    <span className="text-base font-black leading-none">{brgy.count}</span>
+                  </button>
+                );
+              })}
+            </div>
+          )}
         </div>
       )}
 

@@ -132,6 +132,7 @@ export default function DashboardAdmin({
   const [showHelpModal, setShowHelpModal] = useState(false);
   const [showProfileMenu, setShowProfileMenu] = useState(false);
   const [showLogoutModal, setShowLogoutModal] = useState(false);
+  const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
   const [activeDetailNews, setActiveDetailNews] = useState<any | null>(null);
   const [activeDetailEvent, setActiveDetailEvent] = useState<any | null>(null);
   const [alertMessage, setAlertMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
@@ -448,8 +449,6 @@ export default function DashboardAdmin({
     }
   };
 
-  // Removed individual handleUpdateServiceAccount in favor of unified handleUpdateUserProfile
-
   const handleTriggerSimulation = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!selectedSimNodeId) {
@@ -559,50 +558,51 @@ export default function DashboardAdmin({
 
   const warningAdvisories = advisories.filter((ad) => ad.type === "warning");
 
+  // ── Loading Screen ──────────────────────────────────────────────────────────
   if (loading) {
     return (
-      <div className="min-h-screen bg-[#EEF4FA] text-[#001e66] flex flex-col items-center justify-center">
-        {/* Top color ribbon */}
-        <div className="absolute inset-x-0 top-0 flex h-1 bg-[#001e66] z-50" aria-hidden="true"></div>
-        <div className="text-center space-y-4">
-          <div className="relative w-16 h-16 mx-auto">
-            <div className="absolute inset-0 rounded-full border-4 border-[#00aeef]/20"></div>
-            <div className="absolute inset-0 rounded-full border-4 border-t-[#00aeef] animate-spin"></div>
+      <div className="min-h-screen bg-[#F8FAFC] flex items-center justify-center">
+        <div className="flex flex-col items-center gap-4">
+          <div className="relative w-14 h-14">
+            <div className="absolute inset-0 rounded-full border-4 border-slate-100" />
+            <div className="absolute inset-0 rounded-full border-4 border-t-[#00aeef] border-r-transparent border-b-transparent border-l-transparent animate-spin" />
           </div>
-          <p className="text-slate-500 text-xs font-black tracking-wider uppercase animate-pulse">
-            Verifying Admin Authorization…
-          </p>
+          <div className="text-center">
+            <p className="text-sm font-semibold text-[#001e66] tracking-wide">
+              Loading Executive Command Center
+            </p>
+            <p className="text-xs text-slate-400 mt-1">Authenticating administrative privileges...</p>
+          </div>
         </div>
       </div>
     );
   }
 
+  // ── Access Denied Screen ───────────────────────────────────────────────────
   if (currentUserRole !== "ADMIN") {
     return (
-      <div className="min-h-screen bg-[#EEF4FA] text-[#001e66] flex items-center justify-center p-4">
-        {/* Top color ribbon */}
-        <div className="absolute inset-x-0 top-0 flex h-1 bg-[#001e66] z-50" aria-hidden="true"></div>
-        <div className="max-w-md w-full bg-white border border-slate-200 rounded-3xl p-8 text-center shadow-xl relative overflow-hidden">
-          <div className="absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-[#970006] to-[#ffd800]"></div>
-          <div className="w-16 h-16 bg-[#970006]/10 border border-[#970006]/20 text-[#970006] rounded-full flex items-center justify-center mx-auto mb-6">
-            <svg className="w-8 h-8" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5">
+      <div className="min-h-screen bg-[#F8FAFC] flex items-center justify-center p-4">
+        <div className="max-w-md w-full bg-white border border-slate-100 rounded-2xl p-8 text-center shadow-md relative overflow-hidden">
+          <div className="absolute inset-x-0 top-0 h-1 bg-[#970006]" />
+          <div className="w-16 h-16 bg-[#970006]/5 border border-[#970006]/10 text-[#970006] rounded-full flex items-center justify-center mx-auto mb-6">
+            <svg className="w-8 h-8" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
               <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
             </svg>
           </div>
-          <h1 className="text-2xl font-black text-[#001e66] tracking-tight">Access Denied</h1>
-          <p className="text-slate-600 text-sm mt-3 leading-relaxed">
-            Your account role (<span className="text-[#970006] font-extrabold">{currentUserRole}</span>) does not have permission to view this command center.
+          <h1 className="text-xl font-bold text-[#001e66] tracking-tight">Access Denied</h1>
+          <p className="text-slate-500 text-sm mt-3 leading-relaxed">
+            Your account role (<span className="text-[#970006] font-semibold">{currentUserRole}</span>) does not have permission to view this command center.
           </p>
           <div className="mt-8 flex flex-col gap-3">
             <Link
               href="/dashboard"
-              className="bg-[#001e66] hover:bg-[#00aeef] text-white font-extrabold py-3 px-6 rounded-xl transition-all shadow-sm"
+              className="bg-[#001e66] hover:bg-[#00aeef] text-white font-semibold py-3 px-6 rounded-xl transition-all shadow-sm text-sm"
             >
               Go to Dashboard
             </Link>
             <button
               onClick={handleLogout}
-              className="text-slate-500 hover:text-slate-700 text-xs font-bold uppercase tracking-wider mt-2 transition-colors"
+              className="text-slate-400 hover:text-slate-600 text-xs font-semibold uppercase tracking-wider mt-2 transition-colors focus:outline-none"
             >
               Sign Out
             </button>
@@ -612,29 +612,108 @@ export default function DashboardAdmin({
     );
   }
 
+  // Active breadcrumb label
+  const tabLabels: Record<string, string> = {
+    home: "Overview Dashboard",
+    map: "Geospatial Monitoring Map",
+    reports: "Complaints & Reports Triage",
+    heatmaps: "Spatial Incident Heatmaps",
+    telemetry: "IoT Node Telemetry",
+    analytics: "Operations & Compliance Analytics",
+    users: "User Access Directory",
+    announcements: "Community Bulletins & Broadcasts",
+    config: "System Configuration & Simulator",
+  };
+
+  const activeBreadcrumb = tabLabels[activeTab] || "Command Console";
+
+  // Navigation Items
+  const navItems = [
+    { 
+      key: "home", 
+      label: "Dashboard Home", 
+      icon: "M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" 
+    },
+    { 
+      key: "map", 
+      label: "Live Monitoring Map", 
+      icon: "M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7" 
+    },
+    { 
+      key: "reports", 
+      label: "Complaints & Reports", 
+      icon: "M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" 
+    },
+    { 
+      key: "heatmaps", 
+      label: "Spatial Heatmaps", 
+      icon: "M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0zM15 11a3 3 0 11-6 0 3 3 0 016 0z" 
+    },
+    { 
+      key: "telemetry", 
+      label: "IoT Telemetry", 
+      icon: "M9 3v2m6-2v2M9 19v2m6-2v2M5 9H3m2 6H3m18-6h-2m2 6h-2M7 19h10a2 2 0 002-2V7a2 2 0 00-2-2H7a2 2 0 00-2 2v10a2 2 0 002 2zM9 9h6v6H9V9z" 
+    },
+    { 
+      key: "analytics", 
+      label: "Water Analytics", 
+      icon: "M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" 
+    },
+    { 
+      key: "users", 
+      label: "User Profiles", 
+      icon: "M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" 
+    },
+    { 
+      key: "announcements", 
+      label: "Community Broadcasts", 
+      icon: "M11 5.882V19.24a1.76 1.76 0 01-3.417.592l-2.147-6.15M18 13a3 3 0 100-6M5.436 13.683A4.001 4.001 0 017 6h1.832c4.1 0 7.625-1.234 9.168-3v14c-1.543-1.766-5.067-3-9.168-3H7a3.988 3.988 0 01-1.564-.317z" 
+    },
+    { 
+      key: "config", 
+      label: "Simulator & Settings", 
+      icon: "M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" 
+    }
+  ] as const;
+
   return (
-    <div className="min-h-screen bg-[#EEF4FA] dark:bg-slate-950 text-[#001e66] dark:text-slate-100 flex flex-col font-sans relative w-full h-full overflow-x-hidden transition-colors duration-200">
+    <div className="min-h-screen bg-[#F8FAFC] text-slate-800 flex flex-col font-sans w-full overflow-x-hidden">
 
-
-      {/* Top Header Card */}
-      <header className="m-[18px] mb-0 h-[86px] shrink-0 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-[16px] shadow-sm shadow-blue-100 dark:shadow-none flex items-center justify-between px-6 z-40 relative">
-        <div className="flex items-center space-x-4">
-          <img src="/LOGO2.png" alt="AquaTrack Logo" className="h-14 w-auto object-contain" />
-          <div className="flex flex-col">
-            <span className="text-xl font-black tracking-tight text-[#001e66] dark:text-slate-100 leading-none">
+      {/* ── Header ─────────────────────────────────────────────────────────── */}
+      <header className="sticky top-0 z-50 h-16 bg-white border-b border-slate-100 flex items-center justify-between px-6 shrink-0">
+        {/* Left: Logo + Wordmark */}
+        <div className="flex items-center gap-3">
+          <button
+            onClick={() => setIsMobileSidebarOpen(true)}
+            className="lg:hidden p-1.5 text-slate-500 hover:text-[#001e66] hover:bg-slate-50 rounded-xl transition-all focus:outline-none cursor-pointer"
+            aria-label="Open navigation sidebar"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M4 6h16M4 12h16M4 18h16" />
+            </svg>
+          </button>
+          <img src="/LOGO2.png" alt="AquaTrack Logo" className="h-8 w-auto object-contain" />
+          <div className="flex flex-col leading-none">
+            <span className="text-base font-black tracking-tight text-[#001e66]">
               AQUA<span className="text-[#00aeef]">TRACK</span>
             </span>
-            <span className="text-[10px] font-black text-[#001e66] dark:text-slate-200 tracking-wider uppercase mt-1">
-              CITY OF SAN FERNANDO • EXECUTIVE GLOBAL COMMAND CENTER
-            </span>
-            <span className="text-[10px] text-slate-500 dark:text-slate-400 font-bold mt-0.5">
-              Administrative & System Control Division
+            <span className="text-[9px] font-semibold uppercase tracking-widest text-slate-400 mt-0.5">
+              Executive Command Center
             </span>
           </div>
         </div>
 
-        <div className="flex items-center space-x-3 relative">
-          {/* Notification Button */}
+        {/* Middle: Breadcrumb */}
+        <div className="hidden md:flex items-center gap-2 text-xs text-slate-400 font-medium">
+          <span>Console</span>
+          <span className="text-slate-300">/</span>
+          <span className="text-[#001e66] font-semibold">{activeBreadcrumb}</span>
+        </div>
+
+        {/* Right: Controls */}
+        <div className="flex items-center gap-3">
+          
+          {/* Alerts Menu Trigger */}
           <div className="relative">
             <button
               onClick={() => {
@@ -642,36 +721,40 @@ export default function DashboardAdmin({
                 setShowHelpModal(false);
                 setShowProfileMenu(false);
               }}
-              className="px-3.5 h-10 bg-white dark:bg-slate-800 hover:bg-slate-50 dark:hover:bg-slate-700 border border-slate-200 dark:border-slate-700 rounded-xl flex items-center justify-center relative shadow-sm transition-all focus:outline-none text-xs font-black text-[#001e66] dark:text-slate-300"
+              className="w-9 h-9 rounded-xl border border-slate-100 bg-white hover:bg-slate-50 flex items-center justify-center text-slate-500 hover:text-[#970006] transition-all focus:outline-none relative"
             >
-              <span>Alerts</span>
-              <span className="ml-1.5 bg-[#970006] text-white text-[9px] font-black w-4.5 h-4.5 rounded-full flex items-center justify-center shadow-sm">
-                {warningAdvisories.length}
-              </span>
+              <svg xmlns="http://www.w3.org/2000/svg" className="w-4.5 h-4.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
+              </svg>
+              {warningAdvisories.length > 0 && (
+                <span className="absolute -top-1 -right-1 bg-[#970006] text-white text-[8px] font-bold w-4 h-4 rounded-full flex items-center justify-center border border-white">
+                  {warningAdvisories.length}
+                </span>
+              )}
             </button>
 
-            {/* Notification Dropdown */}
+            {/* Alerts Dropdown */}
             {showNotificationMenu && (
-              <div className="absolute right-0 mt-2 w-80 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl shadow-xl py-3 z-50 text-xs text-slate-700 dark:text-slate-300">
-                <div className="px-4 pb-2 border-b border-slate-100 dark:border-slate-800 flex justify-between items-center">
-                  <span className="font-extrabold text-[#001e66] dark:text-slate-100">Active System Alarms</span>
-                  <span className="text-[10px] text-slate-400 dark:text-slate-500 font-bold uppercase tracking-wider">
+              <div className="absolute right-0 mt-2 w-80 bg-white border border-slate-100 rounded-2xl shadow-xl py-3 z-50 text-xs">
+                <div className="px-4 pb-2 border-b border-slate-100 flex justify-between items-center">
+                  <span className="font-bold text-[#001e66]">Active System Alarms</span>
+                  <span className="text-[10px] text-slate-400 font-semibold uppercase tracking-wider">
                     {warningAdvisories.length} Alerts
                   </span>
                 </div>
                 {warningAdvisories.length === 0 ? (
-                  <div className="p-4 text-center text-slate-400 dark:text-slate-500 italic">
+                  <div className="p-4 text-center text-slate-400 italic">
                     No active system alarms.
                   </div>
                 ) : (
-                  <div className="divide-y divide-slate-100 dark:divide-slate-800 max-h-60 overflow-y-auto">
+                  <div className="divide-y divide-slate-100 max-h-60 overflow-y-auto">
                     {warningAdvisories.map((ad) => (
-                      <div key={ad.id} className="p-3 hover:bg-slate-50 dark:hover:bg-slate-850 transition-colors">
+                      <div key={ad.id} className="p-3 hover:bg-slate-50 transition-colors">
                         <div className="flex justify-between items-start">
-                          <span className="font-bold text-red-650 dark:text-red-400">{ad.title}</span>
-                          <span className="text-[9px] text-slate-400 dark:text-slate-500">{ad.date}</span>
+                          <span className="font-semibold text-[#970006]">{ad.title}</span>
+                          <span className="text-[9px] text-slate-400 font-mono">{ad.date}</span>
                         </div>
-                        <p className="text-slate-500 dark:text-slate-400 mt-1 text-[11px] leading-tight">
+                        <p className="text-slate-500 mt-1 text-[11px] leading-tight">
                           {ad.text}
                         </p>
                       </div>
@@ -683,75 +766,59 @@ export default function DashboardAdmin({
           </div>
 
           {/* Help Button */}
-          <div>
-            <button
-              onClick={() => {
-                setShowHelpModal(true);
-                setShowNotificationMenu(false);
-                setShowProfileMenu(false);
-              }}
-              className="px-3.5 h-10 bg-white hover:bg-slate-50 border border-slate-200 rounded-xl flex items-center justify-center shadow-sm transition-all focus:outline-none text-xs font-black text-[#001e66]"
-            >
-              <span>Help</span>
-            </button>
-          </div>
+          <button
+            onClick={() => {
+              setShowHelpModal(true);
+              setShowNotificationMenu(false);
+              setShowProfileMenu(false);
+            }}
+            className="w-9 h-9 rounded-xl border border-slate-100 bg-white hover:bg-slate-50 flex items-center justify-center text-slate-500 hover:text-[#001e66] transition-all focus:outline-none"
+            title="Help Center"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" className="w-4.5 h-4.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+          </button>
 
           {/* Dark Mode Toggle */}
-          <div>
-            <button
-              onClick={() => setIsDark(!isDark)}
-              className="px-3.5 h-10 bg-white hover:bg-slate-50 border border-slate-200 rounded-xl flex items-center justify-center shadow-sm transition-all focus:outline-none dark:bg-slate-800 dark:border-slate-700 dark:hover:bg-slate-700 text-xs font-black text-[#001e66] dark:text-slate-200"
-              title={isDark ? "Switch to Light Mode" : "Switch to Dark Mode"}
-            >
-              <span>{isDark ? "Light" : "Dark"}</span>
-            </button>
-          </div>
+          <button
+            onClick={() => setIsDark(!isDark)}
+            title={isDark ? "Switch to Light Mode" : "Switch to Dark Mode"}
+            className="w-9 h-9 rounded-xl border border-slate-100 bg-white hover:bg-slate-50 flex items-center justify-center text-slate-500 hover:text-[#001e66] transition-all focus:outline-none"
+          >
+            {isDark ? (
+              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M12 3v1m0 16v1m8.66-9h-1M4.34 12h-1m15.07-6.07-.71.71M6.34 17.66l-.71.71m12.73 0-.71-.71M6.34 6.34l-.71-.71M12 5a7 7 0 100 14A7 7 0 0012 5z" />
+              </svg>
+            ) : (
+              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M21 12.79A9 9 0 1111.21 3 7 7 0 0021 12.79z" />
+              </svg>
+            )}
+          </button>
 
-          {/* Admin Profile Card */}
+          {/* Admin Profile Dropdown */}
           <div className="relative">
             <button
               onClick={() => {
                 setShowProfileMenu(!showProfileMenu);
                 setShowNotificationMenu(false);
               }}
-              className="h-10 bg-white hover:bg-slate-50 border border-slate-200 rounded-xl flex items-center pl-3 pr-4 space-x-3 shadow-sm transition-all focus:outline-none"
+              className="h-9 px-3 rounded-xl border border-slate-100 bg-white flex items-center gap-2 select-none hover:bg-slate-50 transition-all focus:outline-none"
             >
-              <div className="w-6 h-6 bg-[#001e66] text-white font-black text-xs rounded-lg flex items-center justify-center">
-                A
+              <div className="w-6 h-6 rounded-lg bg-[#001e66] text-white text-[10px] font-bold flex items-center justify-center">
+                AD
               </div>
-              <div className="text-left hidden sm:flex flex-col">
-                <span className="text-xs font-black text-[#001e66] leading-none">Administrator</span>
-                <span className="text-[8px] font-black uppercase text-slate-400 mt-1 tracking-wider leading-none">
-                  SUPER-ADMIN
-                </span>
+              <div className="hidden sm:flex flex-col leading-none text-left">
+                <span className="text-xs font-semibold text-[#001e66]">Administrator</span>
+                <span className="text-[8px] font-bold text-slate-400 mt-0.5 tracking-wider uppercase">Super Admin</span>
               </div>
             </button>
 
-            {/* Profile Menu */}
             {showProfileMenu && (
-              <div className="absolute right-0 mt-2 w-56 bg-white border border-slate-200 rounded-2xl shadow-xl py-2 z-50 text-xs">
-                <div className="px-4 py-2 border-b border-slate-100">
-                  <p className="font-mono font-extrabold text-[#001e66]">{session?.user?.email || "admin@csfwd.gov.ph"}</p>
-                  <p className="text-[9px] text-[#00aeef] font-bold mt-0.5">Control Division Account</p>
-                </div>
-                <button
-                  onClick={() => {
-                    setActiveTab("users");
-                    setShowProfileMenu(false);
-                  }}
-                  className="w-full text-left px-4 py-2.5 hover:bg-slate-50 text-slate-700 font-bold transition-all"
-                >
-                  Manage User Database
-                </button>
-                <button
-                  onClick={() => {
-                    setActiveTab("config");
-                    setShowProfileMenu(false);
-                  }}
-                  className="w-full text-left px-4 py-2.5 hover:bg-slate-50 text-slate-700 font-bold transition-all"
-                >
-                  System Configuration
-                </button>
+              <div className="absolute right-0 mt-2 w-56 bg-white border border-slate-100 rounded-2xl shadow-xl py-3.5 px-4 z-50 text-xs">
+                <p className="font-semibold text-[#001e66] truncate">{session?.user?.email || "admin@csfwd.gov.ph"}</p>
+                <p className="text-[9px] text-[#00aeef] font-medium mt-0.5">Control Division Account</p>
               </div>
             )}
           </div>
@@ -759,87 +826,161 @@ export default function DashboardAdmin({
           {/* Logout Button */}
           <button
             onClick={() => setShowLogoutModal(true)}
-            className="h-10 px-4 bg-red-50 hover:bg-red-100 border border-red-200 text-[#970006] rounded-xl flex items-center justify-center font-bold text-xs uppercase tracking-wider shadow-sm transition-all focus:outline-none"
+            className="h-9 px-4 bg-[#001e66] text-white rounded-xl text-xs font-semibold hover:bg-[#00aeef] transition-all focus:outline-none"
           >
             Logout
           </button>
         </div>
       </header>
 
-      {/* Main Grid Viewport (Now with left aside sidebar console layout) */}
-      <div className="flex-1 flex flex-col lg:flex-row overflow-y-auto lg:overflow-hidden p-[18px] gap-[18px] z-30">
-        <aside className="w-full lg:w-64 shrink-0 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-[18px] p-5 shadow-sm shadow-blue-100 dark:shadow-none flex flex-col gap-1.5 lg:overflow-y-auto">
-          <div className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-2 border-b border-slate-100 dark:border-slate-800 pb-2 px-3">
-            CONTROL CONSOLE
+      {/* ── Body ────────────────────────────────────────────────────────────── */}
+      <div className="flex flex-1 overflow-hidden">
+
+        {/* ── Sidebar ───────────────────────────────────────────────────────── */}
+        <aside className="hidden lg:flex w-56 shrink-0 bg-white border-r border-slate-100 flex flex-col sticky top-16 self-start h-[calc(100vh-4rem)] overflow-y-auto">
+          <div className="flex-1 py-3 px-3">
+            <p className="text-[9px] font-semibold uppercase tracking-widest text-slate-400 px-3 mb-2 mt-2">
+              Control Console
+            </p>
+            <nav className="flex flex-col gap-0.5">
+              {navItems.map((item) => {
+                const isActive = activeTab === item.key;
+                return (
+                  <button
+                    key={item.key}
+                    onClick={() => setActiveTab(item.key as any)}
+                    className={`w-full flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-sm font-medium transition-all duration-150 relative ${
+                      isActive
+                        ? "bg-[#001e66]/5 text-[#001e66] font-semibold"
+                        : "text-slate-500 hover:text-[#001e66] hover:bg-slate-50"
+                    }`}
+                  >
+                    {isActive && (
+                      <span className="absolute left-0 top-1/2 -translate-y-1/2 w-0.5 h-4 bg-[#00aeef] rounded-full" />
+                    )}
+                    <svg
+                      xmlns="http://www.w3.org/2000/svg"
+                      className={`w-4 h-4 shrink-0 ${isActive ? "text-[#001e66]" : "text-slate-400"}`}
+                      fill="none"
+                      viewBox="0 0 24 24"
+                      stroke="currentColor"
+                      strokeWidth={isActive ? 2 : 1.75}
+                    >
+                      <path strokeLinecap="round" strokeLinejoin="round" d={item.icon} />
+                    </svg>
+                    <span className="truncate">{item.label}</span>
+                  </button>
+                );
+              })}
+            </nav>
           </div>
-          {[
-            { 
-              key: "home", 
-              label: "Dashboard Home", 
-              icon: "M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" 
-            },
-            { 
-              key: "map", 
-              label: "Live Monitoring Map", 
-              icon: "M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7" 
-            },
-            { 
-              key: "reports", 
-              label: "Complaints & Reports", 
-              icon: "M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" 
-            },
-            { 
-              key: "heatmaps", 
-              label: "Spatial Heatmaps", 
-              icon: "M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0zM15 11a3 3 0 11-6 0 3 3 0 016 0z" 
-            },
-            { 
-              key: "telemetry", 
-              label: "IoT Telemetry", 
-              icon: "M9 3v2m6-2v2M9 19v2m6-2v2M5 9H3m2 6H3m18-6h-2m2 6h-2M7 19h10a2 2 0 002-2V7a2 2 0 00-2-2H7a2 2 0 00-2 2v10a2 2 0 002 2zM9 9h6v6H9V9z" 
-            },
-            { 
-              key: "analytics", 
-              label: "Water Analytics", 
-              icon: "M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" 
-            },
-            { 
-              key: "users", 
-              label: "User Profiles", 
-              icon: "M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" 
-            },
-            { 
-              key: "announcements", 
-              label: "Community Broadcasts", 
-              icon: "M11 5.882V19.24a1.76 1.76 0 01-3.417.592l-2.147-6.15M18 13a3 3 0 100-6M5.436 13.683A4.001 4.001 0 017 6h1.832c4.1 0 7.625-1.234 9.168-3v14c-1.543-1.766-5.067-3-9.168-3H7a3.988 3.988 0 01-1.564-.317z" 
-            },
-            { 
-              key: "config", 
-              label: "Simulator & Settings", 
-              icon: "M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" 
-            },
-          ].map((item) => {
-            const isActive = activeTab === item.key;
-            return (
-              <button
-                key={item.key}
-                onClick={() => setActiveTab(item.key as any)}
-                className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-xs font-black transition-all duration-200 relative overflow-hidden group hover:scale-[1.01] ${
-                  isActive
-                    ? "bg-[#063A8C] text-white shadow-md shadow-blue-950/20"
-                    : "text-slate-600 hover:bg-slate-50 dark:hover:bg-slate-800 hover:text-[#00aeef]"
-                }`}
-              >
-                {isActive && (
-                  <span className="absolute left-0 top-0 bottom-0 w-1 bg-[#ffd800]" />
-                )}
-                <span>{item.label}</span>
-              </button>
-            );
-          })}
+
+          {/* Sidebar Bottom: Role chip + user info */}
+          <div className="px-4 py-4 border-t border-slate-100 flex flex-col gap-2">
+            <span className="inline-flex items-center gap-1.5 bg-[#001e66]/5 text-[#001e66] text-[10px] font-bold px-2.5 py-1 rounded-full border border-[#001e66]/10 w-full justify-center">
+              Super Admin Mode
+            </span>
+            <span className="text-[10px] text-slate-400 font-mono text-center truncate w-full" title={session?.user?.email}>
+              {session?.user?.email || "admin@csfwd.gov.ph"}
+            </span>
+          </div>
         </aside>
 
-        <main className="flex-1 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-[18px] shadow-sm shadow-blue-100 dark:shadow-none p-6 flex flex-col lg:overflow-y-auto">
+        {/* ── Mobile Sidebar Drawer ── */}
+        <AnimatePresence>
+          {isMobileSidebarOpen && (
+            <>
+              {/* Backdrop */}
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 0.4 }}
+                exit={{ opacity: 0 }}
+                onClick={() => setIsMobileSidebarOpen(false)}
+                className="fixed inset-0 bg-slate-950 z-50 lg:hidden"
+              />
+              {/* Drawer Content */}
+              <motion.aside
+                initial={{ x: "-100%" }}
+                animate={{ x: 0 }}
+                exit={{ x: "-100%" }}
+                transition={{ type: "tween", duration: 0.2 }}
+                className="fixed inset-y-0 left-0 w-64 bg-white border-r border-slate-100 z-50 flex flex-col lg:hidden h-full overflow-y-auto"
+              >
+                {/* Drawer Header */}
+                <div className="h-16 border-b border-slate-100 flex items-center justify-between px-5 shrink-0">
+                  <div className="flex items-center gap-3">
+                    <img src="/LOGO2.png" alt="AquaTrack Logo" className="h-8 w-auto object-contain" />
+                    <span className="text-base font-black tracking-tight text-[#001e66]">
+                      AQUA<span className="text-[#00aeef]">TRACK</span>
+                    </span>
+                  </div>
+                  <button
+                    onClick={() => setIsMobileSidebarOpen(false)}
+                    className="p-1.5 text-slate-400 hover:text-slate-600 rounded-xl hover:bg-slate-50 cursor-pointer"
+                  >
+                    <svg xmlns="http://www.w3.org/2000/svg" className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                  </button>
+                </div>
+
+                {/* Drawer Nav Items */}
+                <div className="flex-1 py-3 px-3">
+                  <p className="text-[9px] font-semibold uppercase tracking-widest text-slate-400 px-3 mb-2 mt-2">
+                    Control Console
+                  </p>
+                  <nav className="flex flex-col gap-0.5">
+                    {navItems.map((item) => {
+                      const isActive = activeTab === item.key;
+                      return (
+                        <button
+                          key={item.key}
+                          onClick={() => {
+                            setActiveTab(item.key as any);
+                            setIsMobileSidebarOpen(false);
+                          }}
+                          className={`w-full flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-sm font-medium transition-all duration-150 relative ${
+                            isActive
+                              ? "bg-[#001e66]/5 text-[#001e66] font-semibold"
+                              : "text-slate-500 hover:text-[#001e66] hover:bg-slate-50"
+                          }`}
+                        >
+                          {isActive && (
+                            <span className="absolute left-0 top-1/2 -translate-y-1/2 w-0.5 h-4 bg-[#00aeef] rounded-full" />
+                          )}
+                          <svg
+                            xmlns="http://www.w3.org/2000/svg"
+                            className={`w-4 h-4 shrink-0 ${isActive ? "text-[#001e66]" : "text-slate-400"}`}
+                            fill="none"
+                            viewBox="0 0 24 24"
+                            stroke="currentColor"
+                            strokeWidth={isActive ? 2 : 1.75}
+                          >
+                            <path strokeLinecap="round" strokeLinejoin="round" d={item.icon} />
+                          </svg>
+                          <span className="truncate">{item.label}</span>
+                        </button>
+                      );
+                    })}
+                  </nav>
+                </div>
+
+                {/* Drawer Bottom */}
+                <div className="px-4 py-4 border-t border-slate-100 flex flex-col gap-2 shrink-0">
+                  <span className="inline-flex items-center gap-1.5 bg-[#001e66]/5 text-[#001e66] text-[10px] font-bold px-2.5 py-1 rounded-full border border-[#001e66]/10 w-full justify-center">
+                    Super Admin Mode
+                  </span>
+                  <span className="text-[10px] text-slate-400 font-mono text-center truncate w-full" title={session?.user?.email}>
+                    {session?.user?.email || "admin@csfwd.gov.ph"}
+                  </span>
+                </div>
+              </motion.aside>
+            </>
+          )}
+        </AnimatePresence>
+
+        {/* ── Main Content Area ──────────────────────────────────────────────── */}
+        <main className="flex-1 bg-[#F8FAFC] overflow-y-auto p-6 flex flex-col">
           {alertMessage && (
             <div
               className={`p-4 rounded-xl border mb-6 flex items-start space-x-3 text-sm animate-fade-in ${
@@ -853,7 +994,6 @@ export default function DashboardAdmin({
             </div>
           )}
 
-          {/* Render Modular Sections */}
           <AnimatePresence mode="wait">
             <motion.div
               key={activeTab}
@@ -861,7 +1001,7 @@ export default function DashboardAdmin({
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -12 }}
               transition={{ duration: 0.2, ease: "easeOut" }}
-              className="w-full"
+              className="w-full flex flex-col flex-1"
             >
               {activeTab === "home" && (
                 <HomeSection
@@ -968,9 +1108,9 @@ export default function DashboardAdmin({
       {/* Help Modal */}
       {showHelpModal && (
         <div className="fixed inset-0 bg-slate-950/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="bg-white border border-slate-200 rounded-[18px] max-w-md w-full p-6 shadow-2xl relative">
-            <h3 className="text-lg font-black text-[#001e66] tracking-tight">Help Center & Guidelines</h3>
-            <div className="mt-4 text-xs text-slate-600 space-y-3 leading-relaxed font-semibold">
+          <div className="bg-white border border-slate-100 rounded-2xl max-w-md w-full p-6 shadow-xl relative">
+            <h3 className="text-lg font-bold text-[#001e66] tracking-tight">Help Center &amp; Guidelines</h3>
+            <div className="mt-4 text-xs text-slate-500 space-y-3 leading-relaxed font-semibold">
               <p>
                 <strong>User Management</strong>: Review resident registrations, assign service account numbers, and designate staff to technician roles.
               </p>
@@ -984,7 +1124,7 @@ export default function DashboardAdmin({
             <div className="mt-6 flex justify-end">
               <button
                 onClick={() => setShowHelpModal(false)}
-                className="bg-[#001e66] hover:bg-[#00aeef] text-white font-extrabold px-5 py-2.5 rounded-xl text-xs uppercase tracking-wider transition-all"
+                className="bg-[#001e66] hover:bg-[#00aeef] text-white font-semibold px-5 py-2 rounded-xl text-xs uppercase tracking-wider transition-all"
               >
                 Close
               </button>
@@ -996,26 +1136,26 @@ export default function DashboardAdmin({
       {/* Logout Confirmation Modal */}
       {showLogoutModal && (
         <div className="fixed inset-0 bg-slate-950/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="bg-white border border-slate-200 rounded-[18px] max-w-sm w-full p-6 shadow-2xl relative text-center">
+          <div className="bg-white border border-slate-100 rounded-2xl max-w-sm w-full p-6 shadow-xl relative text-center">
             <div className="w-12 h-12 bg-red-50 text-[#970006] rounded-full flex items-center justify-center mx-auto mb-4">
-              <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5">
+              <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                 <path strokeLinecap="round" strokeLinejoin="round" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
               </svg>
             </div>
-            <h3 className="text-lg font-black text-[#001e66] tracking-tight">Confirm Sign Out</h3>
+            <h3 className="text-lg font-bold text-[#001e66] tracking-tight">Confirm Sign Out</h3>
             <p className="text-xs text-slate-500 mt-2 leading-relaxed font-semibold">
               Are you sure you want to end your executive session and log out of the command center?
             </p>
             <div className="mt-6 flex justify-center space-x-3">
               <button
                 onClick={() => setShowLogoutModal(false)}
-                className="bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold px-4 py-2.5 rounded-xl text-xs transition-all"
+                className="bg-slate-100 hover:bg-slate-200 text-slate-600 font-semibold px-4 py-2 rounded-xl text-xs transition-all"
               >
                 Cancel
               </button>
               <button
                 onClick={handleLogout}
-                className="bg-[#970006] hover:bg-red-700 text-white font-extrabold px-5 py-2.5 rounded-xl text-xs uppercase tracking-wider transition-all shadow-sm"
+                className="bg-[#970006] hover:bg-red-700 text-white font-bold px-5 py-2.5 rounded-xl text-xs uppercase tracking-wider transition-all shadow-sm"
               >
                 Sign Out
               </button>
@@ -1027,19 +1167,19 @@ export default function DashboardAdmin({
       {/* News Details Modal */}
       {activeDetailNews && (
         <div className="fixed inset-0 bg-slate-950/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="bg-white border border-slate-200 rounded-[18px] max-w-lg w-full p-6 shadow-2xl relative">
+          <div className="bg-white border border-slate-100 rounded-2xl max-w-lg w-full p-6 shadow-xl relative">
             <span className="text-[10px] font-bold text-slate-400">{activeDetailNews.date}</span>
-            <span className="float-right bg-[#00aeef]/10 text-[#00aeef] text-[9px] font-black uppercase px-2 py-0.5 rounded">
+            <span className="float-right bg-[#00aeef]/10 text-[#00aeef] text-[9px] font-bold uppercase px-2 py-0.5 rounded">
               {activeDetailNews.tag}
             </span>
-            <h3 className="text-lg font-black text-[#001e66] tracking-tight mt-2">{activeDetailNews.title}</h3>
-            <p className="mt-4 text-xs text-slate-600 leading-relaxed font-semibold">
+            <h3 className="text-lg font-bold text-[#001e66] tracking-tight mt-2">{activeDetailNews.title}</h3>
+            <p className="mt-4 text-xs text-slate-500 leading-relaxed font-semibold">
               {activeDetailNews.description}
             </p>
             <div className="mt-6 flex justify-end">
               <button
                 onClick={() => setActiveDetailNews(null)}
-                className="bg-[#001e66] hover:bg-[#00aeef] text-white font-extrabold px-5 py-2.5 rounded-xl text-xs uppercase tracking-wider transition-all"
+                className="bg-[#001e66] hover:bg-[#00aeef] text-white font-semibold px-5 py-2 rounded-xl text-xs uppercase tracking-wider transition-all"
               >
                 Dismiss
               </button>
@@ -1051,20 +1191,20 @@ export default function DashboardAdmin({
       {/* Event Details Modal */}
       {activeDetailEvent && (
         <div className="fixed inset-0 bg-slate-950/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="bg-white border border-slate-200 rounded-[18px] max-w-md w-full p-6 shadow-2xl relative">
+          <div className="bg-white border border-slate-100 rounded-2xl max-w-md w-full p-6 shadow-xl relative">
             <div className="flex items-center space-x-3 mb-2">
-              <div className="bg-[#00aeef]/10 text-[#00aeef] px-3 py-1.5 rounded-xl font-black text-xs">
+              <div className="bg-[#00aeef]/10 text-[#00aeef] px-3 py-1.5 rounded-xl font-bold text-xs">
                 {activeDetailEvent.month} {activeDetailEvent.day}
               </div>
-              <h3 className="text-base font-black text-[#001e66] tracking-tight">{activeDetailEvent.title}</h3>
+              <h3 className="text-base font-bold text-[#001e66] tracking-tight">{activeDetailEvent.title}</h3>
             </div>
-            <p className="mt-4 text-xs text-slate-600 leading-relaxed font-semibold">
+            <p className="mt-4 text-xs text-slate-500 leading-relaxed font-semibold">
               {activeDetailEvent.description}
             </p>
             <div className="mt-6 flex justify-end">
               <button
                 onClick={() => setActiveDetailEvent(null)}
-                className="bg-[#001e66] hover:bg-[#00aeef] text-white font-extrabold px-5 py-2.5 rounded-xl text-xs uppercase tracking-wider transition-all"
+                className="bg-[#001e66] hover:bg-[#00aeef] text-white font-semibold px-5 py-2 rounded-xl text-xs uppercase tracking-wider transition-all"
               >
                 Dismiss
               </button>

@@ -227,6 +227,8 @@ npm start
 
 ## Recent Platform Upgrades (July 2026)
 
+- **Searchable, Sortable, and Filterable Spatial Heatmaps**: Refactored the Barangay Grid incident heatmap in the Admin Portal's command center (`HeatmapsSection.tsx`) to support instant search by name, multi-tier severity filters (All, Critical, Moderate, Low Risk, Clean), and incident count/alphabetical sorting. Added real-time metadata counts and filter-clear buttons to provide a highly manageable incident-density dashboard.
+- **Race-Condition-Free Mapbox Mounting**: Resolved map loading bugs within the client's "File a Complaint" tab (`DashboardClient.tsx`) by replacing fragile `setTimeout` hooks with React callback refs (`handleMapRef`). This guarantees that the Mapbox GL map instance initializes only after the DOM element is fully mounted following exit animations, and forces layout recalculations to fit transition states cleanly.
 - **Operational News & Events Broadcasting**: Expanded the community broadcasting subsystem to support publishing `NEWS` (green theme) and `EVENT` (purple theme) notices. These are dynamically linked to automatically populate the "Latest District News" and "Upcoming District Events" columns on the administrator homepage dashboard.
 - **Precision Geolocation Fallback**: Upgraded the client portal's geolocator to utilize a multi-tier fallback pipeline. If a high-accuracy GPS query fails or times out, the client automatically retries using low-accuracy Wi-Fi/IP triangulation.
 - **Barangay Sorting & Filtering**: Added dynamic Barangay filters and alphabetical (A-Z/Z-A) and urgency sorting to the administrative complaints database, complete with location pill badges for each ticket row.

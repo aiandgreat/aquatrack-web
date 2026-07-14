@@ -60,6 +60,7 @@ export default function DashboardClient({
 
   // Local state
   const [isDark, setIsDark] = useState(false);
+  const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
 
   useEffect(() => {
     const initialDark = document.documentElement.classList.contains("dark") || localStorage.getItem("theme") === "dark";
@@ -78,6 +79,7 @@ export default function DashboardClient({
 
   const [myComplaints, setMyComplaints] = useState<Complaint[]>(initialComplaints);
   const [advisories, setAdvisories] = useState<Advisory[]>([]);
+  const [advisoryPage, setAdvisoryPage] = useState(1);
 
   // Form Submission State
   const [complaintText, setComplaintText] = useState("");
@@ -91,7 +93,7 @@ export default function DashboardClient({
   const [mapError, setMapError] = useState(false);
   const [lastSubmittedComplaint, setLastSubmittedComplaint] = useState<any | null>(null);
 
-  const clientMapContainerRef = useRef<HTMLDivElement>(null);
+
   const clientMapRef = useRef<mapboxgl.Map | null>(null);
   const clientMarkerRef = useRef<mapboxgl.Marker | null>(null);
   const userHasManuallyPinnedRef = useRef(false);
@@ -165,92 +167,92 @@ export default function DashboardClient({
     };
   }, []);
 
-  // Initialize and clean up Mapbox map for client report pinning
-  useEffect(() => {
-    if (activeTab !== "file-complaint") return;
+  const mapLoadTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
-    let mapLoadTimeout: NodeJS.Timeout | null = null;
 
-    const timer = setTimeout(() => {
-      if (!clientMapContainerRef.current) return;
-
-      const lat = parseFloat(customLat) || 15.0285;
-      const lng = parseFloat(customLng) || 120.6942;
-      setMapError(false);
-
-      const map = new mapboxgl.Map({
-        container: clientMapContainerRef.current,
-        style: "mapbox://styles/mapbox/streets-v12",
-        center: [lng, lat],
-        zoom: gpsPinpointActive ? 17 : 15.5,
-      });
-
-      let loaded = false;
-      map.on("load", () => {
-        loaded = true;
-        setMapError(false);
-      });
-      map.on("style.load", () => {
-        loaded = true;
-        setMapError(false);
-      });
-
-      map.on("error", (e) => {
-        console.warn("Mapbox non-fatal warning:", e.error?.message || "Unknown error");
-      });
-
-      // 10-second timeout allows slow hotspot connections to load but catches true firewall blocks
-      mapLoadTimeout = setTimeout(() => {
-        if (!loaded) {
-          console.warn("Mapbox load timed out (firewall block suspected)");
-          setMapError(true);
-        }
-      }, 10000);
-
-      clientMapRef.current = map;
-
-      map.addControl(new mapboxgl.NavigationControl(), "top-right");
-
-      const marker = new mapboxgl.Marker({ draggable: true, color: "#e11d48" })
-        .setLngLat([lng, lat])
-        .addTo(map);
-
-      clientMarkerRef.current = marker;
-
-      // Center camera immediately if GPS coordinates have been fetched
-      if (gpsPinpointActive) {
-        map.easeTo({ center: [lng, lat], zoom: 17 });
+  const handleMapRef = (el: HTMLDivElement | null) => {
+    if (!el) {
+      if (mapLoadTimeoutRef.current) {
+        clearTimeout(mapLoadTimeoutRef.current);
+        mapLoadTimeoutRef.current = null;
       }
-
-      marker.on("dragend", () => {
-        const lngLat = marker.getLngLat();
-        userHasManuallyPinnedRef.current = true;
-        setCustomLat(lngLat.lat.toFixed(6));
-        setCustomLng(lngLat.lng.toFixed(6));
-        setGpsPinpointActive(true);
-      });
-
-      map.on("click", (e) => {
-        marker.setLngLat(e.lngLat);
-        userHasManuallyPinnedRef.current = true;
-        setCustomLat(e.lngLat.lat.toFixed(6));
-        setCustomLng(e.lngLat.lng.toFixed(6));
-        setGpsPinpointActive(true);
-      });
-    }, 300);
-
-    return () => {
-      clearTimeout(timer);
-      if (mapLoadTimeout) clearTimeout(mapLoadTimeout);
       if (clientMapRef.current) {
         clientMapRef.current.remove();
         clientMapRef.current = null;
         clientMarkerRef.current = null;
       }
-    };
-  }, [activeTab, loading]);
+      return;
+    }
 
-  // Sync GPS changes to map marker
+    if (clientMapRef.current) return;
+
+    const lat = parseFloat(customLat) || 15.0285;
+    const lng = parseFloat(customLng) || 120.6942;
+    setMapError(false);
+
+    const map = new mapboxgl.Map({
+      container: el,
+      style: "mapbox://styles/mapbox/streets-v12",
+      center: [lng, lat],
+      zoom: gpsPinpointActive ? 17 : 15.5,
+    });
+
+    let loaded = false;
+    map.on("load", () => {
+      loaded = true;
+      setMapError(false);
+      map.resize();
+      setTimeout(() => {
+        map.resize();
+      }, 300);
+    });
+    map.on("style.load", () => {
+      loaded = true;
+      setMapError(false);
+      map.resize();
+    });
+
+    map.on("error", (e) => {
+      console.warn("Mapbox non-fatal warning:", e.error?.message || "Unknown error");
+    });
+
+    mapLoadTimeoutRef.current = setTimeout(() => {
+      if (!loaded) {
+        console.warn("Mapbox load timed out (firewall block suspected)");
+        setMapError(true);
+      }
+    }, 10000);
+
+    clientMapRef.current = map;
+    map.addControl(new mapboxgl.NavigationControl(), "top-right");
+
+    const marker = new mapboxgl.Marker({ draggable: true, color: "#e11d48" })
+      .setLngLat([lng, lat])
+      .addTo(map);
+
+    clientMarkerRef.current = marker;
+
+    if (gpsPinpointActive) {
+      map.easeTo({ center: [lng, lat], zoom: 17 });
+    }
+
+    marker.on("dragend", () => {
+      const lngLat = marker.getLngLat();
+      userHasManuallyPinnedRef.current = true;
+      setCustomLat(lngLat.lat.toFixed(6));
+      setCustomLng(lngLat.lng.toFixed(6));
+      setGpsPinpointActive(true);
+    });
+
+    map.on("click", (e) => {
+      marker.setLngLat(e.lngLat);
+      userHasManuallyPinnedRef.current = true;
+      setCustomLat(e.lngLat.lat.toFixed(6));
+      setCustomLng(e.lngLat.lng.toFixed(6));
+      setGpsPinpointActive(true);
+    });
+  };
+
   useEffect(() => {
     const map = clientMapRef.current;
     const marker = clientMarkerRef.current;
@@ -652,15 +654,22 @@ export default function DashboardClient({
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-[#EEF4FA] text-[#001e66] flex flex-col items-center justify-center">
-        {/* Top color ribbon */}
-        <div className="absolute inset-x-0 top-0 flex h-1 bg-[#001e66] z-50" aria-hidden="true"></div>
-        <div className="text-center space-y-4">
-          <div className="relative w-16 h-16 mx-auto">
-            <div className="absolute inset-0 rounded-full border-4 border-[#00aeef]/20"></div>
-            <div className="absolute inset-0 rounded-full border-4 border-t-[#00aeef] animate-spin"></div>
+      <div className="min-h-screen bg-[#F8FAFC] flex flex-col items-center justify-center">
+        {/* Top accent bar */}
+        <div className="absolute inset-x-0 top-0 h-0.5 bg-gradient-to-r from-[#001e66] via-[#00aeef] to-[#001e66] z-50" aria-hidden="true" />
+        <div className="text-center space-y-5">
+          {/* Logo lockup */}
+          <div className="flex items-center justify-center space-x-3 mb-2">
+            <img src="/LOGO2.png" alt="AquaTrack" className="h-10 w-auto object-contain" />
+            <span className="text-xl font-black tracking-tight text-[#001e66]">
+              AQUA<span className="text-[#00aeef]">TRACK</span>
+            </span>
           </div>
-          <p className="text-slate-500 text-xs font-black tracking-wider uppercase animate-pulse">
+          <div className="relative w-12 h-12 mx-auto">
+            <div className="absolute inset-0 rounded-full border-[3px] border-slate-200" />
+            <div className="absolute inset-0 rounded-full border-[3px] border-t-[#00aeef] animate-spin" />
+          </div>
+          <p className="text-slate-400 text-[11px] font-semibold tracking-widest uppercase animate-pulse">
             Loading Resident Portal…
           </p>
         </div>
@@ -668,108 +677,251 @@ export default function DashboardClient({
     );
   }
 
+  const filteredAdvisories = advisories.filter(
+    (ad) => !ad.targetRole || ad.targetRole === "broadcast" || ad.targetRole === "consumers"
+  );
+  const ADVISORIES_PER_PAGE = 5;
+  const totalAdvisoryPages = Math.ceil(filteredAdvisories.length / ADVISORIES_PER_PAGE);
+  const currentPage = Math.min(advisoryPage, Math.max(totalAdvisoryPages, 1));
+  const paginatedAdvisories = filteredAdvisories.slice(
+    (currentPage - 1) * ADVISORIES_PER_PAGE,
+    currentPage * ADVISORIES_PER_PAGE
+  );
+
   return (
-    <div className="min-h-screen bg-[#EEF4FA] text-[#001e66] flex flex-col font-sans relative">
+    <div className="min-h-screen bg-[#F8FAFC] text-[#001e66] flex flex-col font-sans">
 
 
-      {/* Header Container */}
-      <header className="m-[18px] mb-0 h-[86px] shrink-0 bg-white border border-slate-200 rounded-[16px] shadow-sm shadow-blue-100 flex items-center justify-between px-6 z-40 relative">
-        <div className="flex items-center space-x-4">
-          <img src="/LOGO2.png" alt="AquaTrack Logo" className="h-14 w-auto object-contain" />
-          <div className="flex flex-col">
-            <span className="text-xl font-black tracking-tight text-[#001e66] leading-none">
+      {/* ── Header ── */}
+      <header className="h-16 shrink-0 bg-white border-b border-slate-100 sticky top-0 z-50 flex items-center justify-between px-6">
+        {/* Left: logo + wordmark */}
+        <div className="flex items-center space-x-3">
+          <button
+            onClick={() => setIsMobileSidebarOpen(true)}
+            className="lg:hidden p-1.5 text-slate-500 hover:text-[#001e66] hover:bg-slate-50 rounded-xl transition-all focus:outline-none cursor-pointer"
+            aria-label="Open sidebar navigation"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M4 6h16M4 12h16M4 18h16" />
+            </svg>
+          </button>
+          <img src="/LOGO2.png" alt="AquaTrack Logo" className="h-9 w-auto object-contain" />
+          <div className="flex flex-col leading-none">
+            <span className="text-base font-black tracking-tight text-[#001e66]">
               AQUA<span className="text-[#00aeef]">TRACK</span>
             </span>
-            <span className="text-[10px] font-black text-[#001e66] tracking-wider uppercase mt-1">
-              CITY OF SAN FERNANDO • RESIDENT CONSUMER PORTAL
+            <span className="text-[9px] font-semibold text-slate-400 tracking-wider uppercase mt-0.5">
+              Resident Consumer Portal
             </span>
           </div>
         </div>
 
-        <div className="flex items-center space-x-4">
+        {/* Right: user info + dark mode toggle + logout */}
+        <div className="flex items-center gap-3">
+          {/* User name / email */}
+          <div className="text-right hidden sm:flex flex-col leading-none">
+            <span className="text-xs font-semibold text-[#001e66]">{userProfile?.name}</span>
+            <span className="text-[10px] text-slate-400 font-medium mt-0.5">{userProfile?.email}</span>
+          </div>
+
+          {/* Dark mode toggle – icon only */}
           <button
             onClick={() => setIsDark(!isDark)}
-            className="h-10 px-4 bg-slate-50 hover:bg-slate-100 dark:bg-slate-850 dark:hover:bg-slate-800 text-[#001e66] dark:text-slate-200 border border-slate-200 dark:border-slate-750 rounded-xl flex items-center justify-center font-bold text-xs uppercase tracking-wider transition-all"
+            aria-label="Toggle dark mode"
+            className="w-9 h-9 rounded-xl border border-slate-100 bg-slate-50 hover:bg-slate-100 flex items-center justify-center text-slate-500 hover:text-[#001e66] transition-all"
           >
-            {isDark ? "Light Mode" : "Dark Mode"}
+            {isDark ? (
+              /* Sun icon */
+              <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364-6.364l-.707.707M6.343 17.657l-.707.707M17.657 17.657l-.707-.707M6.343 6.343l-.707-.707M12 8a4 4 0 100 8 4 4 0 000-8z" />
+              </svg>
+            ) : (
+              /* Moon icon */
+              <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M21 12.79A9 9 0 1111.21 3 7 7 0 0021 12.79z" />
+              </svg>
+            )}
           </button>
-          <div className="text-right hidden sm:flex flex-col">
-            <span className="text-xs font-black text-[#001e66] leading-none">{userProfile?.name}</span>
-            <span className="text-[9px] text-[#00aeef] font-mono font-bold mt-1 uppercase tracking-wider">
-              {userProfile?.email}
-            </span>
-          </div>
+
+          {/* Logout */}
           <button
             onClick={handleLogout}
-            className="h-10 px-4 bg-red-50 hover:bg-red-100 border border-red-200 text-[#970006] rounded-xl flex items-center justify-center font-bold text-xs uppercase tracking-wider transition-all"
+            className="h-9 px-4 bg-[#001e66] hover:bg-[#00aeef] text-white rounded-xl text-xs font-semibold transition-all"
           >
             Logout
           </button>
         </div>
       </header>
 
-      {/* Main Grid containing left ASIDE and right MAIN panel */}
-      <div className="flex-1 flex flex-col lg:flex-row overflow-y-auto lg:overflow-hidden p-[18px] gap-[18px] z-30">
-        
-        {/* Left Navigation Sidebar (Aside section) */}
-        <aside className="w-full lg:w-[350px] shrink-0 bg-white border border-slate-200 rounded-[18px] shadow-sm shadow-blue-100 p-6 flex flex-col justify-between lg:overflow-y-auto space-y-6 lg:space-y-0">
-          <div className="space-y-6">
-            <div>
-              <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">
-                MY SERVICES
-              </span>
-            </div>
+      {/* ── Body: sidebar + main ── */}
+      <div className="flex flex-1 overflow-hidden">
 
-            <nav className="space-y-1.5">
+        {/* ── Left Sidebar ── */}
+        <aside className="hidden lg:flex w-56 shrink-0 bg-white border-r border-slate-100 flex-col sticky top-16 h-[calc(100vh-4rem)] overflow-y-auto">
+          {/* Nav section */}
+          <div className="flex-1 py-3 px-2">
+            <p className="text-[9px] font-semibold uppercase tracking-widest text-slate-400 px-3 mb-1 mt-3">
+              My Services
+            </p>
+            <nav className="space-y-0.5">
               {[
-                { key: "home", label: "Dashboard Home", icon: "M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" },
-                { key: "file-complaint", label: "File a Complaint", icon: "M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" },
-                { key: "track-complaint", label: "Track Complaints", icon: "M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01" },
-                { key: "view-announcements", label: "Community Advisories", icon: "M11 5.882V19.24a1.76 1.76 0 01-3.417.592l-2.147-6.15M18 13a3 3 0 100-6M5.436 13.683A4.001 4.001 0 017 6h1.832c4.1 0 7.625-1.234 9.168-3v14c-1.543-1.766-5.067-3-9.168-3H7a3.988 3.988 0 01-1.564-.317z" },
-                { key: "contact-us", label: "Contact Water District", icon: "M3 5a2 2 0 012-2h3.28a1 1 0 01.94.725l.548 2.2a1 1 0 01-.321.988l-1.305.98a10.582 10.582 0 004.872 4.872l.98-1.305a1 1 0 01.988-.321l2.2.548a1 1 0 01.725.94V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" },
+                { key: "home",               label: "Dashboard Home",        icon: "M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" },
+                { key: "file-complaint",     label: "File a Complaint",      icon: "M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" },
+                { key: "track-complaint",    label: "Track Complaints",      icon: "M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01" },
+                { key: "view-announcements", label: "Community Advisories",  icon: "M11 5.882V19.24a1.76 1.76 0 01-3.417.592l-2.147-6.15M18 13a3 3 0 100-6M5.436 13.683A4.001 4.001 0 017 6h1.832c4.1 0 7.625-1.234 9.168-3v14c-1.543-1.766-5.067-3-9.168-3H7a3.988 3.988 0 01-1.564-.317z" },
+                { key: "contact-us",         label: "Contact Water District", icon: "M3 5a2 2 0 012-2h3.28a1 1 0 01.94.725l.548 2.2a1 1 0 01-.321.988l-1.305.98a10.582 10.582 0 004.872 4.872l.98-1.305a1 1 0 01.988-.321l2.2.548a1 1 0 01.725.94V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" },
               ].map((item) => {
                 const isActive = activeTab === item.key;
                 return (
                   <button
                     key={item.key}
                     onClick={() => setActiveTab(item.key as any)}
-                    className={`w-full flex items-center justify-between px-4 py-3 rounded-full text-xs font-black transition-all focus:outline-none relative overflow-hidden group hover:scale-[1.01] ${
+                    className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm transition-all focus:outline-none relative group ${
                       isActive
-                        ? "bg-[#063A8C] text-white shadow-md shadow-blue-950/20"
-                        : "text-slate-655 hover:bg-slate-50 hover:text-[#00aeef]"
+                        ? "bg-[#001e66]/5 text-[#001e66] font-semibold"
+                        : "text-slate-500 hover:text-[#001e66] hover:bg-slate-50 font-medium"
                     }`}
                   >
+                    {/* Active left indicator */}
                     {isActive && (
-                      <span className="absolute left-0 top-0 bottom-0 w-1 bg-[#ffd800]" />
+                      <span className="absolute left-0 top-1/2 -translate-y-1/2 w-0.5 h-4 bg-[#00aeef] rounded-full" />
                     )}
-                    <div className="flex items-center space-x-3">
-                      <span>{item.label}</span>
-                    </div>
+                    {/* Icon */}
+                    <svg
+                      xmlns="http://www.w3.org/2000/svg"
+                      className="w-4 h-4 shrink-0"
+                      fill="none"
+                      viewBox="0 0 24 24"
+                      stroke="currentColor"
+                      strokeWidth={isActive ? 2 : 1.75}
+                    >
+                      <path strokeLinecap="round" strokeLinejoin="round" d={item.icon} />
+                    </svg>
+                    <span className="truncate">{item.label}</span>
                   </button>
                 );
               })}
             </nav>
-
-            <div className="border-t border-slate-100 my-4" />
           </div>
 
-          <div className="space-y-3">
-            <span className="text-[10px] font-black tracking-widest text-[#001e66] uppercase">
-              PAMPANGA DISTRICT HUB
+          {/* Sidebar bottom: compliance badges */}
+          <div className="px-4 py-4 border-t border-slate-100 space-y-2">
+            <p className="text-[9px] font-semibold uppercase tracking-widest text-slate-400 mb-2">Compliance</p>
+            <span className="inline-flex items-center gap-1.5 bg-emerald-50 text-emerald-700 text-[10px] font-bold px-2.5 py-1 rounded-full border border-emerald-100 block w-full justify-center">
+              <svg xmlns="http://www.w3.org/2000/svg" className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" /></svg>
+              RA 10173 Compliant
             </span>
-            <div className="space-y-2.5 text-xs text-slate-500 font-bold">
-              <div className="flex items-center space-x-2">
-                <span>RA 10173 Secure (Data Privacy)</span>
-              </div>
-              <div className="flex items-center space-x-2">
-                <span>PNSDW Standards Validated</span>
-              </div>
-            </div>
+            <span className="inline-flex items-center gap-1.5 bg-sky-50 text-sky-700 text-[10px] font-bold px-2.5 py-1 rounded-full border border-sky-100 block w-full justify-center">
+              <svg xmlns="http://www.w3.org/2000/svg" className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" /></svg>
+              PNSDW Validated
+            </span>
           </div>
         </aside>
 
-        {/* Right Main Panel Content */}
-        <main className="flex-1 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-[18px] shadow-sm shadow-blue-100 dark:shadow-none p-8 lg:overflow-y-auto">
+        {/* ── Mobile Sidebar Drawer ── */}
+        <AnimatePresence>
+          {isMobileSidebarOpen && (
+            <>
+              {/* Backdrop */}
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 0.4 }}
+                exit={{ opacity: 0 }}
+                onClick={() => setIsMobileSidebarOpen(false)}
+                className="fixed inset-0 bg-slate-950 z-50 lg:hidden"
+              />
+              {/* Drawer Content */}
+              <motion.aside
+                initial={{ x: "-100%" }}
+                animate={{ x: 0 }}
+                exit={{ x: "-100%" }}
+                transition={{ type: "tween", duration: 0.2 }}
+                className="fixed inset-y-0 left-0 w-64 bg-white border-r border-slate-100 z-50 flex flex-col lg:hidden h-full overflow-y-auto"
+              >
+                {/* Drawer Header */}
+                <div className="h-16 border-b border-slate-100 flex items-center justify-between px-5 shrink-0">
+                  <div className="flex items-center gap-3">
+                    <img src="/LOGO2.png" alt="AquaTrack Logo" className="h-8 w-auto object-contain" />
+                    <span className="text-base font-black tracking-tight text-[#001e66]">
+                      AQUA<span className="text-[#00aeef]">TRACK</span>
+                    </span>
+                  </div>
+                  <button
+                    onClick={() => setIsMobileSidebarOpen(false)}
+                    className="p-1.5 text-slate-400 hover:text-slate-600 rounded-xl hover:bg-slate-50 cursor-pointer"
+                  >
+                    <svg xmlns="http://www.w3.org/2000/svg" className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                  </button>
+                </div>
+
+                {/* Drawer Nav Items */}
+                <div className="flex-1 py-3 px-3">
+                  <p className="text-[9px] font-semibold uppercase tracking-widest text-slate-400 px-3 mb-2 mt-2">
+                    My Services
+                  </p>
+                  <nav className="flex flex-col gap-0.5">
+                    {[
+                      { key: "home",               label: "Dashboard Home",        icon: "M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" },
+                      { key: "file-complaint",     label: "File a Complaint",      icon: "M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" },
+                      { key: "track-complaint",    label: "Track Complaints",      icon: "M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01" },
+                      { key: "view-announcements", label: "Community Advisories",  icon: "M11 5.882V19.24a1.76 1.76 0 01-3.417.592l-2.147-6.15M18 13a3 3 0 100-6M5.436 13.683A4.001 4.001 0 017 6h1.832c4.1 0 7.625-1.234 9.168-3v14c-1.543-1.766-5.067-3-9.168-3H7a3.988 3.988 0 01-1.564-.317z" },
+                      { key: "contact-us",         label: "Contact Water District", icon: "M3 5a2 2 0 012-2h3.28a1 1 0 01.94.725l.548 2.2a1 1 0 01-.321.988l-1.305.98a10.582 10.582 0 004.872 4.872l.98-1.305a1 1 0 01.988-.321l2.2.548a1 1 0 01.725.94V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" },
+                    ].map((item) => {
+                      const isActive = activeTab === item.key;
+                      return (
+                        <button
+                          key={item.key}
+                          onClick={() => {
+                            setActiveTab(item.key as any);
+                            setIsMobileSidebarOpen(false);
+                          }}
+                          className={`w-full flex items-center gap-2.5 px-3 py-2.5 rounded-lg text-sm transition-all focus:outline-none relative group ${
+                            isActive
+                              ? "bg-[#001e66]/5 text-[#001e66] font-semibold"
+                              : "text-slate-500 hover:text-[#001e66] hover:bg-slate-50 font-medium"
+                          }`}
+                        >
+                          {isActive && (
+                            <span className="absolute left-0 top-1/2 -translate-y-1/2 w-0.5 h-4 bg-[#00aeef] rounded-full" />
+                          )}
+                          <svg
+                            xmlns="http://www.w3.org/2000/svg"
+                            className="w-4 h-4 shrink-0"
+                            fill="none"
+                            viewBox="0 0 24 24"
+                            stroke="currentColor"
+                            strokeWidth={isActive ? 2 : 1.75}
+                          >
+                            <path strokeLinecap="round" strokeLinejoin="round" d={item.icon} />
+                          </svg>
+                          <span className="truncate">{item.label}</span>
+                        </button>
+                      );
+                    })}
+                  </nav>
+                </div>
+
+                {/* Drawer Bottom */}
+                <div className="px-4 py-4 border-t border-slate-100 space-y-2 shrink-0">
+                  <p className="text-[9px] font-semibold uppercase tracking-widest text-slate-400 mb-2">Compliance</p>
+                  <span className="inline-flex items-center gap-1.5 bg-emerald-50 text-emerald-700 text-[10px] font-bold px-2.5 py-1 rounded-full border border-emerald-100 w-full justify-center">
+                    <svg xmlns="http://www.w3.org/2000/svg" className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" /></svg>
+                    RA 10173 Compliant
+                  </span>
+                  <span className="inline-flex items-center gap-1.5 bg-sky-50 text-sky-700 text-[10px] font-bold px-2.5 py-1 rounded-full border border-sky-100 w-full justify-center">
+                    <svg xmlns="http://www.w3.org/2000/svg" className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" /></svg>
+                    PNSDW Validated
+                  </span>
+                </div>
+              </motion.aside>
+            </>
+          )}
+        </AnimatePresence>
+
+        {/* ── Main Content Area ── */}
+        <main className="flex-1 bg-[#F8FAFC] overflow-y-auto p-8">
           <AnimatePresence mode="wait">
             <motion.div
               key={activeTab}
@@ -1149,7 +1301,7 @@ export default function DashboardClient({
 
                         {/* Interactive Map Pinning Container */}
                         <div className="w-full h-52 rounded-xl border border-slate-200 dark:border-slate-800 overflow-hidden relative shadow-inner">
-                          <div ref={clientMapContainerRef} className="absolute inset-0 w-full h-full" />
+                          <div ref={handleMapRef} className="absolute inset-0 w-full h-full" />
                           {mapError ? (
                             <div className="absolute inset-0 bg-slate-900/95 flex flex-col items-center justify-center p-4 text-center z-10">
                               <span className="text-xl">🗺️</span>
@@ -1396,30 +1548,51 @@ export default function DashboardClient({
               </div>
 
               <div className="space-y-4">
-                {advisories
-                  .filter((ad) => !ad.targetRole || ad.targetRole === "broadcast" || ad.targetRole === "consumers")
-                  .map((ad) => (
-                    <div key={ad.id} className="bg-slate-50 border border-slate-200 rounded-2xl p-6 shadow-sm relative">
-                      <div className="flex items-center space-x-2">
-                        <span className="text-[10px] font-bold text-slate-400">{ad.date}</span>
-                        <span className={`text-[8px] font-black uppercase px-2 py-0.5 rounded border ${
-                          ad.type === "warning"
-                            ? "bg-red-50 text-red-600 border-red-200"
-                            : ad.type === "info"
-                            ? "bg-blue-50 text-blue-600 border-blue-200"
-                            : ad.type === "news"
-                            ? "bg-emerald-50 text-emerald-600 border-emerald-200"
-                            : "bg-purple-50 text-purple-600 border-purple-200"
-                        }`}>
-                          {ad.type}
-                        </span>
-                      </div>
-                      <h3 className="font-extrabold text-[#001e66] text-sm mt-2">{ad.title}</h3>
-                      <p className="text-xs text-slate-500 mt-1 leading-relaxed">{ad.text}</p>
+                {paginatedAdvisories.map((ad) => (
+                  <div key={ad.id} className="bg-slate-50 border border-slate-200 rounded-2xl p-6 shadow-sm relative">
+                    <div className="flex items-center space-x-2">
+                      <span className="text-[10px] font-bold text-slate-400">{ad.date}</span>
+                      <span className={`text-[8px] font-black uppercase px-2 py-0.5 rounded border ${
+                        ad.type === "warning"
+                          ? "bg-red-50 text-red-600 border-red-200"
+                          : ad.type === "info"
+                          ? "bg-blue-50 text-blue-600 border-blue-200"
+                          : ad.type === "news"
+                          ? "bg-emerald-50 text-emerald-600 border-emerald-200"
+                          : "bg-purple-50 text-purple-600 border-purple-200"
+                      }`}>
+                        {ad.type}
+                      </span>
                     </div>
-                  ))}
-                {advisories.filter((ad) => !ad.targetRole || ad.targetRole === "broadcast" || ad.targetRole === "consumers").length === 0 && (
+                    <h3 className="font-extrabold text-[#001e66] text-sm mt-2">{ad.title}</h3>
+                    <p className="text-xs text-slate-500 mt-1 leading-relaxed">{ad.text}</p>
+                  </div>
+                ))}
+                {filteredAdvisories.length === 0 && (
                   <p className="text-slate-500 italic text-xs">No active notices broadcasted.</p>
+                )}
+
+                {/* Pagination Controls */}
+                {totalAdvisoryPages > 1 && (
+                  <div className="flex items-center justify-between border-t border-slate-200/80 pt-4 mt-6">
+                    <button
+                      onClick={() => setAdvisoryPage((prev) => Math.max(prev - 1, 1))}
+                      disabled={currentPage === 1}
+                      className="px-4 py-2 text-xs font-bold text-[#001e66] bg-slate-100 hover:bg-slate-200 disabled:opacity-50 rounded-xl transition-all duration-200 cursor-pointer disabled:cursor-not-allowed"
+                    >
+                      &larr; Previous
+                    </button>
+                    <span className="text-xs font-extrabold text-slate-500">
+                      Page {currentPage} of {totalAdvisoryPages}
+                    </span>
+                    <button
+                      onClick={() => setAdvisoryPage((prev) => Math.min(prev + 1, totalAdvisoryPages))}
+                      disabled={currentPage === totalAdvisoryPages}
+                      className="px-4 py-2 text-xs font-bold text-[#001e66] bg-slate-100 hover:bg-slate-200 disabled:opacity-50 rounded-xl transition-all duration-200 cursor-pointer disabled:cursor-not-allowed"
+                    >
+                      Next &rarr;
+                    </button>
+                  </div>
                 )}
               </div>
             </div>

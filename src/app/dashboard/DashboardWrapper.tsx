@@ -98,11 +98,23 @@ export default function DashboardWrapper({
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-[#EEF4FA] flex items-center justify-center">
-        <div className="flex flex-col items-center space-y-4">
-          <div className="w-12 h-12 border-4 border-[#00aeef] border-t-transparent rounded-full animate-spin" />
-          <p className="text-[#001e66] font-black text-sm tracking-wider uppercase">
-            Loading Operations Command...
+      <div className="min-h-screen bg-[#F8FAFC] flex flex-col items-center justify-center">
+        {/* Top accent bar */}
+        <div className="absolute inset-x-0 top-0 h-0.5 bg-gradient-to-r from-[#001e66] via-[#00aeef] to-[#001e66] z-50" aria-hidden="true" />
+        <div className="text-center space-y-5">
+          {/* Logo lockup */}
+          <div className="flex items-center justify-center space-x-3 mb-2">
+            <img src="/LOGO2.png" alt="AquaTrack" className="h-10 w-auto object-contain" />
+            <span className="text-xl font-black tracking-tight text-[#001e66]">
+              AQUA<span className="text-[#00aeef]">TRACK</span>
+            </span>
+          </div>
+          <div className="relative w-12 h-12 mx-auto">
+            <div className="absolute inset-0 rounded-full border-[3px] border-slate-200" />
+            <div className="absolute inset-0 rounded-full border-[3px] border-t-[#00aeef] animate-spin" />
+          </div>
+          <p className="text-slate-400 text-[11px] font-semibold tracking-widest uppercase animate-pulse">
+            Loading Operations Command…
           </p>
         </div>
       </div>

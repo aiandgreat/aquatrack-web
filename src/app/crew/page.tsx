@@ -1,72 +1,299 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
+import { getSupabaseClient } from "../../lib/supabase";
+
+interface WorkOrder {
+  id: string;
+  status: "ASSIGNED" | "IN_PROGRESS" | "RESOLVED";
+  location: string;
+  diagnosticDetails: string;
+  actionPrompt: string;
+  imageUrl?: string;
+}
+
+const statusConfig = {
+  ASSIGNED: {
+    label: "Assigned",
+    bg: "bg-amber-50",
+    text: "text-amber-700",
+    border: "border-amber-200",
+    dot: "bg-amber-500",
+  },
+  IN_PROGRESS: {
+    label: "In Progress",
+    bg: "bg-blue-50",
+    text: "text-[#00aeef]",
+    border: "border-blue-200",
+    dot: "bg-[#00aeef]",
+  },
+  RESOLVED: {
+    label: "Resolved",
+    bg: "bg-emerald-50",
+    text: "text-emerald-700",
+    border: "border-emerald-200",
+    dot: "bg-emerald-500",
+  },
+};
 
 export default function FieldCrewPortal() {
-  const [currentJob, setCurrentJob] = useState({
+  const [isDark, setIsDark] = useState(false);
+  const [currentJob, setCurrentJob] = useState<WorkOrder>({
     id: "job-101",
     status: "ASSIGNED",
     location: "Main Street Valve #45",
-    diagnosticDetails: "Pressure drop reported nearby. Suspected line breach.",
-    actionPrompt: "Verify pressure gauges, replace faulty gaskets on section B-12.",
-    imageUrl: "https://images.unsplash.com/photo-1584267385494-9fdf97b090f5?auto=format&fit=crop&w=600&q=80"
+    diagnosticDetails:
+      "Pressure drop reported nearby. Suspected line breach at section B-12. Multiple consumer complaints received in surrounding barangay.",
+    actionPrompt:
+      "Verify pressure gauges, inspect gaskets on section B-12, document all findings with photos before proceeding with repairs.",
+    imageUrl:
+      "https://images.unsplash.com/photo-1584267385494-9fdf97b090f5?auto=format&fit=crop&w=600&q=80",
   });
+  const [confirming, setConfirming] = useState<"start" | "resolve" | null>(null);
+  const [sessionEmail, setSessionEmail] = useState<string | null>(null);
 
-  const handleUpdateStatus = (newStatus: string) => {
+  useEffect(() => {
+    const root = window.document.documentElement;
+    const initialDark =
+      root.classList.contains("dark") || localStorage.getItem("theme") === "dark";
+    setIsDark(initialDark);
+  }, []);
+
+  useEffect(() => {
+    if (isDark) {
+      document.documentElement.classList.add("dark");
+      localStorage.setItem("theme", "dark");
+    } else {
+      document.documentElement.classList.remove("dark");
+      localStorage.setItem("theme", "light");
+    }
+  }, [isDark]);
+
+  useEffect(() => {
+    const getSession = async () => {
+      const client = getSupabaseClient();
+      const {
+        data: { session },
+      } = await client.auth.getSession();
+      setSessionEmail(session?.user?.email || null);
+    };
+    getSession();
+  }, []);
+
+  const handleUpdateStatus = (newStatus: "IN_PROGRESS" | "RESOLVED") => {
     setCurrentJob((prev) => ({ ...prev, status: newStatus }));
+    setConfirming(null);
   };
 
+  const handleLogout = async () => {
+    const client = getSupabaseClient();
+    await client.auth.signOut();
+    window.location.href = "/login";
+  };
+
+  const statusCfg = statusConfig[currentJob.status];
+
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-200 p-4 max-w-md mx-auto">
-      <header className="border-b border-slate-800 pb-3 mb-4">
-        <h1 className="text-lg font-bold text-cyan-400">Field Engineering Portal</h1>
-        <p className="text-xs text-slate-500 font-mono">Crew ID: tech-772</p>
+    <div className="min-h-screen bg-[#F8FAFC] text-[#001e66] font-sans flex flex-col">
+
+      {/* Header */}
+      <header className="bg-white border-b border-slate-100 sticky top-0 z-50 h-16 flex items-center justify-between px-6">
+        <div className="flex items-center gap-3">
+          <img src="/LOGO2.png" alt="AquaTrack Logo" className="h-10 w-auto object-contain" />
+          <div className="flex flex-col leading-none">
+            <span className="text-base font-bold text-[#001e66] tracking-tight">
+              Aqua<span className="text-[#00aeef]">Track</span>
+            </span>
+            <span className="text-[9px] font-semibold uppercase tracking-widest text-slate-400 mt-0.5">
+              Field Crew Portal
+            </span>
+          </div>
+        </div>
+
+        <div className="flex items-center gap-3">
+          {/* Dark mode toggle */}
+          <button
+            onClick={() => setIsDark(!isDark)}
+            className="w-9 h-9 rounded-xl border border-slate-200 bg-slate-50 hover:bg-slate-100 flex items-center justify-center text-slate-500 transition-all"
+            title={isDark ? "Switch to Light Mode" : "Switch to Dark Mode"}
+          >
+            {isDark ? (
+              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364-6.364l-.707.707M6.343 17.657l-.707.707M17.657 17.657l-.707-.707M6.343 6.343l-.707-.707M16 12a4 4 0 11-8 0 4 4 0 018 0z" />
+              </svg>
+            ) : (
+              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" />
+              </svg>
+            )}
+          </button>
+
+          {/* Staff info */}
+          <div className="hidden sm:flex items-center gap-2.5 bg-slate-50 border border-slate-200 rounded-xl px-3 py-1.5">
+            <div className="w-6 h-6 bg-[#00aeef] text-white text-[10px] font-bold rounded-lg flex items-center justify-center">
+              FT
+            </div>
+            <div className="flex flex-col leading-none">
+              <span className="text-xs font-semibold text-[#001e66]">Field Technician</span>
+              <span className="text-[9px] text-slate-400 mt-0.5 font-mono">{sessionEmail || "tech@csfwd.gov.ph"}</span>
+            </div>
+          </div>
+
+          {/* Logout */}
+          <button
+            onClick={handleLogout}
+            className="h-9 px-4 rounded-xl border border-red-200 bg-red-50 hover:bg-red-100 text-[#970006] text-xs font-semibold transition-all"
+          >
+            Logout
+          </button>
+        </div>
       </header>
 
-      <div className="bg-slate-900 border border-slate-800 rounded p-4">
-        <div className="flex justify-between items-center">
-          <span className="text-xs font-bold text-slate-500">ASSIGNED JOB</span>
-          <span className="bg-amber-950 text-amber-400 font-bold px-2 py-0.5 rounded text-xxs">
-            {currentJob.status}
-          </span>
-        </div>
-        <h2 className="text-md font-bold mt-2">{currentJob.location}</h2>
-        <div className="text-[10px] font-mono text-slate-500 mt-0.5">{currentJob.id}</div>
-        <p className="text-xs text-slate-400 mt-1.5">{currentJob.diagnosticDetails}</p>
+      {/* Content */}
+      <main className="flex-1 max-w-lg mx-auto w-full px-4 py-8 space-y-5">
 
-        {currentJob.imageUrl && (
-          <div className="mt-3">
-            <span className="text-xxs font-bold text-slate-500 uppercase block mb-1">Attached Incident Photo</span>
-            <a href={currentJob.imageUrl} target="_blank" rel="noopener noreferrer" className="block relative rounded border border-slate-800 overflow-hidden hover:opacity-90 transition-opacity">
-              <img src={currentJob.imageUrl} alt="Attached Incident" className="w-full h-36 object-cover" />
-            </a>
+        {/* Page title */}
+        <div>
+          <h1 className="text-xl font-bold text-[#001e66]">My Work Order</h1>
+          <p className="text-sm text-slate-500 mt-0.5">Active field assignment for today</p>
+        </div>
+
+        {/* Work Order Card */}
+        <div className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
+
+          {/* Card Header */}
+          <div className="px-6 py-4 border-b border-slate-100 flex items-center justify-between">
+            <div className="flex items-center gap-2.5">
+              <div className="w-8 h-8 rounded-xl bg-[#001e66]/5 flex items-center justify-center">
+                <svg className="w-4 h-4 text-[#001e66]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                </svg>
+              </div>
+              <div>
+                <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Work Order</p>
+                <p className="text-xs font-mono text-slate-500 mt-0.5">{currentJob.id}</p>
+              </div>
+            </div>
+            {/* Status Chip */}
+            <span className={`inline-flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wider px-2.5 py-1 rounded-full border ${statusCfg.bg} ${statusCfg.text} ${statusCfg.border}`}>
+              <span className={`w-1.5 h-1.5 rounded-full ${statusCfg.dot} ${currentJob.status === "IN_PROGRESS" ? "animate-pulse" : ""}`} />
+              {statusCfg.label}
+            </span>
           </div>
-        )}
 
-        <div className="mt-4 bg-slate-950 p-3 rounded border border-slate-800">
-          <p className="text-xs text-slate-500 font-bold">RECOMMENDED INSTRUCTIONS</p>
-          <p className="text-sm mt-1 italic text-slate-300">"{currentJob.actionPrompt}"</p>
+          {/* Location */}
+          <div className="px-6 py-4 border-b border-slate-100">
+            <p className="text-[10px] font-semibold uppercase tracking-widest text-slate-400 mb-1">Location</p>
+            <div className="flex items-center gap-2">
+              <svg className="w-4 h-4 text-[#00aeef] flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+                <path strokeLinecap="round" strokeLinejoin="round" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+              </svg>
+              <span className="text-sm font-semibold text-[#001e66]">{currentJob.location}</span>
+            </div>
+          </div>
+
+          {/* Incident Photo */}
+          {currentJob.imageUrl && (
+            <div className="px-6 pt-4">
+              <p className="text-[10px] font-semibold uppercase tracking-widest text-slate-400 mb-2">Incident Photo</p>
+              <a href={currentJob.imageUrl} target="_blank" rel="noopener noreferrer" className="block rounded-xl overflow-hidden border border-slate-100 hover:opacity-90 transition-opacity">
+                <img src={currentJob.imageUrl} alt="Incident" className="w-full h-44 object-cover" />
+              </a>
+            </div>
+          )}
+
+          {/* Diagnostic Details */}
+          <div className="px-6 py-4">
+            <p className="text-[10px] font-semibold uppercase tracking-widest text-slate-400 mb-2">Diagnostic Details</p>
+            <p className="text-sm text-slate-600 leading-relaxed">{currentJob.diagnosticDetails}</p>
+          </div>
+
+          {/* Recommended Instructions */}
+          <div className="mx-6 mb-4 bg-[#001e66]/3 border border-[#001e66]/10 rounded-xl p-4">
+            <div className="flex items-center gap-2 mb-2">
+              <svg className="w-3.5 h-3.5 text-[#00aeef]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
+              </svg>
+              <span className="text-[10px] font-bold uppercase tracking-widest text-[#001e66]">Recommended Instructions</span>
+            </div>
+            <p className="text-xs text-slate-600 leading-relaxed italic">"{currentJob.actionPrompt}"</p>
+          </div>
+
+          {/* Action Buttons */}
+          <div className="px-6 pb-5 flex gap-3">
+            {currentJob.status === "ASSIGNED" && (
+              confirming === "start" ? (
+                <div className="flex-1 bg-amber-50 border border-amber-200 rounded-xl p-3 text-center space-y-2">
+                  <p className="text-xs font-semibold text-amber-700">Confirm starting this job?</p>
+                  <div className="flex gap-2 justify-center">
+                    <button
+                      onClick={() => handleUpdateStatus("IN_PROGRESS")}
+                      className="px-4 py-1.5 bg-amber-500 hover:bg-amber-600 text-white text-xs font-semibold rounded-lg transition-all"
+                    >
+                      Yes, Start
+                    </button>
+                    <button
+                      onClick={() => setConfirming(null)}
+                      className="px-4 py-1.5 bg-white border border-slate-200 text-slate-600 text-xs font-semibold rounded-lg transition-all hover:bg-slate-50"
+                    >
+                      Cancel
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <button
+                  onClick={() => setConfirming("start")}
+                  className="flex-1 bg-[#001e66] hover:bg-[#00aeef] text-white font-semibold py-3 rounded-xl text-sm transition-all"
+                >
+                  Start Job
+                </button>
+              )
+            )}
+            {currentJob.status === "IN_PROGRESS" && (
+              confirming === "resolve" ? (
+                <div className="flex-1 bg-emerald-50 border border-emerald-200 rounded-xl p-3 text-center space-y-2">
+                  <p className="text-xs font-semibold text-emerald-700">Mark this job as resolved?</p>
+                  <div className="flex gap-2 justify-center">
+                    <button
+                      onClick={() => handleUpdateStatus("RESOLVED")}
+                      className="px-4 py-1.5 bg-emerald-500 hover:bg-emerald-600 text-white text-xs font-semibold rounded-lg transition-all"
+                    >
+                      Yes, Resolve
+                    </button>
+                    <button
+                      onClick={() => setConfirming(null)}
+                      className="px-4 py-1.5 bg-white border border-slate-200 text-slate-600 text-xs font-semibold rounded-lg transition-all hover:bg-slate-50"
+                    >
+                      Cancel
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <button
+                  onClick={() => setConfirming("resolve")}
+                  className="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white font-semibold py-3 rounded-xl text-sm transition-all"
+                >
+                  Mark as Resolved
+                </button>
+              )
+            )}
+            {currentJob.status === "RESOLVED" && (
+              <div className="flex-1 flex items-center justify-center gap-2 bg-emerald-50 border border-emerald-100 rounded-xl py-3">
+                <svg className="w-4 h-4 text-emerald-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+                <span className="text-sm font-semibold text-emerald-700">Job Completed</span>
+              </div>
+            )}
+          </div>
         </div>
 
-        <div className="mt-6 flex space-x-2">
-          {currentJob.status === "ASSIGNED" && (
-            <button
-              onClick={() => handleUpdateStatus("IN_PROGRESS")}
-              className="flex-1 bg-amber-500 hover:bg-amber-600 text-slate-950 font-bold py-2 rounded text-sm"
-            >
-              Start Job
-            </button>
-          )}
-          {currentJob.status === "IN_PROGRESS" && (
-            <button
-              onClick={() => handleUpdateStatus("RESOLVED")}
-              className="flex-1 bg-green-500 hover:bg-green-600 text-slate-950 font-bold py-2 rounded text-sm"
-            >
-              Mark Resolved
-            </button>
-          )}
-        </div>
-      </div>
+        {/* Footer note */}
+        <p className="text-center text-[10px] text-slate-400 font-medium pb-4">
+          For emergencies contact CSFWD Operations: <span className="font-semibold text-slate-500">(045) 961-3546</span>
+        </p>
+      </main>
     </div>
   );
 }
