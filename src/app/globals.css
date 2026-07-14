@@ -4,6 +4,15 @@
 @theme {
   --font-sans: var(--font-sans), sans-serif;
   --font-mono: var(--font-mono), monospace;
+
+  /* Premium Theme Tokens */
+  --color-brand-primary: hsl(223, 100%, 20%);    /* Deep Navy #001e66 */
+  --color-brand-secondary: hsl(196, 100%, 47%);  /* Cyan Blue #00aeef */
+  --color-accent-gold: hsl(43, 96%, 56%);        /* Subtle Gold */
+  --color-bg-dark: hsl(222, 47%, 6%);             /* Deep Slate Dark Mode */
+  
+  --shadow-premium: 0 4px 30px rgba(0, 0, 0, 0.03);
+  --shadow-premium-hover: 0 10px 40px rgba(0, 0, 0, 0.08);
 }
 
 body {
@@ -70,4 +79,24 @@ html.dark textarea {
 html.dark input::placeholder,
 html.dark textarea::placeholder {
   color: #64748b !important;
+}
+
+/* Glassmorphism card utilities */
+.glass-card {
+  background: rgba(255, 255, 255, 0.75);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  box-shadow: var(--shadow-premium);
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.glass-card:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-premium-hover);
+}
+
+html.dark .glass-card {
+  background: rgba(15, 23, 42, 0.65);
+  border: 1px solid rgba(255, 255, 255, 0.05);
 }
