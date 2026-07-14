@@ -55,26 +55,26 @@ export default function FileComplaintSection({
         </div>
       )}
 
-      <form onSubmit={handleCreateComplaint} className="space-y-5">
+      <form onSubmit={handleCreateComplaint} className="space-y-6">
         {/* Description Textarea */}
-        <div className="space-y-1.5">
-          <label className="text-xxs font-bold text-slate-500 uppercase">Describe water issue</label>
+        <div className="space-y-2 text-left">
+          <label className="text-xxs font-black text-slate-400 uppercase tracking-widest block">Describe water issue</label>
           <textarea
             rows={5}
             value={complaintText}
             onChange={(e) => setComplaintText(e.target.value)}
             placeholder="e.g. Mahina ang tubig dito sa amin sa Del Pilar, halos walang tumutulo..."
-            className="w-full bg-slate-50 border border-slate-200 text-[#001e66] font-bold text-xs py-3 px-4 rounded-xl focus:outline-none focus:border-[#00aeef] focus:ring-2 focus:ring-[#00aeef]/20 transition-all"
+            className="w-full bg-white/70 border border-slate-200 text-[#001e66] font-bold text-xs py-3 px-4 rounded-2xl focus:outline-none focus:border-[#00aeef] focus:ring-2 focus:ring-[#00aeef]/30 focus:bg-white shadow-sm transition-all resize-none leading-relaxed placeholder:text-slate-350"
           />
-          <p className="text-[10px] text-slate-400">Reports can be entered in Tagalog, Taglish, or English.</p>
+          <p className="text-[10px] text-slate-400 font-medium">Reports can be entered in Tagalog, Kapampangan, Taglish, or English.</p>
         </div>
 
         {/* Automated Location Pinpoint Active badge info card */}
-        <div className="bg-slate-50 border border-slate-200 rounded-xl p-4 flex items-center space-x-3 text-xs">
-          <span className="text-base">📍</span>
-          <div>
-            <span className="font-extrabold text-[#001e66] block">Automated Location Pinpoint Active</span>
-            <span className="text-[10px] text-slate-500 font-medium font-bold">
+        <div className="bg-white/80 border border-slate-100 rounded-2xl p-4 flex items-start space-x-3.5 text-xs shadow-sm hover:shadow-md transition-shadow duration-300">
+          <span className="text-lg leading-none shrink-0 filter drop-shadow-sm select-none">📍</span>
+          <div className="text-left flex-1 min-w-0">
+            <span className="font-extrabold text-[#001e66] block leading-none mb-1">Automated Location Pinpoint Active</span>
+            <span className="text-[10px] text-slate-500 font-mono font-bold leading-normal block">
               {gpsPinpointActive
                 ? `Exact high-precision coordinates captured (${customLat}, ${customLng} • Accuracy: ${gpsAccuracy ? `${gpsAccuracy.toFixed(1)}m` : "Verified"})`
                 : "Device high-accuracy GPS coordinates will be captured and sent upon filing."}
@@ -83,46 +83,46 @@ export default function FileComplaintSection({
         </div>
 
         {/* Complaint Image URL */}
-        <div className="space-y-1.5">
-          <label className="text-xxs font-bold text-slate-500 uppercase">Complaint Photo URL (Optional)</label>
+        <div className="space-y-2 text-left">
+          <label className="text-xxs font-black text-slate-400 uppercase tracking-widest block">Complaint Photo URL (Optional)</label>
           <input
             type="text"
             value={complaintImageUrl}
             onChange={(e) => setComplaintImageUrl(e.target.value)}
             placeholder="https://example.com/photo.jpg"
-            className="w-full bg-slate-50 border border-slate-200 text-[#001e66] font-bold text-xs py-3 px-4 rounded-xl focus:outline-none focus:border-[#00aeef]"
+            className="w-full bg-white/70 border border-slate-200 text-[#001e66] font-bold text-xs py-3 px-4 rounded-2xl focus:outline-none focus:border-[#00aeef] focus:ring-2 focus:ring-[#00aeef]/30 focus:bg-white shadow-sm transition-all placeholder:text-slate-350"
           />
         </div>
 
         {/* AI Triage Analysis Card */}
         {aiAnalysis && (
-          <div className="bg-[#00aeef]/5 border border-[#00aeef]/20 rounded-2xl p-5 space-y-3 animate-fade-in">
+          <div className="bg-gradient-to-br from-[#00aeef]/5 to-transparent border border-[#00aeef]/15 rounded-[20px] p-5 space-y-4 animate-fade-in shadow-sm">
             <div className="flex items-center justify-between">
-              <div className="flex items-center space-x-2">
+              <div className="flex items-center space-x-2.5">
                 <span className="text-xs font-black text-[#001e66]">✨ Gemini AI Diagnostics</span>
-                <span className="bg-[#00aeef]/10 text-[#00aeef] text-[9px] font-black uppercase px-2 py-0.5 rounded">
+                <span className="bg-[#00aeef]/10 text-[#00aeef] text-[9px] font-black uppercase px-2 py-0.5 rounded-full tracking-wider">
                   Active Triage
                 </span>
               </div>
-              <span className={`text-[10px] font-black px-2.5 py-0.5 rounded-full uppercase ${
-                aiAnalysis.urgency === "URGENT" ? "bg-red-50 text-red-600 border border-red-200" : "bg-amber-50 text-amber-600 border border-amber-200"
+              <span className={`text-[10px] font-black px-2.5 py-0.5 rounded-full uppercase tracking-wider ${
+                aiAnalysis.urgency === "URGENT" ? "bg-red-50 text-red-600 border border-red-100" : "bg-amber-50 text-amber-600 border border-amber-100"
               }`}>
                 {aiAnalysis.urgency} Urgency
               </span>
             </div>
-            <div className="text-xs text-slate-600 space-y-2 leading-relaxed font-semibold">
+            <div className="text-xs text-slate-600 space-y-3 leading-relaxed font-semibold text-left">
               <div>
-                <span className="text-xxs font-bold text-slate-400 uppercase block">Category Classification</span>
+                <span className="text-xxs font-black text-slate-400 uppercase block tracking-wider mb-0.5">Category Classification</span>
                 <span className="font-mono text-[#001e66] text-[10px]">{aiAnalysis.category}</span>
               </div>
               <div>
-                <span className="text-xxs font-bold text-slate-400 uppercase block">Analysis Summary</span>
+                <span className="text-xxs font-black text-slate-400 uppercase block tracking-wider mb-0.5">Analysis Summary</span>
                 <p className="text-slate-700 italic mt-0.5">"{aiAnalysis.summary}"</p>
               </div>
               {aiAnalysis.translatedText && aiAnalysis.translatedText !== complaintText && (
                 <div>
-                  <span className="text-xxs font-bold text-slate-400 uppercase block">English Translation</span>
-                  <p className="text-slate-500 mt-0.5">{aiAnalysis.translatedText}</p>
+                  <span className="text-xxs font-black text-slate-400 uppercase block tracking-wider mb-0.5">English Translation</span>
+                  <p className="text-slate-500 mt-0.5 font-medium">{aiAnalysis.translatedText}</p>
                 </div>
               )}
             </div>
@@ -130,11 +130,11 @@ export default function FileComplaintSection({
         )}
 
         {/* Submission Button Row */}
-        <div>
+        <div className="text-left">
           <button
             type="submit"
             disabled={submitting}
-            className="bg-[#001e66] hover:bg-[#00aeef] text-white font-extrabold text-xs px-6 py-3.5 rounded-xl uppercase tracking-wider shadow-sm transition-all disabled:opacity-50 flex items-center space-x-2"
+            className="bg-[#001e66] hover:bg-[#00aeef] text-white font-extrabold text-xs px-6 py-3.5 rounded-xl uppercase tracking-wider shadow-md shadow-[#001e66]/10 hover:shadow-[#00aeef]/25 hover:scale-105 active:scale-98 transition-all disabled:opacity-50 flex items-center space-x-2 cursor-pointer"
           >
             {submitting ? (
               <>

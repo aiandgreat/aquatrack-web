@@ -176,117 +176,119 @@ export default function ReportsSection({
       </div>
 
       {/* 1. Active Complaints Table */}
-      <div className="space-y-4">
+      <div className="space-y-4 text-left">
         <div>
           <h3 className="text-sm font-black text-[#001e66] uppercase tracking-wider">Active Complaints</h3>
-          <p className="text-xs text-slate-400">Current active dispatches and pending incidents undergoing evaluation</p>
+          <p className="text-xs text-slate-400 font-medium">Current active dispatches and pending incidents undergoing evaluation</p>
         </div>
 
-        <div className="overflow-x-auto">
-          <table className="w-full text-left border-collapse text-xs">
-            <thead>
-              <tr className="border-b border-slate-200 text-slate-500 font-bold uppercase tracking-wider">
-                <th className="py-3 px-4">Citizen Report</th>
-                <th className="py-3 px-4">AI Class &amp; Urgency</th>
-                <th className="py-3 px-4">Location</th>
-                <th className="py-3 px-4">Ticket Status</th>
-                <th className="py-3 px-4">Assign Field Technician</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-100">
-              {paginatedActive.map((c) => (
-                <tr key={c.id} className="hover:bg-slate-50/50 transition-colors">
-                  <td className="py-4 px-4 space-y-1.5">
-                    <div className="font-extrabold text-[#001e66] text-sm">{c.summary}</div>
-                    <div className="text-slate-600 font-medium italic">"{c.rawText}"</div>
-                    {c.translatedText && (
-                      <div className="text-xxs text-[#00aeef] font-semibold mt-1">
-                        🇺🇸 Translation: "{c.translatedText}"
-                      </div>
-                    )}
-                    {c.imageUrl && (
-                      <div className="mt-2">
-                        <span className="text-[10px] font-black text-slate-400 uppercase block mb-1">Attached Photo</span>
-                        <a href={c.imageUrl} target="_blank" rel="noopener noreferrer" className="inline-block relative rounded-lg border border-slate-200 overflow-hidden group">
-                          <img src={c.imageUrl} alt="Complaint Media" className="w-24 h-16 object-cover group-hover:opacity-80 transition-opacity" />
-                          <div className="absolute inset-0 bg-slate-900/40 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity">
-                            <span className="text-[8px] font-black text-white uppercase tracking-wider">🔎 Open</span>
-                          </div>
-                        </a>
-                      </div>
-                    )}
-                    <div className="flex items-center gap-1.5 pt-1">
-                      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[9px] font-black bg-slate-100 text-slate-600 border border-slate-200 uppercase tracking-wide">
-                        📍 {c.barangay || "Outside Service Area"}
-                      </span>
-                    </div>
-                    <div className="text-[10px] font-mono text-slate-400 select-all mt-1">{c.id}</div>
-                  </td>
-                  <td className="py-4 px-4 space-y-1">
-                    <div>
-                      <span className={`px-2 py-0.5 rounded text-[9px] font-black ${
-                        c.urgency === "CRITICAL" ? "bg-red-100 text-red-800" :
-                        c.urgency === "HIGH" ? "bg-amber-100 text-amber-800" :
-                        "bg-slate-100 text-slate-800"
-                      }`}>
-                        {c.urgency}
-                      </span>
-                    </div>
-                    <div className="pt-1">
-                      <span className="text-[10px] font-mono font-bold text-slate-500 uppercase tracking-wider">
-                        {c.category}
-                      </span>
-                    </div>
-                  </td>
-                  <td className="py-4 px-4 font-mono text-slate-600 font-bold space-y-1.5">
-                    <button
-                      onClick={() => handleViewLocation(c.id)}
-                      className="flex items-center gap-1 bg-[#EEF4FA] hover:bg-[#00aeef] text-[#001e66] hover:text-white font-black text-[9px] py-1.5 px-3 rounded-lg border border-slate-200 hover:border-[#00aeef] uppercase tracking-wider transition-all cursor-pointer"
-                    >
-                      🗺️ View Map
-                    </button>
-                  </td>
-                  <td className="py-4 px-4">
-                    <select
-                      value={c.status}
-                      disabled={updatingComplaintId === c.id}
-                      onChange={(e) => handleUpdateComplaintStatus(c.id, e.target.value)}
-                      className="bg-white border border-slate-200 hover:border-[#00aeef] disabled:opacity-50 text-[#001e66] font-bold text-xs py-1.5 px-3 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#00aeef]/40 transition-all"
-                    >
-                      <option value="PENDING">PENDING</option>
-                      <option value="EVALUATING">EVALUATING</option>
-                      <option value="DISPATCHED">DISPATCHED</option>
-                      <option value="ONGOING">ONGOING</option>
-                    </select>
-                  </td>
-                  <td className="py-4 px-4">
-                    <select
-                      value={c.assignedToId || ""}
-                      disabled={updatingComplaintId === c.id}
-                      onChange={(e) => handleUpdateComplaintAssignment(c.id, e.target.value)}
-                      className="bg-white border border-slate-200 hover:border-[#00aeef] disabled:opacity-50 text-[#001e66] font-bold text-xs py-1.5 px-3 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#00aeef]/40 transition-all"
-                    >
-                      <option value="">Unassigned</option>
-                      {users
-                        .filter((u) => u.role === "FIELD_ENGINEER_TECHNICIAN")
-                        .map((u) => (
-                          <option key={u.id} value={u.id}>
-                            {u.name}
-                          </option>
-                        ))}
-                    </select>
-                  </td>
+        <div className="overflow-hidden bg-white/40 border border-slate-200/80 rounded-[20px] shadow-sm">
+          <div className="overflow-x-auto">
+            <table className="w-full text-left border-collapse text-xs">
+              <thead>
+                <tr className="border-b border-slate-200/80 bg-[#EEF4FA]/40 text-[#001e66]/80 font-black uppercase tracking-wider">
+                  <th className="py-3.5 px-5">Citizen Report</th>
+                  <th className="py-3.5 px-5">AI Class &amp; Urgency</th>
+                  <th className="py-3.5 px-5">Location</th>
+                  <th className="py-3.5 px-5">Ticket Status</th>
+                  <th className="py-3.5 px-5">Assign Field Technician</th>
                 </tr>
-              ))}
-              {filteredActive.length === 0 && (
-                <tr>
-                  <td colSpan={5} className="py-8 text-center text-slate-500 italic">
-                    No active citizen complaints match the selected criteria.
-                  </td>
-                </tr>
-              )}
-            </tbody>
-          </table>
+              </thead>
+              <tbody className="divide-y divide-slate-150/70">
+                {paginatedActive.map((c) => (
+                  <tr key={c.id} className="hover:bg-white/60 transition-colors">
+                    <td className="py-4.5 px-5 space-y-1.5">
+                      <div className="font-extrabold text-[#001e66] text-sm">{c.summary}</div>
+                      <div className="text-slate-650 font-medium italic leading-relaxed">"{c.rawText}"</div>
+                      {c.translatedText && (
+                        <div className="text-xxs text-[#00aeef] font-bold mt-1">
+                          🇺🇸 Translation: "{c.translatedText}"
+                        </div>
+                      )}
+                      {c.imageUrl && (
+                        <div className="mt-2">
+                          <span className="text-[10px] font-black text-slate-450 uppercase block mb-1">Attached Photo</span>
+                          <a href={c.imageUrl} target="_blank" rel="noopener noreferrer" className="inline-block relative rounded-xl border border-slate-200 overflow-hidden group shadow-sm">
+                            <img src={c.imageUrl} alt="Complaint Media" className="w-24 h-16 object-cover group-hover:opacity-80 transition-opacity" />
+                            <div className="absolute inset-0 bg-slate-900/40 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity">
+                              <span className="text-[8px] font-black text-white uppercase tracking-wider">🔎 Open</span>
+                            </div>
+                          </a>
+                        </div>
+                      )}
+                      <div className="flex items-center gap-1.5 pt-1">
+                        <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[9px] font-black bg-slate-100 text-slate-600 border border-slate-200 uppercase tracking-wide">
+                          📍 {c.barangay || "Outside Service Area"}
+                        </span>
+                      </div>
+                      <div className="text-[10px] font-mono text-slate-400 select-all mt-1">{c.id}</div>
+                    </td>
+                    <td className="py-4.5 px-5 space-y-1">
+                      <div>
+                        <span className={`px-2.5 py-0.5 rounded-full text-[9px] font-black uppercase tracking-wider ${
+                          c.urgency === "CRITICAL" ? "bg-red-100 text-red-800" :
+                          c.urgency === "HIGH" ? "bg-amber-100 text-amber-800" :
+                          "bg-slate-100 text-slate-800"
+                        }`}>
+                          {c.urgency}
+                        </span>
+                      </div>
+                      <div className="pt-1">
+                        <span className="text-[10px] font-mono font-bold text-slate-500 uppercase tracking-wider">
+                          {c.category}
+                        </span>
+                      </div>
+                    </td>
+                    <td className="py-4.5 px-5 font-mono text-slate-600 font-bold space-y-1.5">
+                      <button
+                        onClick={() => handleViewLocation(c.id)}
+                        className="flex items-center gap-1 bg-[#EEF4FA] hover:bg-[#00aeef] text-[#001e66] hover:text-white font-black text-[9px] py-2 px-3 rounded-xl border border-slate-200 hover:border-[#00aeef] uppercase tracking-wider transition-all cursor-pointer shadow-sm hover:scale-105 active:scale-95"
+                      >
+                        🗺️ View Map
+                      </button>
+                    </td>
+                    <td className="py-4.5 px-5">
+                      <select
+                        value={c.status}
+                        disabled={updatingComplaintId === c.id}
+                        onChange={(e) => handleUpdateComplaintStatus(c.id, e.target.value)}
+                        className="bg-white border border-slate-200 hover:border-[#00aeef] disabled:opacity-50 text-[#001e66] font-bold text-xs py-2 px-3 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#00aeef]/40 transition-all cursor-pointer shadow-sm"
+                      >
+                        <option value="PENDING">PENDING</option>
+                        <option value="EVALUATING">EVALUATING</option>
+                        <option value="DISPATCHED">DISPATCHED</option>
+                        <option value="ONGOING">ONGOING</option>
+                      </select>
+                    </td>
+                    <td className="py-4.5 px-5">
+                      <select
+                        value={c.assignedToId || ""}
+                        disabled={updatingComplaintId === c.id}
+                        onChange={(e) => handleUpdateComplaintAssignment(c.id, e.target.value)}
+                        className="bg-white border border-slate-200 hover:border-[#00aeef] disabled:opacity-50 text-[#001e66] font-bold text-xs py-2 px-3 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#00aeef]/40 transition-all cursor-pointer shadow-sm"
+                      >
+                        <option value="">Unassigned</option>
+                        {users
+                          .filter((u) => u.role === "FIELD_ENGINEER_TECHNICIAN")
+                          .map((u) => (
+                            <option key={u.id} value={u.id}>
+                              {u.name}
+                            </option>
+                          ))}
+                      </select>
+                    </td>
+                  </tr>
+                ))}
+                {filteredActive.length === 0 && (
+                  <tr>
+                    <td colSpan={5} className="py-8 text-center text-slate-550 font-bold uppercase tracking-wider">
+                      No active citizen complaints match the selected criteria.
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </div>
         </div>
 
         {activeTotalPages > 1 && (

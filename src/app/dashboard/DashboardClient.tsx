@@ -170,7 +170,7 @@ export default function DashboardClient({
   const mapLoadTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
 
-  const handleMapRef = (el: HTMLDivElement | null) => {
+  const handleMapRef = React.useCallback((el: HTMLDivElement | null) => {
     if (!el) {
       if (mapLoadTimeoutRef.current) {
         clearTimeout(mapLoadTimeoutRef.current);
@@ -186,6 +186,7 @@ export default function DashboardClient({
 
     if (clientMapRef.current) return;
 
+    // Utilize refs or current component state values for map instantiation bounds
     const lat = parseFloat(customLat) || 15.0285;
     const lng = parseFloat(customLng) || 120.6942;
     setMapError(false);
@@ -203,7 +204,9 @@ export default function DashboardClient({
       setMapError(false);
       map.resize();
       setTimeout(() => {
-        map.resize();
+        if (clientMapRef.current === map) {
+          map.resize();
+        }
       }, 300);
     });
     map.on("style.load", () => {
@@ -251,7 +254,7 @@ export default function DashboardClient({
       setCustomLng(e.lngLat.lng.toFixed(6));
       setGpsPinpointActive(true);
     });
-  };
+  }, []);
 
   useEffect(() => {
     const map = clientMapRef.current;

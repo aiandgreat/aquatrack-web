@@ -485,14 +485,42 @@ export default function DashboardAdmin({
     }
   };
 
-  const handleDownloadReport = () => {
-    const dummyReadings = [
-      { nodeName: "East Reservoir Pump Station", ph: 7.2, turbidity: 1.2, tds: 220, pressure: 45.2, timestamp: new Date().toISOString() },
-      { nodeName: "North Main Junction Hub", ph: 6.8, turbidity: 4.8, tds: 380, pressure: 35.1, timestamp: new Date().toISOString() },
-      { nodeName: "Household Edge B", ph: 5.8, turbidity: 8.5, tds: 530, pressure: 14.5, timestamp: new Date().toISOString() },
-    ];
-    generateComplianceReport({ readings: dummyReadings });
-    showFeedback("success", "Water analytics report downloaded successfully.");
+  const handleDownloadReport = async () => {
+    showFeedback("success", "Generating water analytics audit report...");
+    
+    let summaryText = "";
+    try {
+      const res = await fetch("/api/admin/system-summary");
+      const json = await res.json();
+      if (json.success) {
+        summaryText = json.summary;
+      }
+    } catch (e) {
+      console.warn("Failed fetching summary for compliance report:", e);
+    }
+
+    const readings = nodes.map((n, i) => {
+      // Apply realistic simulated offsets per node based on current simulator values
+      const phOffset = parseFloat(((i % 2 === 0 ? 0.15 : -0.1) * (i % 3 === 0 ? 1 : 0.6)).toFixed(2));
+      const turbidityOffset = parseFloat(((i % 2 === 0 ? 0.3 : -0.2) * (i % 3 === 0 ? 1.2 : 0.5)).toFixed(2));
+      const tdsOffset = i % 2 === 0 ? 12 : -15;
+      const pressureOffset = parseFloat(((i % 2 === 0 ? 2.1 : -1.6) * (i % 3 === 0 ? 1.4 : 0.8)).toFixed(1));
+
+      return {
+        nodeName: n.name,
+        ph: Math.max(0, Math.min(14, simValues.ph + phOffset)),
+        turbidity: Math.max(0, simValues.turbidity + turbidityOffset),
+        tds: Math.max(0, simValues.tds + tdsOffset),
+        pressure: Math.max(0, simValues.pressure + pressureOffset),
+        timestamp: new Date().toISOString(),
+      };
+    });
+
+    generateComplianceReport({
+      readings,
+      complaints,
+      systemSummary: summaryText,
+    });
   };
 
   const handleCreateAdvisory = async (e: React.FormEvent) => {
@@ -849,22 +877,22 @@ export default function DashboardAdmin({
                   <button
                     key={item.key}
                     onClick={() => setActiveTab(item.key as any)}
-                    className={`w-full flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-sm font-medium transition-all duration-150 relative ${
+                    className={`w-full flex items-center gap-2.5 px-3.5 py-2.5 rounded-xl text-sm font-medium transition-all duration-200 hover:translate-x-1 relative ${
                       isActive
-                        ? "bg-[#001e66]/5 text-[#001e66] font-semibold"
-                        : "text-slate-500 hover:text-[#001e66] hover:bg-slate-50"
+                        ? "bg-[#001e66]/8 text-[#001e66] font-bold shadow-sm scale-[1.02]"
+                        : "text-slate-500 hover:text-[#001e66] hover:bg-slate-50/70"
                     }`}
                   >
                     {isActive && (
-                      <span className="absolute left-0 top-1/2 -translate-y-1/2 w-0.5 h-4 bg-[#00aeef] rounded-full" />
+                      <span className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-5 bg-[#00aeef] rounded-full animate-pulse" />
                     )}
                     <svg
                       xmlns="http://www.w3.org/2000/svg"
-                      className={`w-4 h-4 shrink-0 ${isActive ? "text-[#001e66]" : "text-slate-400"}`}
+                      className={`w-4 h-4 shrink-0 transition-transform ${isActive ? "text-[#001e66] scale-110" : "text-slate-400 group-hover:scale-105"}`}
                       fill="none"
                       viewBox="0 0 24 24"
                       stroke="currentColor"
-                      strokeWidth={isActive ? 2 : 1.75}
+                      strokeWidth={isActive ? 2.5 : 1.75}
                     >
                       <path strokeLinecap="round" strokeLinejoin="round" d={item.icon} />
                     </svg>
@@ -939,22 +967,22 @@ export default function DashboardAdmin({
                             setActiveTab(item.key as any);
                             setIsMobileSidebarOpen(false);
                           }}
-                          className={`w-full flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-sm font-medium transition-all duration-150 relative ${
+                          className={`w-full flex items-center gap-2.5 px-3.5 py-2.5 rounded-xl text-sm font-medium transition-all duration-200 hover:translate-x-1 relative ${
                             isActive
-                              ? "bg-[#001e66]/5 text-[#001e66] font-semibold"
-                              : "text-slate-500 hover:text-[#001e66] hover:bg-slate-50"
+                              ? "bg-[#001e66]/8 text-[#001e66] font-bold shadow-sm scale-[1.02]"
+                              : "text-slate-500 hover:text-[#001e66] hover:bg-slate-50/70"
                           }`}
                         >
                           {isActive && (
-                            <span className="absolute left-0 top-1/2 -translate-y-1/2 w-0.5 h-4 bg-[#00aeef] rounded-full" />
+                            <span className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-5 bg-[#00aeef] rounded-full animate-pulse" />
                           )}
                           <svg
                             xmlns="http://www.w3.org/2000/svg"
-                            className={`w-4 h-4 shrink-0 ${isActive ? "text-[#001e66]" : "text-slate-400"}`}
+                            className={`w-4 h-4 shrink-0 transition-transform ${isActive ? "text-[#001e66] scale-110" : "text-slate-400 group-hover:scale-105"}`}
                             fill="none"
                             viewBox="0 0 24 24"
                             stroke="currentColor"
-                            strokeWidth={isActive ? 2 : 1.75}
+                            strokeWidth={isActive ? 2.5 : 1.75}
                           >
                             <path strokeLinecap="round" strokeLinejoin="round" d={item.icon} />
                           </svg>
@@ -1051,7 +1079,10 @@ export default function DashboardAdmin({
               )}
 
               {activeTab === "analytics" && (
-                <AnalyticsSection handleDownloadReport={handleDownloadReport} />
+                <AnalyticsSection
+                  handleDownloadReport={handleDownloadReport}
+                  complaints={complaints}
+                />
               )}
 
               {activeTab === "users" && (

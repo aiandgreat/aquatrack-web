@@ -1,14 +1,8 @@
 import { NextResponse } from "next/server";
-import { PrismaClient } from "@prisma/client";
-import { PrismaPg } from "@prisma/adapter-pg";
-import { Pool } from "pg";
+import { prisma } from "../../../../lib/prisma";
+import { redis } from "../../../../lib/redis";
 import { generateText } from "ai";
 import { createGoogle } from "@ai-sdk/google";
-import { redis } from "../../../../lib/redis";
-
-const pool = new Pool({ connectionString: process.env.DATABASE_URL });
-const adapter = new PrismaPg(pool);
-const prisma = new PrismaClient({ adapter });
 
 export async function GET(req: Request) {
   try {

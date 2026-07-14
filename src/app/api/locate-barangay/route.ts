@@ -1,7 +1,5 @@
 import { NextResponse } from "next/server";
-import { Pool } from "pg";
-
-const pool = new Pool({ connectionString: process.env.DATABASE_URL });
+import { pool } from "../../../lib/prisma";
 
 const SAN_FERNANDO_BARANGAYS = [
   "Alasas", "Baliti", "Bulaon", "Calulut", "Del Carmen", "Del Pilar",
