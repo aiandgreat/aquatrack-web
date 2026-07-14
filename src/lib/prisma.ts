@@ -10,10 +10,13 @@ const globalForPrisma = globalThis as unknown as {
 let prisma: PrismaClient;
 let pool: Pool;
 
+// Direct connection parameters (with serverless-safe max: 1 pool limit to prevent database connection exhaustion)
+const connectionString = process.env.DIRECT_URL || process.env.DATABASE_URL;
+
 if (!globalForPrisma.pool) {
   globalForPrisma.pool = new Pool({
-    connectionString: process.env.DATABASE_URL,
-    max: 12, // Increase maximum connections to handle parallel requests
+    connectionString,
+    max: 1, // Cap to 1 connection per serverless route handler to prevent exceeding database limits
     idleTimeoutMillis: 30000, // Reclaim connections after 30s idle
     connectionTimeoutMillis: 30000, // Increase connection timeout to 30s to prevent network latency timeout errors
   });
