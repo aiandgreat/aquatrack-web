@@ -87,7 +87,6 @@ export default function ComplaintsSection({
             <tr className="border-b border-slate-200 text-slate-500 font-bold uppercase tracking-wider">
               <th className="py-3 px-4">Citizen Report</th>
               <th className="py-3 px-4">AI Class &amp; Urgency</th>
-              <th className="py-3 px-4">Location</th>
               <th className="py-3 px-4">Ticket Status</th>
             </tr>
           </thead>
@@ -114,7 +113,11 @@ export default function ComplaintsSection({
                     </div>
                   )}
                   <div className="flex items-center gap-1.5 pt-1">
-                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[9px] font-black bg-slate-100 text-slate-600 border border-slate-200 uppercase tracking-wide">
+                    <span 
+                      onClick={() => handleViewLocation(c.id)}
+                      className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[9px] font-black bg-slate-100 hover:bg-blue-50 text-slate-600 hover:text-[#00aeef] border border-slate-200 hover:border-[#00aeef] uppercase tracking-wide cursor-pointer transition-colors shadow-sm active:scale-95"
+                      title="Click to view on map"
+                    >
                       📍 {c.barangay || "Outside Service Area"}
                     </span>
                   </div>
@@ -136,14 +139,7 @@ export default function ComplaintsSection({
                     </span>
                   </div>
                 </td>
-                <td className="py-4 px-4 font-mono text-slate-600 font-bold space-y-1.5">
-                  <button
-                    onClick={() => handleViewLocation(c.id)}
-                    className="flex items-center gap-1 bg-[#EEF4FA] hover:bg-[#00aeef] text-[#001e66] hover:text-white font-black text-[9px] py-1.5 px-3 rounded-lg border border-slate-200 hover:border-[#00aeef] uppercase tracking-wider transition-all cursor-pointer"
-                  >
-                    🗺️ View Map
-                  </button>
-                </td>
+
                 <td className="py-4 px-4">
                   <select
                     value={c.status}

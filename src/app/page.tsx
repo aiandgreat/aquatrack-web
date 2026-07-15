@@ -708,63 +708,65 @@ export default function Homepage() {
                 {advisories.length > 1 && (
                   <button 
                     onClick={() => setAdvisoryIndex((prev) => (prev - 1 + advisories.length) % advisories.length)}
-                    className="w-11 h-11 rounded-full border border-slate-200 bg-white shadow-md flex items-center justify-center text-[#001e66] hover:bg-slate-50 transition-all duration-200 hover:scale-105 select-none shrink-0"
+                    className="w-10 h-10 rounded-full border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 flex items-center justify-center text-slate-400 hover:text-[#001e66] dark:hover:text-slate-100 hover:border-slate-300 dark:hover:border-slate-700 transition-all duration-200 shrink-0 cursor-pointer shadow-sm active:scale-95 select-none"
                     title="Previous Advisory"
                   >
-                    <svg className="w-5 h-5 stroke-current" fill="none" strokeWidth="2.5" viewBox="0 0 24 24">
+                    <svg className="w-4 h-4 stroke-current" fill="none" strokeWidth="2.5" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 19.5L8.25 12l7.5-7.5" />
                     </svg>
                   </button>
                 )}
 
                 {/* Center Transition Card */}
-                <div className="w-full max-w-3xl min-h-[260px] flex items-center justify-center">
+                <div className="w-full max-w-2xl min-h-[280px] flex items-center justify-center">
                   <AnimatePresence mode="wait">
                     <motion.div
                       key={advisoryIndex}
-                      initial={{ opacity: 0, scale: 0.97, y: 5 }}
+                      initial={{ opacity: 0, scale: 0.98, y: 4 }}
                       animate={{ opacity: 1, scale: 1, y: 0 }}
-                      exit={{ opacity: 0, scale: 0.97, y: -5 }}
-                      transition={{ duration: 0.25, ease: "easeInOut" }}
-                      className={`bg-white backdrop-blur-lg border border-slate-200/60 shadow-lg rounded-3xl p-8 md:p-10 relative overflow-hidden w-full text-left ${
-                        advisories[advisoryIndex].type === "warning" ? "border-t-4 border-t-[#970006]" : "border-t-4 border-t-[#00aeef]"
-                      }`}
+                      exit={{ opacity: 0, scale: 0.98, y: -4 }}
+                      transition={{ duration: 0.2, ease: "easeOut" }}
+                      className="bg-white dark:bg-slate-900/60 backdrop-blur-md border border-slate-200/80 dark:border-slate-800/80 shadow-[0_8px_30px_rgba(0,0,0,0.02)] rounded-2xl p-7 md:p-9 relative overflow-hidden w-full text-left h-[280px] flex flex-col justify-between"
                     >
-                      {/* Top Header of Card */}
-                      <div className="flex items-center justify-between gap-4">
-                        {advisories[advisoryIndex].type === "warning" ? (
-                          <svg className="w-11 h-11 text-[#970006] bg-red-50 p-2.5 rounded-2xl shrink-0" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-                          </svg>
-                        ) : (
-                          <svg className="w-11 h-11 text-[#00aeef] bg-blue-50 p-2.5 rounded-2xl shrink-0" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" d="M11.25 11.25l.041-.02a.75.75 0 111.063.852l-.708 2.836a.75.75 0 001.063.852l.041-.021M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                          </svg>
-                        )}
-                        <span className="text-xs md:text-sm font-extrabold text-[#001e66] bg-slate-100/90 px-3.5 py-1.5 rounded-xl border border-slate-200/60 flex items-center gap-1.5 shadow-sm">
-                          <svg className="w-4 h-4 text-[#00aeef]" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
+                      {/* Top Accent Gradient Border Strip */}
+                      <div className={`absolute top-0 left-0 right-0 h-[4px] ${
+                        advisories[advisoryIndex].type === "warning"
+                          ? "bg-gradient-to-r from-red-500 to-amber-500"
+                          : "bg-gradient-to-r from-[#00aeef] to-sky-400"
+                      }`} />
+
+                      {/* Header Row */}
+                      <div className="flex items-center justify-between gap-4 shrink-0">
+                        {/* Status badge */}
+                        <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-wider ${
+                          advisories[advisoryIndex].type === "warning"
+                            ? "bg-red-50 dark:bg-red-950/20 text-red-700 dark:text-red-400 border border-red-100 dark:border-red-900/30"
+                            : "bg-sky-50 dark:bg-sky-950/20 text-sky-700 dark:text-sky-400 border border-sky-100 dark:border-sky-900/30"
+                        }`}>
+                          <span className={`w-1.5 h-1.5 rounded-full ${
+                            advisories[advisoryIndex].type === "warning" ? "bg-red-500 animate-pulse" : "bg-sky-500"
+                          }`} />
+                          {advisories[advisoryIndex].type}
+                        </span>
+
+                        {/* Date metadata */}
+                        <span className="text-[10px] font-mono font-bold text-slate-400 dark:text-slate-500 flex items-center gap-1">
+                          <svg className="w-3.5 h-3.5 text-slate-400 shrink-0" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" d="M6.75 3v2.25M17.25 3v2.25M3 18.75V7.5a2.25 2.25 0 012.25-2.25h13.5A2.25 2.25 0 0121 7.5v11.25m-18 0A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75m-18 0v-7.5A2.25 2.25 0 015.25 9h13.5A2.25 2.25 0 0121 11.25v7.5" />
                           </svg>
                           <span>{advisories[advisoryIndex].date}</span>
                         </span>
                       </div>
 
-                      {/* Info type indicator badge */}
-                      <div className="flex items-center space-x-2 mt-5">
-                        <span className={`text-[10px] font-extrabold px-3 py-1 rounded-full uppercase tracking-wider ${
-                          advisories[advisoryIndex].type === "warning" ? "bg-red-50 text-[#970006]" : "bg-blue-50 text-[#00aeef]"
-                        }`}>
-                          {advisories[advisoryIndex].type}
-                        </span>
+                      {/* Body Content - Scrollable if description is extra long */}
+                      <div className="flex-1 overflow-y-auto mt-5 pr-1 text-left scrollbar-thin">
+                        <h4 className="font-extrabold text-lg md:text-xl text-[#001e66] dark:text-slate-100 tracking-tight leading-snug">
+                          {advisories[advisoryIndex].title}
+                        </h4>
+                        <p className="text-xs md:text-sm text-slate-500 dark:text-slate-400 mt-2 leading-relaxed font-medium">
+                          {advisories[advisoryIndex].text}
+                        </p>
                       </div>
-
-                      {/* Content details */}
-                      <h4 className="font-black text-xl md:text-2xl text-[#001e66] mt-4 leading-snug">
-                        {advisories[advisoryIndex].title}
-                      </h4>
-                      <p className="text-sm md:text-base text-slate-600 mt-3 leading-relaxed">
-                        {advisories[advisoryIndex].text}
-                      </p>
                     </motion.div>
                   </AnimatePresence>
                 </div>
@@ -772,10 +774,10 @@ export default function Homepage() {
                 {advisories.length > 1 && (
                   <button 
                     onClick={() => setAdvisoryIndex((prev) => (prev + 1) % advisories.length)}
-                    className="w-11 h-11 rounded-full border border-slate-200 bg-white shadow-md flex items-center justify-center text-[#001e66] hover:bg-slate-50 transition-all duration-200 hover:scale-105 select-none shrink-0"
+                    className="w-10 h-10 rounded-full border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 flex items-center justify-center text-slate-400 hover:text-[#001e66] dark:hover:text-slate-100 hover:border-slate-300 dark:hover:border-slate-700 transition-all duration-200 shrink-0 cursor-pointer shadow-sm active:scale-95 select-none"
                     title="Next Advisory"
                   >
-                    <svg className="w-5 h-5 stroke-current" fill="none" strokeWidth="2.5" viewBox="0 0 24 24">
+                    <svg className="w-4 h-4 stroke-current" fill="none" strokeWidth="2.5" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" />
                     </svg>
                   </button>

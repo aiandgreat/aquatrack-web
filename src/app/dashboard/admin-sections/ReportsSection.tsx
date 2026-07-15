@@ -284,25 +284,20 @@ export default function ReportsSection({
                       AQ-{c.id.slice(0, 8).toUpperCase()}
                     </td>
 
-                    {/* 2. Location (Barangay with View Map action button) */}
+                    {/* 2. Location (Clickable Barangay) */}
                     <td className="py-4.5 px-5">
                       <div className="flex flex-col gap-1.5 items-start">
-                        <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-black bg-blue-50 text-[#001e66] border border-blue-100 uppercase tracking-wide">
+                        <span 
+                          onClick={() => handleViewLocation(c.id)}
+                          className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-black bg-blue-50 hover:bg-blue-100 text-[#001e66] border border-blue-100 hover:border-blue-200 uppercase tracking-wide cursor-pointer transition-colors shadow-sm active:scale-95"
+                          title="Click to view on map"
+                        >
                           <svg className="w-3 h-3 text-[#00aeef] shrink-0" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" d="M15 10.5a3 3 0 11-6 0 3 3 0 016 0z" />
                             <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 10.5c0 7.142-7.5 11.25-7.5 11.25S4.5 17.642 4.5 10.5a7.5 7.5 0 1115 0z" />
                           </svg>
                           <span>{c.barangay || "Outside Service Area"}</span>
                         </span>
-                        <button
-                          onClick={() => handleViewLocation(c.id)}
-                          className="flex items-center gap-1.5 bg-[#EEF4FA] hover:bg-[#00aeef] text-[#001e66] hover:text-white font-black text-[9px] py-1.5 px-2.5 rounded-xl border border-slate-200 hover:border-[#00aeef] uppercase tracking-wider transition-all cursor-pointer shadow-sm hover:scale-105 active:scale-95 mt-1"
-                        >
-                          <svg className="w-3.5 h-3.5 text-current shrink-0" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" d="M9 6.75L3 9v11.25l6-2.25m0-11.25l6 2.25m-6-2.25v11.25m6-9l6-2.25v11.25l-6 2.25m0-11.25v11.25" />
-                          </svg>
-                          <span>View Map</span>
-                        </button>
                       </div>
                     </td>
 
@@ -433,25 +428,20 @@ export default function ReportsSection({
                         AQ-{c.id.slice(0, 8).toUpperCase()}
                       </td>
 
-                      {/* 2. Location */}
+                      {/* 2. Location (Clickable Barangay) */}
                       <td className="py-4.5 px-5">
                         <div className="flex flex-col gap-1.5 items-start">
-                          <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-black bg-slate-100 text-slate-455 border border-slate-200 uppercase tracking-wide">
+                          <span 
+                            onClick={() => handleViewLocation(c.id)}
+                            className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-black bg-slate-100 hover:bg-slate-200 text-slate-600 hover:text-slate-850 border border-slate-200 hover:border-slate-300 uppercase tracking-wide cursor-pointer transition-colors shadow-sm active:scale-95"
+                            title="Click to view on map"
+                          >
                             <svg className="w-3 h-3 text-slate-400 shrink-0" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
                               <path strokeLinecap="round" strokeLinejoin="round" d="M15 10.5a3 3 0 11-6 0 3 3 0 016 0z" />
                               <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 10.5c0 7.142-7.5 11.25-7.5 11.25S4.5 17.642 4.5 10.5a7.5 7.5 0 1115 0z" />
                             </svg>
                             <span>{c.barangay || "Outside Service Area"}</span>
                           </span>
-                          <button
-                            onClick={() => handleViewLocation(c.id)}
-                            className="flex items-center gap-1.5 bg-[#EEF4FA] hover:bg-[#00aeef] text-[#001e66] hover:text-white font-black text-[9px] py-1.5 px-2.5 rounded-xl border border-slate-200 hover:border-[#00aeef] uppercase tracking-wider transition-all cursor-pointer shadow-sm hover:scale-105 active:scale-95 mt-1"
-                          >
-                            <svg className="w-3.5 h-3.5 text-current shrink-0" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" d="M9 6.75L3 9v11.25l6-2.25m0-11.25l6 2.25m-6-2.25v11.25m6-9l6-2.25v11.25l-6 2.25m0-11.25v11.25" />
-                            </svg>
-                            <span>View Map</span>
-                          </button>
                         </div>
                       </td>
 

@@ -705,7 +705,12 @@ export default function DashboardAdmin({
   ] as const;
 
   return (
-    <div className="h-screen bg-[#F8FAFC] text-slate-800 flex flex-col font-sans w-full overflow-hidden">
+    <div className="h-screen text-slate-800 flex flex-col font-sans w-full overflow-hidden relative bg-[#E2EAF4]">
+      {/* Background Image Layer with custom opacity */}
+      <div 
+        className="absolute inset-0 bg-cover bg-center bg-no-repeat pointer-events-none"
+        style={{ backgroundImage: "url('/BG.jpg')", opacity: 0.08 }}
+      />
 
       {/* ── Header ─────────────────────────────────────────────────────────── */}
       <header className="sticky top-0 z-50 h-20 bg-white border-b border-slate-100 flex items-center justify-between px-6 shrink-0">
@@ -858,7 +863,7 @@ export default function DashboardAdmin({
       </header>
 
       {/* ── Body ────────────────────────────────────────────────────────────── */}
-      <div className="flex flex-1 overflow-hidden p-4 gap-4 bg-slate-50">
+      <div className="flex flex-1 overflow-hidden p-4 gap-4 bg-transparent relative z-10">
 
         {/* ── Sidebar ───────────────────────────────────────────────────────── */}
         <aside className="hidden lg:flex w-56 shrink-0 bg-white border border-slate-100 flex flex-col h-full rounded-2xl overflow-hidden shadow-sm">

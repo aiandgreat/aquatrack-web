@@ -199,9 +199,19 @@ export default function HeatmapsSection({ complaints = [] }: HeatmapsSectionProp
           ]
         }
       });
+      map.resize();
     });
 
+    map.on("load", () => {
+      map.resize();
+    });
+
+    const resizeTimeout = setTimeout(() => {
+      map.resize();
+    }, 450);
+
     return () => {
+      clearTimeout(resizeTimeout);
       map.remove();
       mapRef.current = null;
     };
@@ -477,7 +487,7 @@ export default function HeatmapsSection({ complaints = [] }: HeatmapsSectionProp
       </div>
 
       {/* Mapbox Live Heatmap Display */}
-      <div className="relative w-full h-[320px] rounded-2xl overflow-hidden border border-slate-200 shadow-sm bg-slate-900">
+      <div className="relative w-full h-[580px] rounded-2xl overflow-hidden border border-slate-200 shadow-sm bg-slate-900">
         <div ref={mapContainerRef} className="absolute inset-0 w-full h-full" />
         <div className="absolute bottom-3 right-3 z-10 bg-slate-950/90 text-[9px] font-bold text-slate-400 px-2 py-1 rounded border border-slate-800 shadow-md">
           San Fernando Heatmap Map · GPU Density Clouds

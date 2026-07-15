@@ -6,6 +6,7 @@ import React, { useState, useEffect } from "react";
 import Link from "next/link";
 import { supabase } from "@/lib/supabase";
 import { useRouter } from "next/navigation";
+import { motion } from "framer-motion";
 
 export default function LoginPage() {
   const router = useRouter();
@@ -204,15 +205,20 @@ export default function LoginPage() {
 
         {/* Right Side: Form Panel */}
         <div className="w-full md:w-[60%] flex items-center justify-center p-8 md:p-16 bg-slate-50 dark:bg-slate-950 transition-colors duration-200">
-          <div className="w-full max-w-lg space-y-8">
+          <motion.div 
+            initial={{ opacity: 0, x: -40 }}
+            animate={{ opacity: 1, x: 0 }}
+            transition={{ duration: 0.45, ease: [0.16, 1, 0.3, 1] }}
+            className="w-full max-w-lg space-y-8"
+          >
             
             {/* Form Title */}
             <div>
               <h2 className="text-3xl font-black text-[#001e66] dark:text-slate-100 tracking-tight">
-                Staff Authentication
+                Login
               </h2>
               <p className="text-sm text-slate-500 dark:text-slate-400 font-bold mt-2">
-                Enter your administrative credentials to log in
+                Enter your credentials to log in
               </p>
             </div>
 
@@ -269,7 +275,7 @@ export default function LoginPage() {
                   id="login-submit"
                   type="submit"
                   disabled={loading}
-                  className="w-full bg-[#001e66] hover:bg-[#00aeef] disabled:opacity-60 disabled:cursor-not-allowed text-white font-extrabold py-4 rounded-xl transition-all duration-200 shadow-sm hover:shadow-md text-sm uppercase tracking-wider mt-4 cursor-pointer"
+                  className="w-full bg-[#0B2E7A] hover:bg-[#08225c] disabled:opacity-60 disabled:cursor-not-allowed text-white font-extrabold py-4 rounded-xl transition-all duration-200 shadow-sm hover:shadow-md text-sm uppercase tracking-wider mt-4 cursor-pointer"
                 >
                   {loading ? (
                     <span className="flex items-center justify-center space-x-2">
@@ -320,7 +326,7 @@ export default function LoginPage() {
               For technical access issues, please contact CSFWD IT Division at{" "}
               <span className="text-slate-500 dark:text-slate-355 font-bold">(045) 961-3546</span>
             </p>
-          </div>
+          </motion.div>
         </div>
 
       </div>

@@ -103,11 +103,11 @@ export default function DashboardClient({
   const [gpsPinpointActive, setGpsPinpointActive] = useState(false);
   const [gpsAccuracy, setGpsAccuracy] = useState<number | null>(null);
   const [uploadingPhoto, setUploadingPhoto] = useState(false);
+  const [isDragging, setIsDragging] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const handlePhotoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
+  const uploadFile = async (file: File) => {
     if (!file) return;
-
     setUploadingPhoto(true);
     setSubmitError(null);
     try {
@@ -119,6 +119,11 @@ export default function DashboardClient({
     } finally {
       setUploadingPhoto(false);
     }
+  };
+
+  const handlePhotoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) await uploadFile(file);
   };
 
   // Request user's exact geolocation GPS coordinates on mount and watch for improvements
@@ -227,9 +232,20 @@ export default function DashboardClient({
     }, 10000);
 
     clientMapRef.current = map;
-    map.addControl(new mapboxgl.NavigationControl(), "top-right");
 
-    const marker = new mapboxgl.Marker({ draggable: true, color: "#e11d48" })
+    // Create a custom DOM element for the red location pin marker with a soft, semi-transparent red pulse ring
+    const markerEl = document.createElement("div");
+    markerEl.className = "custom-mapbox-pin";
+    markerEl.innerHTML = `
+      <div style="position: relative; display: flex; align-items: center; justify-content: center; width: 40px; height: 40px;">
+        <div style="position: absolute; width: 32px; height: 32px; background-color: rgba(239, 68, 68, 0.25); border: 1.5px solid rgba(239, 68, 68, 0.35); border-radius: 9999px; animation: pulse 2s infinite ease-out;"></div>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="#ef4444" style="width: 28px; height: 28px; filter: drop-shadow(0px 2px 4px rgba(0,0,0,0.15)); z-index: 10;">
+          <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z"/>
+        </svg>
+      </div>
+    `;
+
+    const marker = new mapboxgl.Marker({ element: markerEl, draggable: true })
       .setLngLat([lng, lat])
       .addTo(map);
 
@@ -692,12 +708,17 @@ export default function DashboardClient({
   );
 
   return (
-    <div className="h-screen bg-[#F8FAFC] text-[#001e66] flex flex-col font-sans overflow-hidden">
+    <div className="h-screen text-[#001e66] flex flex-col font-sans overflow-hidden relative bg-[#E2EAF4]">
+      {/* Background Image Layer with custom opacity */}
+      <div 
+        className="absolute inset-0 bg-cover bg-center bg-no-repeat pointer-events-none"
+        style={{ backgroundImage: "url('/BG.jpg')", opacity: 0.5 }}
+      />
 
 
       {/* ── Header ── */}
       <header className="h-20 shrink-0 bg-white border-b border-slate-100 sticky top-0 z-50 flex items-center justify-between px-6">
-        {/* Left: logo */}
+        {/* Left Section */}
         <div className="flex items-center space-x-3">
           <button
             onClick={() => setIsMobileSidebarOpen(true)}
@@ -708,6 +729,7 @@ export default function DashboardClient({
               <path strokeLinecap="round" strokeLinejoin="round" d="M4 6h16M4 12h16M4 18h16" />
             </svg>
           </button>
+          
           <img
             src="/LOGO2.png"
             alt="AquaTrack Logo"
@@ -715,56 +737,75 @@ export default function DashboardClient({
           />
         </div>
 
-        {/* Right: user info + dark mode toggle + logout */}
+        {/* Right Section */}
         <div className="flex items-center gap-3">
-          {/* User name / email */}
-          <div className="text-right hidden sm:flex flex-col leading-none">
-            <span className="text-xs font-semibold text-[#001e66]">{userProfile?.name}</span>
-            <span className="text-[10px] text-slate-400 font-medium mt-0.5">{userProfile?.email}</span>
-          </div>
+          {/* Notification bell icon with red circle badge indicating "2" notifications */}
+          <button className="relative w-9 h-9 rounded-xl border border-slate-100 bg-slate-50 hover:bg-slate-100 flex items-center justify-center text-slate-500 hover:text-[#001e66] transition-all">
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="2" stroke="currentColor" className="w-4 h-4">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M14.857 17.082a9.04 9.04 0 01-2.037.225 9.04 9.04 0 01-2.037-.225m5.074-1.086c.83 0 1.5.678 1.5 1.5c0 .241-.057.472-.159.678m-.159-.678A9.04 9.04 0 0018 9V6a6 6 0 10-12 0v3a9.04 9.04 0 001.074 4.996m5.074-1.086c-.83 0-1.5.678-1.5 1.5c0 .241.057.472.159.678" />
+            </svg>
+            <span className="absolute -top-1 -right-1 bg-red-600 text-white font-black text-[9px] w-4.5 h-4.5 rounded-full flex items-center justify-center border-2 border-white shadow-sm">
+              2
+            </span>
+          </button>
 
-          {/* Dark mode toggle – icon only */}
+          {/* Optional theme toggle */}
           <button
             onClick={() => setIsDark(!isDark)}
             aria-label="Toggle dark mode"
             className="w-9 h-9 rounded-xl border border-slate-100 bg-slate-50 hover:bg-slate-100 flex items-center justify-center text-slate-500 hover:text-[#001e66] transition-all"
           >
             {isDark ? (
-              /* Sun icon */
               <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                 <path strokeLinecap="round" strokeLinejoin="round" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364-6.364l-.707.707M6.343 17.657l-.707.707M17.657 17.657l-.707-.707M6.343 6.343l-.707-.707M12 8a4 4 0 100 8 4 4 0 000-8z" />
               </svg>
             ) : (
-              /* Moon icon */
               <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                 <path strokeLinecap="round" strokeLinejoin="round" d="M21 12.79A9 9 0 1111.21 3 7 7 0 0021 12.79z" />
               </svg>
             )}
           </button>
 
-          {/* Logout */}
+          {/* User Profile Selector */}
+          <div className="flex items-center gap-2 px-2.5 py-1.5 rounded-xl border border-slate-100 bg-slate-50 hover:bg-slate-100 cursor-pointer transition-all">
+            <div className="w-7 h-7 rounded-full bg-[#00aeef] text-white flex items-center justify-center text-xs font-black uppercase shadow-sm">
+              c
+            </div>
+            <div className="flex flex-col text-left leading-none">
+              <span className="text-[11px] font-bold text-[#001e66]">consumer</span>
+              <span className="text-[9px] text-slate-400 font-medium mt-0.5">consumer@gmail.com</span>
+            </div>
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="2.5" stroke="currentColor" className="w-3 h-3 text-slate-400 ml-1">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 8.25l-7.5 7.5-7.5-7.5" />
+            </svg>
+          </div>
+
+          {/* Logout Button */}
           <button
             onClick={handleLogout}
-            className="h-9 px-4 bg-[#001e66] hover:bg-[#00aeef] text-white rounded-xl text-xs font-semibold transition-all"
+            className="h-9 px-4 bg-[#001e66] hover:bg-[#00aeef] text-white rounded-xl text-xs font-bold transition-all shadow-sm flex items-center gap-1.5 active:scale-[0.98]"
           >
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="2" stroke="currentColor" className="w-3.5 h-3.5">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 9V5.25A2.25 2.25 0 0013.5 3h-6a2.25 2.25 0 00-2.25 2.25v13.5A2.25 2.25 0 007.5 21h6a2.25 2.25 0 002.25-2.25V15M12 9l-3 3m0 0l3 3m-3-3h12.75" />
+            </svg>
             Logout
           </button>
         </div>
       </header>
 
       {/* ── Body: sidebar + main ── */}
-      <div className="flex flex-1 overflow-hidden p-4 gap-4 bg-slate-50">
+      <div className="flex flex-1 overflow-hidden p-4 gap-4 bg-transparent relative z-10">
 
         {/* ── Left Sidebar ── */}
         <aside className="hidden lg:flex w-56 shrink-0 bg-white border border-slate-100 flex flex-col h-full rounded-2xl overflow-hidden shadow-sm">
           {/* Nav section */}
           <div className="flex-1 py-3 px-2">
-            <p className="text-[9px] font-semibold uppercase tracking-widest text-slate-400 px-3 mb-1 mt-3">
+            <p className="text-[9px] font-black uppercase tracking-widest text-slate-400 px-3 mb-2 mt-3">
               My Services
             </p>
-            <nav className="space-y-0.5">
+            <nav className="space-y-1">
               {[
-                { key: "home",               label: "Dashboard Home",        icon: "M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" },
+                { key: "home",               label: "Dashboard",             icon: "M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" },
                 { key: "file-complaint",     label: "File a Complaint",      icon: "M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" },
                 { key: "track-complaint",    label: "Track Complaints",      icon: "M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01" },
                 { key: "view-announcements", label: "Community Advisories",  icon: "M11 5.882V19.24a1.76 1.76 0 01-3.417.592l-2.147-6.15M18 13a3 3 0 100-6M5.436 13.683A4.001 4.001 0 017 6h1.832c4.1 0 7.625-1.234 9.168-3v14c-1.543-1.766-5.067-3-9.168-3H7a3.988 3.988 0 01-1.564-.317z" },
@@ -775,20 +816,20 @@ export default function DashboardClient({
                   <button
                     key={item.key}
                     onClick={() => setActiveTab(item.key as any)}
-                    className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm transition-all focus:outline-none relative group ${
+                    className={`w-full flex items-center gap-2.5 px-3.5 py-2.5 rounded-lg text-sm transition-all focus:outline-none relative group ${
                       isActive
-                        ? "bg-[#001e66]/5 text-[#001e66] font-semibold"
+                        ? "bg-[#00aeef]/10 text-[#001e66] font-bold"
                         : "text-slate-500 hover:text-[#001e66] hover:bg-slate-50 font-medium"
                     }`}
                   >
-                    {/* Active left indicator */}
+                    {/* Active left indicator: thick blue vertical indicator line */}
                     {isActive && (
-                      <span className="absolute left-0 top-1/2 -translate-y-1/2 w-0.5 h-4 bg-[#00aeef] rounded-full" />
+                      <span className="absolute left-0 top-1/2 -translate-y-1/2 w-[3.5px] h-5 bg-[#00aeef] rounded-r-md" />
                     )}
                     {/* Icon */}
                     <svg
                       xmlns="http://www.w3.org/2000/svg"
-                      className="w-4 h-4 shrink-0"
+                      className="w-4.5 h-4.5 shrink-0"
                       fill="none"
                       viewBox="0 0 24 24"
                       stroke="currentColor"
@@ -803,17 +844,29 @@ export default function DashboardClient({
             </nav>
           </div>
 
-          {/* Sidebar bottom: compliance badges */}
-          <div className="px-4 py-4 border-t border-slate-100 space-y-2">
-            <p className="text-[9px] font-semibold uppercase tracking-widest text-slate-400 mb-2">Compliance</p>
-            <span className="inline-flex items-center gap-1.5 bg-emerald-50 text-emerald-700 text-[10px] font-bold px-2.5 py-1 rounded-full border border-emerald-100 block w-full justify-center">
-              <svg xmlns="http://www.w3.org/2000/svg" className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" /></svg>
-              RA 10173 Compliant
-            </span>
-            <span className="inline-flex items-center gap-1.5 bg-sky-50 text-sky-700 text-[10px] font-bold px-2.5 py-1 rounded-full border border-sky-100 block w-full justify-center">
-              <svg xmlns="http://www.w3.org/2000/svg" className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" /></svg>
-              PNSDW Validated
-            </span>
+          {/* Sidebar bottom: compliance badges widget */}
+          <div className="px-3 py-3 border-t border-slate-100 space-y-2.5">
+            <div className="bg-slate-50 rounded-xl p-3 border border-slate-100 space-y-2">
+              <p className="text-[9px] font-black uppercase tracking-wider text-slate-400 mb-1">Compliance</p>
+              
+              <div className="flex items-center gap-2 text-[10px] font-bold text-emerald-700 bg-emerald-50 px-2.5 py-1.5 rounded-lg border border-emerald-100/60">
+                <svg xmlns="http://www.w3.org/2000/svg" className="w-3.5 h-3.5 text-emerald-600 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                </svg>
+                <span>RA 10173 Compliant</span>
+              </div>
+              
+              <div className="flex items-center gap-2 text-[10px] font-bold text-sky-700 bg-sky-50 px-2.5 py-1.5 rounded-lg border border-sky-100/60">
+                <svg xmlns="http://www.w3.org/2000/svg" className="w-3.5 h-3.5 text-sky-600 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                </svg>
+                <span>PNSDW Validated</span>
+              </div>
+            </div>
+            
+            <p className="text-[9px] text-slate-400 font-semibold text-center mt-1">
+              © 2026 AQUATRACK
+            </p>
           </div>
         </aside>
 
@@ -857,12 +910,12 @@ export default function DashboardClient({
 
                 {/* Drawer Nav Items */}
                 <div className="flex-1 py-3 px-3">
-                  <p className="text-[9px] font-semibold uppercase tracking-widest text-slate-400 px-3 mb-2 mt-2">
+                  <p className="text-[9px] font-black uppercase tracking-widest text-slate-400 px-3 mb-2 mt-2">
                     My Services
                   </p>
-                  <nav className="flex flex-col gap-0.5">
+                  <nav className="flex flex-col gap-1">
                     {[
-                      { key: "home",               label: "Dashboard Home",        icon: "M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" },
+                      { key: "home",               label: "Dashboard",             icon: "M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" },
                       { key: "file-complaint",     label: "File a Complaint",      icon: "M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" },
                       { key: "track-complaint",    label: "Track Complaints",      icon: "M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01" },
                       { key: "view-announcements", label: "Community Advisories",  icon: "M11 5.882V19.24a1.76 1.76 0 01-3.417.592l-2.147-6.15M18 13a3 3 0 100-6M5.436 13.683A4.001 4.001 0 017 6h1.832c4.1 0 7.625-1.234 9.168-3v14c-1.543-1.766-5.067-3-9.168-3H7a3.988 3.988 0 01-1.564-.317z" },
@@ -878,16 +931,16 @@ export default function DashboardClient({
                           }}
                           className={`w-full flex items-center gap-2.5 px-3 py-2.5 rounded-lg text-sm transition-all focus:outline-none relative group ${
                             isActive
-                              ? "bg-[#001e66]/5 text-[#001e66] font-semibold"
+                              ? "bg-[#00aeef]/10 text-[#001e66] font-bold"
                               : "text-slate-500 hover:text-[#001e66] hover:bg-slate-50 font-medium"
                           }`}
                         >
                           {isActive && (
-                            <span className="absolute left-0 top-1/2 -translate-y-1/2 w-0.5 h-4 bg-[#00aeef] rounded-full" />
+                            <span className="absolute left-0 top-1/2 -translate-y-1/2 w-[3.5px] h-5 bg-[#00aeef] rounded-r-md" />
                           )}
                           <svg
                             xmlns="http://www.w3.org/2000/svg"
-                            className="w-4 h-4 shrink-0"
+                            className="w-4.5 h-4.5 shrink-0"
                             fill="none"
                             viewBox="0 0 24 24"
                             stroke="currentColor"
@@ -902,17 +955,29 @@ export default function DashboardClient({
                   </nav>
                 </div>
 
-                {/* Drawer Bottom */}
-                <div className="px-4 py-4 border-t border-slate-100 space-y-2 shrink-0">
-                  <p className="text-[9px] font-semibold uppercase tracking-widest text-slate-400 mb-2">Compliance</p>
-                  <span className="inline-flex items-center gap-1.5 bg-emerald-50 text-emerald-700 text-[10px] font-bold px-2.5 py-1 rounded-full border border-emerald-100 w-full justify-center">
-                    <svg xmlns="http://www.w3.org/2000/svg" className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" /></svg>
-                    RA 10173 Compliant
-                  </span>
-                  <span className="inline-flex items-center gap-1.5 bg-sky-50 text-sky-700 text-[10px] font-bold px-2.5 py-1 rounded-full border border-sky-100 w-full justify-center">
-                    <svg xmlns="http://www.w3.org/2000/svg" className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" /></svg>
-                    PNSDW Validated
-                  </span>
+                {/* Sidebar bottom: compliance badges widget */}
+                <div className="px-3 py-3 border-t border-slate-100 space-y-2.5 mt-auto">
+                  <div className="bg-slate-50 rounded-xl p-3 border border-slate-100 space-y-2">
+                    <p className="text-[9px] font-black uppercase tracking-wider text-slate-400 mb-1">Compliance</p>
+                    
+                    <div className="flex items-center gap-2 text-[10px] font-bold text-emerald-700 bg-emerald-50 px-2.5 py-1.5 rounded-lg border border-emerald-100/60">
+                      <svg xmlns="http://www.w3.org/2000/svg" className="w-3.5 h-3.5 text-emerald-600 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                      </svg>
+                      <span>RA 10173 Compliant</span>
+                    </div>
+                    
+                    <div className="flex items-center gap-2 text-[10px] font-bold text-sky-700 bg-sky-50 px-2.5 py-1.5 rounded-lg border border-sky-100/60">
+                      <svg xmlns="http://www.w3.org/2000/svg" className="w-3.5 h-3.5 text-sky-600 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                      </svg>
+                      <span>PNSDW Validated</span>
+                    </div>
+                  </div>
+                  
+                  <p className="text-[9px] text-slate-400 font-semibold text-center mt-1">
+                    © 2026 AQUATRACK
+                  </p>
                 </div>
               </motion.aside>
             </>
@@ -920,7 +985,18 @@ export default function DashboardClient({
         </AnimatePresence>
 
         {/* ── Main Content Area ── */}
-        <main className="flex-1 bg-white border border-slate-100/80 overflow-y-auto p-8 rounded-2xl shadow-sm">
+        <main className={`flex-1 overflow-y-auto rounded-2xl shadow-sm flex flex-col ${
+          activeTab === "file-complaint"
+            ? "bg-[#E2EAF4]/45 backdrop-blur-md border border-slate-300/40 p-6"
+            : "bg-white border border-slate-100/80 p-8"
+        }`}>
+          <style dangerouslySetInnerHTML={{__html: `
+            @keyframes pulse {
+              0% { transform: scale(0.95); opacity: 0.8; }
+              50% { transform: scale(1.4); opacity: 0.3; }
+              100% { transform: scale(1.85); opacity: 0; }
+            }
+          `}} />
           <AnimatePresence mode="wait">
             <motion.div
               key={activeTab}
@@ -932,102 +1008,441 @@ export default function DashboardClient({
             >
               {/* Tab 0: Dashboard Home */}
               {activeTab === "home" && (
-                <div className="space-y-6">
-                  {/* Welcome Hero Banner */}
-                  <div className="bg-gradient-to-br from-[#001e66] via-[#052e85] to-[#00aeef] rounded-3xl p-6 md:p-8 text-white relative overflow-hidden shadow-md">
-                    {/* Background patterns */}
-                    <div className="absolute top-0 right-0 w-80 h-80 bg-white/5 rounded-full blur-2xl pointer-events-none" />
-                    <div className="absolute bottom-0 left-0 w-60 h-60 bg-[#970006]/10 rounded-full blur-xl pointer-events-none" />
+                <div className="space-y-8 animate-fade-in pb-8">
+                  
+                  {/* Immersive Water-Themed Hero Banner */}
+                  <div className="bg-gradient-to-br from-[#0B2E7A] via-[#05256e] to-[#189BFF] rounded-[24px] p-6 md:p-8 text-white relative overflow-hidden shadow-md min-h-[220px] flex flex-col justify-center">
+                    {/* Animated Wave Background SVG Overlay */}
+                    <div className="absolute inset-0 opacity-15 pointer-events-none z-0">
+                      <svg className="w-full h-full" viewBox="0 0 100 100" preserveAspectRatio="none" xmlns="http://www.w3.org/2000/svg">
+                        <path d="M0,40 Q25,30 50,40 T100,40 L100,100 L0,100 Z" fill="rgba(255,255,255,0.08)"></path>
+                        <path d="M0,50 Q30,60 60,50 T100,50 L100,100 L0,100 Z" fill="rgba(255,255,255,0.04)"></path>
+                        {/* Little bubbles */}
+                        <circle cx="15" cy="30" r="1" fill="#fff" opacity="0.3" />
+                        <circle cx="20" cy="20" r="1.5" fill="#fff" opacity="0.4" />
+                        <circle cx="35" cy="45" r="0.8" fill="#fff" opacity="0.2" />
+                        <circle cx="65" cy="25" r="2" fill="#fff" opacity="0.3" />
+                        <circle cx="80" cy="35" r="1.2" fill="#fff" opacity="0.5" />
+                      </svg>
+                    </div>
 
-                    <div className="relative z-10 space-y-4">
-                      <span className="text-[10px] font-black uppercase tracking-wider bg-white/10 px-3.5 py-1 rounded-full border border-white/10">
+                    {/* Municipal Water Tower Illustration */}
+                    <svg className="absolute right-6 bottom-0 h-48 w-auto opacity-25 md:opacity-35 select-none pointer-events-none z-0" viewBox="0 0 100 160" fill="none" xmlns="http://www.w3.org/2000/svg">
+                      <ellipse cx="50" cy="40" rx="28" ry="18" fill="url(#heroTankGrad)" stroke="#ffffff" strokeWidth="1.5" />
+                      <rect x="22" y="40" width="56" height="15" fill="url(#heroTankGrad)" stroke="#ffffff" strokeWidth="1.5" />
+                      <ellipse cx="50" cy="54" rx="28" ry="10" fill="#55C5FF" opacity="0.8" />
+                      <ellipse cx="50" cy="30" rx="28" ry="10" fill="#ffffff" opacity="0.3" />
+                      <path d="M22 35 H78 M22 45 H78" stroke="#ffffff" strokeWidth="0.75" opacity="0.4" />
+                      <text x="50" y="49" fill="#ffffff" fontSize="5" fontWeight="bold" textAnchor="middle" letterSpacing="0.8">AQUATRACK</text>
+                      <line x1="30" y1="52" x2="20" y2="150" stroke="#ffffff" strokeWidth="2.5" />
+                      <line x1="70" y1="52" x2="80" y2="150" stroke="#ffffff" strokeWidth="2.5" />
+                      <line x1="50" y1="54" x2="50" y2="150" stroke="#ffffff" strokeWidth="1.5" />
+                      <line x1="30" y1="78" x2="70" y2="78" stroke="#ffffff" strokeWidth="1.2" opacity="0.6" />
+                      <line x1="26" y1="110" x2="74" y2="110" stroke="#ffffff" strokeWidth="1.2" opacity="0.6" />
+                      <line x1="30" y1="52" x2="70" y2="110" stroke="#ffffff" strokeWidth="0.8" opacity="0.4" />
+                      <line x1="70" y1="52" x2="30" y2="110" stroke="#ffffff" strokeWidth="0.8" opacity="0.4" />
+                      <rect x="15" y="148" width="9" height="6" rx="0.5" fill="#e2e8f0" opacity="0.9" />
+                      <rect x="76" y="148" width="9" height="6" rx="0.5" fill="#e2e8f0" opacity="0.9" />
+                      <rect x="46" y="148" width="8" height="6" rx="0.5" fill="#e2e8f0" opacity="0.9" />
+                      <defs>
+                        <linearGradient id="heroTankGrad" x1="50" y1="20" x2="50" y2="54" gradientUnits="userSpaceOnUse">
+                          <stop offset="0%" stopColor="#ffffff" />
+                          <stop offset="100%" stopColor="#189BFF" />
+                        </linearGradient>
+                      </defs>
+                    </svg>
+
+                    <div className="relative z-10 space-y-4 max-w-xl text-left">
+                      <span className="inline-flex items-center text-[9px] font-black uppercase tracking-widest bg-white/10 px-3.5 py-1.5 rounded-full border border-white/10 shadow-inner">
                         Consumer Resident Command Center
                       </span>
                       <div>
-                        <h2 className="text-2xl md:text-3xl font-black tracking-tight">
+                        <h2 className="text-2xl md:text-3.5xl font-black tracking-tight drop-shadow-sm">
                           Welcome Back, {userProfile?.name || "Valued Consumer"}!
                         </h2>
-                        <p className="text-xs text-slate-200 font-bold mt-1">
-                          Account Hub: Del Pilar District • Executive Portal
+                        <p className="text-[11px] text-blue-100 font-bold tracking-wide mt-1.5 opacity-90">
+                          Account Hub: Del Pilar District • Consumer ID: #{userProfile?.id?.slice(0, 8).toUpperCase() || "CSF-2026"} • Role: Resident
                         </p>
                       </div>
-                      <div className="flex items-center space-x-2 pt-2 text-xxs font-black uppercase tracking-widest text-[#ffd800]">
-                        <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse inline-block" />
-                        <span>Municipal Water Supply is NORMAL</span>
+                      <div className="flex pt-1">
+                        <span className="inline-flex items-center gap-2 bg-[#189BFF]/25 border border-white/20 text-emerald-300 text-[10px] font-black tracking-wider px-3.5 py-1.5 rounded-full shadow-inner">
+                          <span className="w-2 h-2 rounded-full bg-emerald-400 inline-block animate-ping" />
+                          MUNICIPAL WATER SUPPLY IS NORMAL
+                        </span>
                       </div>
                     </div>
                   </div>
 
-                  {/* Stats Cards Row */}
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
-                    {/* Active Tickets */}
-                    <div className="bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-5 shadow-sm space-y-3">
-                      <div className="flex items-center justify-between">
-                        <span className="text-xxs font-black text-slate-400 uppercase tracking-widest">Active Tickets</span>
+                  {/* Statistics Cards (3 Columns) */}
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
+                    
+                    {/* Active Tickets Stat */}
+                    <div className="bg-white rounded-[24px] border border-slate-100 p-6 shadow-[0_8px_30px_rgb(0,0,0,0.015)] transition-all duration-300 hover:-translate-y-1 hover:shadow-[0_20px_40px_rgba(24,155,255,0.04)] hover:border-blue-100/50 hover:scale-[1.01] relative overflow-hidden group">
+                      <div className="flex items-start justify-between relative z-10">
+                        <div className="space-y-1.5">
+                          <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest block">Active Tickets</span>
+                          <h3 className="text-3xl font-black text-[#0B2E7A] tracking-tight">
+                            {myComplaints.filter(c => c.status !== "RESOLVED").length}
+                          </h3>
+                        </div>
+                        <div className="w-12 h-12 rounded-xl bg-blue-50/80 flex items-center justify-center text-[#189BFF] border border-blue-100/40 shrink-0 group-hover:scale-110 transition-transform duration-300">
+                          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="2.5" stroke="currentColor" className="w-5 h-5">
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m0 12.75h7.5m-7.5 3H12M10.5 2.25H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z" />
+                          </svg>
+                        </div>
                       </div>
-                      <div>
-                        <p className="text-2xl font-black text-[#001e66] dark:text-slate-100">
-                          {myComplaints.filter(c => c.status !== "RESOLVED").length}
-                        </p>
-                        <p className="text-[10px] text-slate-500 dark:text-slate-400 font-bold uppercase tracking-wider mt-1">
-                          In triage or dispatch
-                        </p>
-                      </div>
+                      <p className="text-[10px] text-slate-500 font-bold mt-4 relative z-10">Tickets in triage or active dispatch</p>
+                      
+                      {/* Wave Line decorative */}
+                      <svg className="absolute bottom-0 left-0 w-full h-8 text-blue-500/5 pointer-events-none" viewBox="0 0 1440 320" preserveAspectRatio="none" fill="currentColor">
+                        <path d="M0,160L48,149.3C96,139,192,117,288,128C384,139,480,181,576,181.3C672,181,768,139,864,117.3C960,96,1056,96,1152,117.3C1248,139,1344,181,1392,202.7L1440,224L1440,320L1392,320C1344,320,1248,320,1152,320C1056,320,960,320,864,320C768,320,672,320,576,320C480,320,384,320,288,320C192,320,96,320,48,320L0,320Z"></path>
+                      </svg>
                     </div>
 
-                    {/* Latest Bulletins */}
-                    <div className="bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-5 shadow-sm space-y-3">
-                      <div className="flex items-center justify-between">
-                        <span className="text-xxs font-black text-slate-400 uppercase tracking-widest">Latest Bulletin</span>
+                    {/* In Progress Stat */}
+                    <div className="bg-white rounded-[24px] border border-slate-100 p-6 shadow-[0_8px_30px_rgb(0,0,0,0.015)] transition-all duration-300 hover:-translate-y-1 hover:shadow-[0_20px_40px_rgba(24,155,255,0.04)] hover:border-blue-100/50 hover:scale-[1.01] relative overflow-hidden group">
+                      <div className="flex items-start justify-between relative z-10">
+                        <div className="space-y-1.5">
+                          <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest block">In Progress</span>
+                          <h3 className="text-3xl font-black text-[#0B2E7A] tracking-tight">
+                            {myComplaints.filter(c => c.status === "ASSIGNED" || c.status === "INVESTIGATING").length}
+                          </h3>
+                        </div>
+                        <div className="w-12 h-12 rounded-xl bg-amber-50/80 flex items-center justify-center text-amber-600 border border-amber-100/40 shrink-0 group-hover:scale-110 transition-transform duration-300">
+                          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="2.5" stroke="currentColor" className="w-5 h-5">
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M11.42 15.17L17.25 21A2.67 2.67 0 0021 17.25l-5.83-5.83m-3.75 3.75a2.67 2.67 0 01-3.75-3.75M11.42 15.17l-3.75-3.75M11.42 15.17L9 21H3v-6l5.83-5.83m0 0a2.67 2.67 0 013.75 3.75M11.42 15.17l3.75-3.75M21 3L3 21" />
+                          </svg>
+                        </div>
                       </div>
-                      <div>
-                        <p className="text-sm font-black text-[#001e66] dark:text-slate-100 line-clamp-1">
-                          {filteredAdvisories[0]?.title || "No active notices"}
-                        </p>
-                        <p className="text-[10px] text-slate-500 dark:text-slate-400 font-bold uppercase tracking-wider mt-1">
-                          {filteredAdvisories[0]?.date || "Up to date"}
-                        </p>
-                      </div>
+                      <p className="text-[10px] text-slate-500 font-bold mt-4 relative z-10">Crew currently dispatched to site</p>
+                      
+                      <svg className="absolute bottom-0 left-0 w-full h-8 text-amber-500/5 pointer-events-none" viewBox="0 0 1440 320" preserveAspectRatio="none" fill="currentColor">
+                        <path d="M0,224L48,208C96,192,192,160,288,144C384,128,480,128,576,144C672,160,768,192,864,208C960,224,1056,224,1152,197.3C1248,171,1344,117,1392,90.7L1440,64L1440,320L1392,320C1344,320,1248,320,1152,320C1056,320,960,320,864,320C768,320,672,320,576,320C480,320,384,320,288,320C192,320,96,320,48,320L0,320Z"></path>
+                      </svg>
                     </div>
+
+                    {/* Resolved Stat */}
+                    <div className="bg-white rounded-[24px] border border-slate-100 p-6 shadow-[0_8px_30px_rgb(0,0,0,0.015)] transition-all duration-300 hover:-translate-y-1 hover:shadow-[0_20px_40px_rgba(24,155,255,0.04)] hover:border-blue-100/50 hover:scale-[1.01] relative overflow-hidden group">
+                      <div className="flex items-start justify-between relative z-10">
+                        <div className="space-y-1.5">
+                          <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest block">Resolved</span>
+                          <h3 className="text-3xl font-black text-[#0B2E7A] tracking-tight">
+                            {myComplaints.filter(c => c.status === "RESOLVED").length}
+                          </h3>
+                        </div>
+                        <div className="w-12 h-12 rounded-xl bg-emerald-50/80 flex items-center justify-center text-emerald-600 border border-emerald-100/40 shrink-0 group-hover:scale-110 transition-transform duration-300">
+                          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="3" stroke="currentColor" className="w-5 h-5">
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12.75l6 6 9-13.5" />
+                          </svg>
+                        </div>
+                      </div>
+                      <p className="text-[10px] text-slate-500 font-bold mt-4 relative z-10">Incidents fully resolved & closed</p>
+                      
+                      <svg className="absolute bottom-0 left-0 w-full h-8 text-emerald-500/5 pointer-events-none" viewBox="0 0 1440 320" preserveAspectRatio="none" fill="currentColor">
+                        <path d="M0,96L48,128C96,160,192,224,288,240C384,256,480,224,576,181.3C672,139,768,85,864,90.7C960,96,1056,160,1152,192C1248,224,1344,224,1392,224L1440,224L1440,320L1392,320C1344,320,1248,320,1152,320C1056,320,960,320,864,320C768,320,672,320,576,320C480,320,384,320,288,320C192,320,96,320,48,320L0,320Z"></path>
+                      </svg>
+                    </div>
+
                   </div>
 
-                  {/* Quick Action Shortcuts */}
-                  <div className="bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-6 space-y-4">
-                    <div>
-                      <h3 className="text-xs font-black text-slate-400 uppercase tracking-wider border-b border-slate-200 dark:border-slate-800 pb-2">
-                        Quick Actions
-                      </h3>
-                    </div>
+                  {/* Middle Column Grid (Left 60% / Right 40%) */}
+                  <div className="grid grid-cols-1 lg:grid-cols-5 gap-6 items-start">
+                    
+                    {/* Left 60%: Active Tickets List */}
+                    <div className="bg-white rounded-[24px] border border-slate-100 p-6 shadow-[0_8px_30px_rgb(0,0,0,0.015)] lg:col-span-3 flex flex-col justify-between min-h-[380px]">
+                      <div className="space-y-4">
+                        <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+                          <h3 className="text-xs font-black text-[#0B2E7A] tracking-wider uppercase flex items-center gap-2">
+                            <span className="w-1.5 h-3 bg-[#189BFF] rounded-full inline-block" />
+                            Active Tickets
+                          </h3>
+                          <button 
+                            onClick={() => setActiveTab("track-complaint")}
+                            className="text-[10px] font-black text-[#189BFF] hover:text-[#0B2E7A] transition-colors uppercase tracking-wider font-sans"
+                          >
+                            View All &rarr;
+                          </button>
+                        </div>
 
-                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-                      <button
-                        onClick={() => setActiveTab("file-complaint")}
-                        className="text-left bg-white dark:bg-slate-950 hover:bg-slate-100 dark:hover:bg-slate-850 border border-slate-200 dark:border-slate-850 px-4 py-3.5 rounded-xl flex items-center justify-between text-xs font-black text-[#001e66] dark:text-slate-200 shadow-sm transition-all cursor-pointer group"
-                      >
-                        <span>File Incident Report</span>
-                        <span className="text-slate-400 group-hover:translate-x-0.5 transition-transform">→</span>
-                      </button>
+                        {/* List */}
+                        <div className="divide-y divide-slate-50 text-left">
+                          {myComplaints.filter(c => c.status !== "RESOLVED").slice(0, 4).map((ticket) => {
+                            const isPending = ticket.status === "PENDING";
+                            const isAssigned = ticket.status === "ASSIGNED" || ticket.status === "INVESTIGATING";
+                            return (
+                              <div key={ticket.id} className="py-3.5 flex items-center justify-between hover:bg-slate-50/50 px-2 rounded-xl transition-colors group cursor-pointer" onClick={() => setActiveTab("track-complaint")}>
+                                <div className="flex items-center space-x-3.5 min-w-0">
+                                  <div className="w-9 h-9 rounded-lg bg-blue-50 flex items-center justify-center text-[#189BFF] shrink-0">
+                                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="2.5" stroke="currentColor" className="w-4 h-4">
+                                      <path d="M12 22a7 7 0 0 0 7-7c0-4.3-7-11-7-11S5 10.7 5 15a7 7 0 0 0 7 7z" />
+                                    </svg>
+                                  </div>
+                                  <div className="text-left min-w-0">
+                                    <p className="text-xs font-black text-[#0B2E7A] truncate group-hover:text-[#189BFF] transition-colors">
+                                      {ticket.summary}
+                                    </p>
+                                    <p className="text-[10px] text-slate-400 font-bold mt-0.5">
+                                      Brgy. {ticket.barangay || "Del Pilar"} • Ticket #{ticket.id.slice(0, 6).toUpperCase()}
+                                    </p>
+                                  </div>
+                                </div>
+
+                                <div className="flex items-center space-x-3 shrink-0 ml-4">
+                                  <div className="flex flex-col items-end">
+                                    <span className={`px-2 py-0.5 rounded-full text-[8px] font-black uppercase tracking-wider border ${
+                                      isPending 
+                                        ? "bg-amber-50 text-amber-700 border-amber-200/50" 
+                                        : isAssigned 
+                                        ? "bg-blue-50 text-blue-700 border-blue-200/50" 
+                                        : "bg-slate-50 text-slate-700 border-slate-200/50"
+                                    }`}>
+                                      {ticket.status}
+                                    </span>
+                                    <span className="text-[8px] text-slate-400 font-bold mt-1">
+                                      {new Date(ticket.createdAt).toLocaleDateString()}
+                                    </span>
+                                  </div>
+                                  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="2.5" stroke="currentColor" className="w-3.5 h-3.5 text-slate-300 group-hover:text-[#189BFF] group-hover:translate-x-0.5 transition-all">
+                                    <path strokeLinecap="round" strokeLinejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" />
+                                  </svg>
+                                </div>
+                              </div>
+                            );
+                          })}
+
+                          {myComplaints.filter(c => c.status !== "RESOLVED").length === 0 && (
+                            <div className="py-12 flex flex-col items-center justify-center text-center space-y-3">
+                              <div className="w-12 h-12 rounded-full bg-emerald-50 flex items-center justify-center text-emerald-500 border border-emerald-100">
+                                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="2.5" stroke="currentColor" className="w-5 h-5">
+                                  <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12.75l6 6 9-13.5" />
+                                </svg>
+                              </div>
+                              <div>
+                                <p className="text-xs font-black text-[#0B2E7A]">All Clear!</p>
+                                <p className="text-[10px] text-slate-400 font-semibold mt-0.5">You have no active reported incident tickets.</p>
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+
                       <button
                         onClick={() => setActiveTab("track-complaint")}
-                        className="w-full text-left bg-white dark:bg-slate-950 hover:bg-slate-100 dark:hover:bg-slate-850 border border-slate-200 dark:border-slate-850 px-4 py-3.5 rounded-xl flex items-center justify-between text-xs font-black text-[#001e66] dark:text-slate-200 shadow-sm transition-all cursor-pointer group"
+                        className="w-full bg-slate-50 hover:bg-blue-50 text-[#0B2E7A] hover:text-[#189BFF] font-black text-xs py-3 rounded-xl uppercase tracking-wider border border-slate-100 transition-colors mt-6 text-center cursor-pointer"
                       >
-                        <span>Track Active Tickets</span>
-                        <span className="text-slate-400 group-hover:translate-x-0.5 transition-transform">→</span>
+                        Go to Track Complaints
                       </button>
-                      <button
+                    </div>
+
+                    {/* Right 40%: Latest Bulletin */}
+                    <div className="bg-white rounded-[24px] border border-slate-100 p-6 shadow-[0_8px_30px_rgb(0,0,0,0.015)] lg:col-span-2 flex flex-col justify-between min-h-[380px]">
+                      <div className="space-y-4">
+                        <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+                          <h3 className="text-xs font-black text-[#0B2E7A] tracking-wider uppercase flex items-center gap-2">
+                            <span className="w-1.5 h-3 bg-[#189BFF] rounded-full inline-block" />
+                            Latest Bulletin
+                          </h3>
+                          <button 
+                            onClick={() => setActiveTab("view-announcements")}
+                            className="text-[10px] font-black text-[#189BFF] hover:text-[#0B2E7A] transition-colors uppercase tracking-wider font-sans"
+                          >
+                            View All &rarr;
+                          </button>
+                        </div>
+
+                        {filteredAdvisories.length > 0 ? (
+                          <div className="space-y-4 text-left">
+                            <div className="flex items-center gap-2.5">
+                              <div className="w-9 h-9 rounded-lg bg-amber-50 flex items-center justify-center text-amber-600 border border-amber-100/40 shrink-0">
+                                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="2.2" stroke="currentColor" className="w-4.5 h-4.5">
+                                  <path strokeLinecap="round" strokeLinejoin="round" d="M19.114 5.636a9 9 0 010 12.728M16.463 8.288a5.25 5.25 0 010 7.424M6.75 8.25l4.72-4.72a.75.75 0 011.28.53v15.88a.75.75 0 01-1.28.53l-4.72-4.72H4.51c-.88 0-1.704-.507-1.938-1.354A9.01 9.01 0 012.25 12c0-.83.112-1.633.322-2.396C2.806 8.756 3.63 8.25 4.51 8.25H6.75z" />
+                                </svg>
+                              </div>
+                              <div>
+                                <h4 className="text-xs font-black text-[#0B2E7A] line-clamp-1 leading-snug">
+                                  {filteredAdvisories[0].title}
+                                </h4>
+                                <p className="text-[8px] text-slate-400 font-bold uppercase tracking-wider mt-0.5">
+                                  {filteredAdvisories[0].date} • Broadcast Notice
+                                </p>
+                              </div>
+                            </div>
+
+                            <p className="text-xs text-slate-500 leading-relaxed font-semibold bg-slate-50 p-4 rounded-2xl border border-slate-100/60 line-clamp-4">
+                              {filteredAdvisories[0].text}
+                            </p>
+                          </div>
+                        ) : (
+                          <div className="py-12 flex flex-col items-center justify-center text-center space-y-3">
+                            <div className="w-12 h-12 rounded-full bg-slate-50 flex items-center justify-center text-slate-400 border border-slate-100">
+                              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="2" stroke="currentColor" className="w-5 h-5">
+                                <path strokeLinecap="round" strokeLinejoin="round" d="M19.114 5.636a9 9 0 010 12.728M16.463 8.288a5.25 5.25 0 010 7.424M6.75 8.25l4.72-4.72a.75.75 0 011.28.53v15.88a.75.75 0 01-1.28.53l-4.72-4.72H4.51c-.88 0-1.704-.507-1.938-1.354A9.01 9.01 0 012.25 12c0-.83.112-1.633.322-2.396C2.806 8.756 3.63 8.25 4.51 8.25H6.75z" />
+                              </svg>
+                            </div>
+                            <div>
+                              <p className="text-xs font-black text-[#0B2E7A]">No Bulletins</p>
+                              <p className="text-[10px] text-slate-400 font-semibold mt-0.5">No announcements have been broadcasted yet.</p>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Pagination Dots Indicator */}
+                      <div className="flex items-center justify-center gap-1.5 pt-4 mt-auto">
+                        <span className="w-2.5 h-1.5 rounded-full bg-[#189BFF]" />
+                        <span className="w-1.5 h-1.5 rounded-full bg-slate-200" />
+                        <span className="w-1.5 h-1.5 rounded-full bg-slate-200" />
+                      </div>
+                    </div>
+
+                  </div>
+
+                  {/* Water Supply Overview Card (Glass-inspired) */}
+                  <div className="bg-gradient-to-br from-white/90 to-white/40 backdrop-blur-md border border-white/60 p-6 rounded-[24px] shadow-[0_8px_30px_rgba(24,155,255,0.02)] relative overflow-hidden text-left">
+                    {/* Background Wave Graphic */}
+                    <div className="absolute inset-0 opacity-5 pointer-events-none select-none z-0">
+                      <svg className="w-full h-full" viewBox="0 0 1440 320" preserveAspectRatio="none" xmlns="http://www.w3.org/2000/svg">
+                        <path d="M0,160 Q360,260 720,160 T1440,160 L1440,320 L0,320 Z" fill="#189BFF"></path>
+                      </svg>
+                    </div>
+
+                    <div className="relative z-10 grid grid-cols-1 md:grid-cols-2 gap-6 divide-y md:divide-y-0 md:divide-x divide-slate-100">
+                      
+                      {/* Widget 1 */}
+                      <div className="flex items-start space-x-4">
+                        <div className="w-12 h-12 rounded-xl bg-blue-50 flex items-center justify-center text-[#189BFF] border border-blue-100/40 shrink-0">
+                          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="2.5" stroke="currentColor" className="w-5.5 h-5.5">
+                            <path d="M12 22a7 7 0 0 0 7-7c0-4.3-7-11-7-11S5 10.7 5 15a7 7 0 0 0 7 7z" />
+                          </svg>
+                        </div>
+                        <div className="space-y-0.5 text-left">
+                          <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Supply Status</p>
+                          <div className="flex items-center gap-1.5">
+                            <h4 className="text-base font-black text-[#0B2E7A]">Normal</h4>
+                            <span className="w-2 h-2 rounded-full bg-emerald-500 inline-block animate-pulse" />
+                          </div>
+                          <p className="text-[10px] text-slate-500 font-bold">Pressure index stable at 42 PSI</p>
+                        </div>
+                      </div>
+
+                      {/* Widget 2 */}
+                      <div className="flex items-start space-x-4 pt-4 md:pt-0 md:pl-6">
+                        <div className="w-12 h-12 rounded-xl bg-blue-50 flex items-center justify-center text-[#189BFF] border border-blue-100/40 shrink-0">
+                          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="2.5" stroke="currentColor" className="w-5.5 h-5.5">
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 11-18 0 9 9 0 0118 0z" />
+                          </svg>
+                        </div>
+                        <div className="space-y-0.5 text-left">
+                          <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Service Hours</p>
+                          <h4 className="text-base font-black text-[#0B2E7A]">24 / 7 Operations</h4>
+                          <p className="text-[10px] text-slate-500 font-bold">Continuous municipal utility service dispatch</p>
+                        </div>
+                      </div>
+
+                    </div>
+                  </div>
+
+                  {/* Quick Action Cards (4 items) */}
+                  <div className="space-y-4 text-left">
+                    <h3 className="text-xs font-black text-[#0B2E7A] tracking-wider uppercase flex items-center gap-2">
+                      <span className="w-1.5 h-3 bg-[#189BFF] rounded-full inline-block" />
+                      Quick Action Shortcuts
+                    </h3>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+                      
+                      {/* Card 1: File Incident Report */}
+                      <div 
+                        onClick={() => setActiveTab("file-complaint")}
+                        className="bg-white rounded-[24px] border border-slate-100 p-5 shadow-[0_8px_30px_rgb(0,0,0,0.015)] transition-all duration-300 hover:-translate-y-1 hover:shadow-[0_20px_40px_rgba(24,155,255,0.04)] hover:border-blue-100/50 hover:scale-[1.01] cursor-pointer flex flex-col justify-between h-[150px] group"
+                      >
+                        <div className="flex items-start justify-between">
+                          <div className="w-10 h-10 rounded-xl bg-blue-50 flex items-center justify-center text-[#189BFF] border border-blue-100/40 group-hover:scale-110 transition-transform duration-300">
+                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="2.5" stroke="currentColor" className="w-4.5 h-4.5">
+                              <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v6m3-3H9m12 0a9 9 0 11-18 0 9 9 0 0118 0z" />
+                            </svg>
+                          </div>
+                          <div className="w-8 h-8 rounded-full bg-slate-50 flex items-center justify-center text-slate-400 group-hover:bg-blue-50 group-hover:text-[#189BFF] transition-colors">
+                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="3" stroke="currentColor" className="w-3.5 h-3.5">
+                              <path strokeLinecap="round" strokeLinejoin="round" d="M13.5 4.5L21 12m0 0l-7.5 7.5M21 12H3" />
+                            </svg>
+                          </div>
+                        </div>
+                        <div>
+                          <h4 className="text-xs font-black text-[#0B2E7A] uppercase tracking-wider">File Incident Report</h4>
+                          <p className="text-[10px] text-slate-400 font-bold mt-1">Report water quality issues, leaks, or low pressure.</p>
+                        </div>
+                      </div>
+
+                      {/* Card 2: Track Active Tickets */}
+                      <div 
+                        onClick={() => setActiveTab("track-complaint")}
+                        className="bg-white rounded-[24px] border border-slate-100 p-5 shadow-[0_8px_30px_rgb(0,0,0,0.015)] transition-all duration-300 hover:-translate-y-1 hover:shadow-[0_20px_40px_rgba(24,155,255,0.04)] hover:border-blue-100/50 hover:scale-[1.01] cursor-pointer flex flex-col justify-between h-[150px] group"
+                      >
+                        <div className="flex items-start justify-between">
+                          <div className="w-10 h-10 rounded-xl bg-amber-50 flex items-center justify-center text-amber-600 border border-amber-100/40 group-hover:scale-110 transition-transform duration-300">
+                            <svg xmlns="http://www.w3.org/2000/xl bg-amber-50 flex items-center justify-center text-amber-600 border border-amber-100/40 group-hover:scale-110 transition-transform duration-300" viewBox="0 0 24 24" strokeWidth="2.5" stroke="currentColor" className="w-4.5 h-4.5">
+                              <path strokeLinecap="round" strokeLinejoin="round" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+                            </svg>
+                          </div>
+                          <div className="w-8 h-8 rounded-full bg-slate-50 flex items-center justify-center text-slate-400 group-hover:bg-amber-50 group-hover:text-amber-600 transition-colors">
+                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="3" stroke="currentColor" className="w-3.5 h-3.5">
+                              <path strokeLinecap="round" strokeLinejoin="round" d="M13.5 4.5L21 12m0 0l-7.5 7.5M21 12H3" />
+                            </svg>
+                          </div>
+                        </div>
+                        <div>
+                          <h4 className="text-xs font-black text-[#0B2E7A] uppercase tracking-wider">Track Active Tickets</h4>
+                          <p className="text-[10px] text-slate-400 font-bold mt-1">View dispatch progress and technician reports.</p>
+                        </div>
+                      </div>
+
+                      {/* Card 3: View Public Bulletins */}
+                      <div 
                         onClick={() => setActiveTab("view-announcements")}
-                        className="w-full text-left bg-white dark:bg-slate-950 hover:bg-slate-100 dark:hover:bg-slate-850 border border-slate-200 dark:border-slate-850 px-4 py-3.5 rounded-xl flex items-center justify-between text-xs font-black text-[#001e66] dark:text-slate-200 shadow-sm transition-all cursor-pointer group"
+                        className="bg-white rounded-[24px] border border-slate-100 p-5 shadow-[0_8px_30px_rgb(0,0,0,0.015)] transition-all duration-300 hover:-translate-y-1 hover:shadow-[0_20px_40px_rgba(24,155,255,0.04)] hover:border-blue-100/50 hover:scale-[1.01] cursor-pointer flex flex-col justify-between h-[150px] group"
                       >
-                        <span>View Public Bulletins</span>
-                        <span className="text-slate-400 group-hover:translate-x-0.5 transition-transform">→</span>
-                      </button>
-                      <button
+                        <div className="flex items-start justify-between">
+                          <div className="w-10 h-10 rounded-xl bg-emerald-50 flex items-center justify-center text-emerald-600 border border-emerald-100/40 group-hover:scale-110 transition-transform duration-300">
+                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="2.5" stroke="currentColor" className="w-4.5 h-4.5">
+                              <path strokeLinecap="round" strokeLinejoin="round" d="M19.114 5.636a9 9 0 010 12.728M16.463 8.288a5.25 5.25 0 010 7.424M6.75 8.25l4.72-4.72a.75.75 0 011.28.53v15.88a.75.75 0 01-1.28.53l-4.72-4.72H4.51c-.88 0-1.704-.507-1.938-1.354A9.01 9.01 0 012.25 12c0-.83.112-1.633.322-2.396C2.806 8.756 3.63 8.25 4.51 8.25H6.75z" />
+                            </svg>
+                          </div>
+                          <div className="w-8 h-8 rounded-full bg-slate-50 flex items-center justify-center text-slate-400 group-hover:bg-emerald-50 group-hover:text-emerald-600 transition-colors">
+                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="3" stroke="currentColor" className="w-3.5 h-3.5">
+                              <path strokeLinecap="round" strokeLinejoin="round" d="M13.5 4.5L21 12m0 0l-7.5 7.5M21 12H3" />
+                            </svg>
+                          </div>
+                        </div>
+                        <div>
+                          <h4 className="text-xs font-black text-[#0B2E7A] uppercase tracking-wider">View Public Bulletins</h4>
+                          <p className="text-[10px] text-slate-400 font-bold mt-1">Read water district notices and maintenance alerts.</p>
+                        </div>
+                      </div>
+
+                      {/* Card 4: Hotline Support Desk */}
+                      <div 
                         onClick={() => setActiveTab("contact-us")}
-                        className="w-full text-left bg-white dark:bg-slate-950 hover:bg-slate-100 dark:hover:bg-slate-850 border border-slate-200 dark:border-slate-850 px-4 py-3.5 rounded-xl flex items-center justify-between text-xs font-black text-[#001e66] dark:text-slate-200 shadow-sm transition-all cursor-pointer group"
+                        className="bg-white rounded-[24px] border border-slate-100 p-5 shadow-[0_8px_30px_rgb(0,0,0,0.015)] transition-all duration-300 hover:-translate-y-1 hover:shadow-[0_20px_40px_rgba(24,155,255,0.04)] hover:border-blue-100/50 hover:scale-[1.01] cursor-pointer flex flex-col justify-between h-[150px] group"
                       >
-                        <span>Hotline Support Desk</span>
-                        <span className="text-slate-400 group-hover:translate-x-0.5 transition-transform">→</span>
-                      </button>
+                        <div className="flex items-start justify-between">
+                          <div className="w-10 h-10 rounded-xl bg-purple-50 flex items-center justify-center text-purple-600 border border-purple-100/40 group-hover:scale-110 transition-transform duration-300">
+                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="2.5" stroke="currentColor" className="w-4.5 h-4.5">
+                              <path strokeLinecap="round" strokeLinejoin="round" d="M2.25 6.75c0 8.284 6.716 15 15 15h2.25a2.25 2.25 0 002.25-2.25v-1.372c0-.516-.351-.966-.852-1.091l-4.423-1.106c-.44-.11-.902.055-1.173.417l-.97 1.293c-2.824-1.802-5.14-4.118-6.942-6.942l1.293-.97c.363-.271.527-.734.417-1.173L6.963 3.102a1.125 1.125 0 00-1.091-.852H3.75A2.25 2.25 0 001.5 4.5v2.25z" />
+                            </svg>
+                          </div>
+                          <div className="w-8 h-8 rounded-full bg-slate-50 flex items-center justify-center text-slate-400 group-hover:bg-purple-50 group-hover:text-purple-600 transition-colors">
+                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="3" stroke="currentColor" className="w-3.5 h-3.5">
+                              <path strokeLinecap="round" strokeLinejoin="round" d="M13.5 4.5L21 12m0 0l-7.5 7.5M21 12H3" />
+                            </svg>
+                          </div>
+                        </div>
+                        <div>
+                          <h4 className="text-xs font-black text-[#0B2E7A] uppercase tracking-wider">Hotline Support Desk</h4>
+                          <p className="text-[10px] text-slate-400 font-bold mt-1">Get in touch with customer service agents.</p>
+                        </div>
+                      </div>
+
                     </div>
                   </div>
 
@@ -1036,378 +1451,474 @@ export default function DashboardClient({
 
               {/* Tab 1: File a Complaint */}
               {activeTab === "file-complaint" && (
-            <div className="space-y-6">
-              <div>
-                <h2 className="text-xl font-black text-[#001e66] tracking-tight">File an Incident Report</h2>
-                <p className="text-xs text-slate-500 font-medium">Describe water flow pressure drops or quality deviations</p>
-              </div>
-                        {submitSuccess ? (
-                <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-6 space-y-6 shadow-sm animate-fade-in max-w-2xl">
-                  <div className="flex items-center space-x-3 text-emerald-600 dark:text-emerald-450">
-                    <span className="text-2xl">🎉</span>
+                <div className="flex flex-col h-full gap-5">
+                  {/* Page Header */}
+                  <div className="flex items-center gap-4 bg-white p-4 rounded-2xl border border-slate-200/60 shadow-sm shrink-0">
+                    <div className="w-14 h-14 rounded-full bg-blue-50 flex items-center justify-center text-[#00aeef] border border-blue-100 shadow-sm shrink-0">
+                      <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="2" stroke="currentColor" className="w-6 h-6">
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m0 12.75h7.5m-7.5 3H12M10.5 2.25H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z" />
+                      </svg>
+                    </div>
                     <div>
-                      <h3 className="text-sm font-black uppercase tracking-wider text-emerald-800 dark:text-emerald-400 leading-none">
-                        Report Logged Successfully
-                      </h3>
-                      <p className="text-[10px] text-slate-500 font-bold mt-1.5">
-                        Your water issue ticket has been registered and is active in the dispatch queue.
-                      </p>
+                      <h1 className="text-[1.75rem] font-black text-[#001e66] leading-tight">File an Incident Report</h1>
+                      <p className="text-[0.9rem] text-slate-500 font-bold">Help us keep our water clean and our community safe.</p>
                     </div>
                   </div>
 
-                  <div className="border-t border-b border-slate-100 dark:border-slate-800/80 py-4 space-y-4 text-xs">
-                    <div>
-                      <strong className="text-slate-450 uppercase tracking-widest text-[9px] block mb-1">
-                        Report Summary (AI Diagnostics)
-                      </strong>
-                      <p className="text-[#001e66] dark:text-slate-150 font-extrabold text-sm italic leading-relaxed">
-                        "{aiAnalysis?.summary || "Resident reported water quality concern."}"
-                      </p>
-                    </div>
-
-                    <div>
-                      <strong className="text-slate-450 uppercase tracking-widest text-[9px] block mb-1">
-                        Your Detailed Description
-                      </strong>
-                      <p className="text-slate-650 dark:text-slate-350 bg-slate-50 dark:bg-slate-955 p-3.5 rounded-xl border border-slate-200 dark:border-slate-900 font-semibold leading-relaxed whitespace-pre-wrap">
-                        {lastSubmittedComplaint?.rawText}
-                      </p>
-                    </div>
-
-                    {lastSubmittedComplaint?.imageUrl && (
-                      <div>
-                        <strong className="text-slate-450 uppercase tracking-widest text-[9px] block mb-1.5">
-                          Attached Photo
-                        </strong>
-                        <div className="w-40 h-28 rounded-xl overflow-hidden border border-slate-200 dark:border-slate-800">
-                          <img src={lastSubmittedComplaint.imageUrl} alt="Submitted incident photo" className="w-full h-full object-cover" />
-                        </div>
-                      </div>
-                    )}
-
-                    <div className="grid grid-cols-2 gap-4 font-mono text-xxs border-t border-slate-100 dark:border-slate-800/50 pt-4">
-                      <div>
-                        <strong className="text-slate-400 uppercase tracking-widest block mb-0.5 text-[8px]">Barangay</strong>
-                        <span className="font-bold text-slate-700 dark:text-slate-200">
-                          {lastSubmittedComplaint?.barangay || "San Fernando"}
-                        </span>
-                      </div>
-                      <div>
-                        <strong className="text-slate-400 uppercase tracking-widest block mb-0.5 text-[8px]">Coordinates</strong>
-                        <span className="font-bold text-slate-700 dark:text-slate-200">
-                          {lastSubmittedComplaint?.latitude.toFixed(6)}, {lastSubmittedComplaint?.longitude.toFixed(6)}
-                        </span>
-                      </div>
-                      <div>
-                        <strong className="text-slate-400 uppercase tracking-widest block mb-0.5 text-[8px]">Urgency</strong>
-                        <span className="font-black text-rose-600 dark:text-rose-450 uppercase">
-                          {aiAnalysis?.urgency || "MEDIUM"}
-                        </span>
-                      </div>
-                      <div>
-                        <strong className="text-slate-400 uppercase tracking-widest block mb-0.5 text-[8px]">Category</strong>
-                        <span className="font-bold text-slate-700 dark:text-slate-200 uppercase">
-                          {aiAnalysis?.category?.replace(/_/g, " ") || "UNCLASSIFIED"}
-                        </span>
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="flex flex-col sm:flex-row gap-3 pt-2">
-                    <button
-                      onClick={() => {
-                        setSubmitSuccess(false);
-                        setAiAnalysis(null);
-                        setLastSubmittedComplaint(null);
-                      }}
-                      className="flex-1 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-[#001e66] dark:text-slate-200 font-black text-xs py-3 px-6 rounded-xl uppercase tracking-wider transition-all cursor-pointer text-center"
-                    >
-                      File Another Report
-                    </button>
-                    <button
-                      onClick={() => {
-                        setSubmitSuccess(false);
-                        setAiAnalysis(null);
-                        setLastSubmittedComplaint(null);
-                        setActiveTab("track-complaint");
-                      }}
-                      className="flex-1 bg-gradient-to-r from-[#001e66] to-[#00aeef] hover:from-[#00aeef] hover:to-[#001e66] text-white font-black text-xs py-3 px-6 rounded-xl uppercase tracking-wider transition-all cursor-pointer text-center"
-                    >
-                      Track Active Tickets
-                    </button>
-                  </div>
-                </div>
-              ) : (
-                <>
-                  {submitError && (
-                    <div className="p-4 bg-red-50 border border-red-200 rounded-xl text-red-700 text-xs font-bold mb-4">
-                      ⚠ {submitError}
-                    </div>
-                  )}
-
-                  <form onSubmit={handleCreateComplaint} className="space-y-6">
-                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 items-start">
-                      
-                      {/* Left Column: Complaint Details */}
-                      <div className="space-y-5">
-                        {/* Description Textarea */}
-                        <div className="space-y-1.5">
-                          <label className="text-xxs font-black text-slate-500 dark:text-slate-400 uppercase tracking-wider">Describe water issue</label>
-                          <textarea
-                            rows={5}
-                            value={complaintText}
-                            onChange={(e) => setComplaintText(e.target.value)}
-                            placeholder="e.g. Mahina ang tubig dito sa amin sa Del Pilar, halos walang tumutulo..."
-                            className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 text-[#001e66] dark:text-slate-100 font-bold text-xs py-3 px-4 rounded-xl focus:outline-none focus:border-[#00aeef] focus:ring-2 focus:ring-[#00aeef]/20 transition-all"
-                          />
-                          <p className="text-[10px] text-slate-400">Reports can be entered in Tagalog, Taglish, or English.</p>
-                        </div>
-
-                        {/* Complaint Photo Upload */}
-                        <div className="space-y-1.5">
-                          <label className="text-xxs font-black text-slate-500 dark:text-slate-400 uppercase tracking-wider">Attach Photo (Optional)</label>
-                          <input
-                            key="complaint-file-upload-input"
-                            id="complaint-file-upload-input"
-                            type="file"
-                            accept="image/*"
-                            onChange={handlePhotoUpload}
-                            disabled={uploadingPhoto || submitting}
-                            className="w-full text-xs text-slate-500 file:mr-4 file:py-2.5 file:px-4 file:rounded-xl file:border-0 file:text-xs file:font-black file:bg-[#00aeef]/10 file:text-[#00aeef] hover:file:bg-[#00aeef]/20 cursor-pointer"
-                          />
-                          {uploadingPhoto && (
-                            <p className="text-[10px] text-[#00aeef] animate-pulse mt-1">Uploading photo to Supabase Storage...</p>
-                          )}
-                          {complaintImageUrl && (
-                            <div className="mt-2.5 relative w-32 h-24 rounded-xl overflow-hidden border border-slate-200 dark:border-slate-800 shadow-sm">
-                              <img src={complaintImageUrl} alt="Preview" className="w-full h-full object-cover" />
-                              <button
-                                type="button"
-                                onClick={() => setComplaintImageUrl("")}
-                                className="absolute top-1.5 right-1.5 bg-red-600 hover:bg-red-700 text-white rounded-full w-5 h-5 flex items-center justify-center text-[10px] font-black shadow transition-colors cursor-pointer"
-                              >
-                                ✕
-                              </button>
-                            </div>
-                          )}
-                        </div>
-
-                        {/* AI Triage Analysis Card */}
-                        {aiAnalysis && (
-                          <div className="bg-[#00aeef]/5 border border-[#00aeef]/20 rounded-2xl p-5 space-y-3 animate-fade-in">
-                            <div className="flex items-center justify-between">
-                              <div className="flex items-center space-x-2">
-                                <span className="text-xs font-black text-[#001e66] dark:text-slate-200">Gemini AI Diagnostics</span>
-                                <span className="bg-[#00aeef]/10 text-[#00aeef] text-[9px] font-black uppercase px-2 py-0.5 rounded">
-                                  Active Triage
-                                </span>
-                              </div>
-                              <span className={`text-[10px] font-black px-2.5 py-0.5 rounded-full uppercase ${
-                                aiAnalysis.urgency === "URGENT" ? "bg-red-50 text-red-600 border border-red-200" : "bg-amber-50 text-amber-600 border border-amber-200"
-                              }`}>
-                                {aiAnalysis.urgency} Urgency
-                              </span>
-                            </div>
-                            <div className="text-xs text-slate-650 dark:text-slate-350 space-y-2 leading-relaxed font-semibold">
-                              <div>
-                                <span className="text-xxs font-bold text-slate-400 uppercase block">Category Classification</span>
-                                <span className="font-mono text-[#001e66] dark:text-slate-200 text-[10px]">{aiAnalysis.category}</span>
-                              </div>
-                              <div>
-                                <span className="text-xxs font-bold text-slate-400 uppercase block">Analysis Summary</span>
-                                <p className="text-slate-700 dark:text-slate-300 italic mt-0.5">"{aiAnalysis.summary}"</p>
-                              </div>
-                              {aiAnalysis.translatedText && aiAnalysis.translatedText !== complaintText && (
-                                <div>
-                                  <span className="text-xxs font-bold text-slate-400 uppercase block">English Translation</span>
-                                  <p className="text-slate-500 mt-0.5">{aiAnalysis.translatedText}</p>
-                                </div>
-                              )}
+                  {/* 2-Column Grid */}
+                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-stretch flex-1 min-h-0">
+                    
+                    {/* Left Card: Form Inputs / Success State */}
+                    <div className="bg-white rounded-2xl border border-slate-200/60 shadow-sm p-6 flex flex-col justify-between h-full gap-5 overflow-y-auto">
+                      {submitSuccess ? (
+                        <div className="space-y-5 my-auto animate-fade-in">
+                          <div className="flex items-center space-x-3 text-emerald-600">
+                            <span className="text-3xl">🎉</span>
+                            <div>
+                              <h3 className="text-sm font-black uppercase tracking-wider text-emerald-800 leading-none">
+                                Report Logged Successfully
+                              </h3>
+                              <p className="text-[10px] text-slate-500 font-bold mt-1.5">
+                                Your water issue ticket has been registered and is active in the dispatch queue.
+                              </p>
                             </div>
                           </div>
-                        )}
 
-                        {/* Submission Button Row */}
-                        <div>
-                          <button
-                            type="submit"
-                            disabled={submitting}
-                            className="bg-gradient-to-r from-[#001e66] to-[#00aeef] hover:from-[#00aeef] hover:to-[#001e66] text-white font-black text-xs px-6 py-3.5 rounded-xl uppercase tracking-wider shadow-md shadow-blue-900/10 hover:shadow-blue-500/20 active:scale-[0.98] transition-all duration-300 disabled:opacity-50 flex items-center space-x-2 cursor-pointer"
-                          >
-                            {submitting ? (
-                              <>
-                                <svg className="animate-spin w-4 h-4 text-white" fill="none" viewBox="0 0 24 24">
-                                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
-                                </svg>
-                                <span>Filing &amp; Analyzing with AI…</span>
-                              </>
-                            ) : (
-                              "File Complaint"
+                          <div className="border-t border-b border-slate-100 py-4 space-y-4 text-xs">
+                            <div>
+                              <strong className="text-slate-450 uppercase tracking-widest text-[9px] block mb-1">
+                                Report Summary (AI Diagnostics)
+                              </strong>
+                              <p className="text-[#001e66] font-extrabold text-sm italic leading-relaxed">
+                                "{aiAnalysis?.summary || "Resident reported water quality concern."}"
+                              </p>
+                            </div>
+
+                            <div>
+                              <strong className="text-slate-450 uppercase tracking-widest text-[9px] block mb-1">
+                                Your Detailed Description
+                              </strong>
+                              <p className="text-slate-600 bg-slate-50 p-3.5 rounded-xl border border-slate-200 font-semibold leading-relaxed whitespace-pre-wrap max-h-32 overflow-y-auto">
+                                {lastSubmittedComplaint?.rawText}
+                              </p>
+                            </div>
+
+                            {lastSubmittedComplaint?.imageUrl && (
+                              <div>
+                                <strong className="text-slate-450 uppercase tracking-widest text-[9px] block mb-1.5">
+                                  Attached Photo
+                                </strong>
+                                <div className="w-40 h-28 rounded-xl overflow-hidden border border-slate-200">
+                                  <img src={lastSubmittedComplaint.imageUrl} alt="Submitted incident" className="w-full h-full object-cover" />
+                                </div>
+                              </div>
                             )}
+
+                            <div className="grid grid-cols-2 gap-4 font-mono text-xxs border-t border-slate-100 pt-4">
+                              <div>
+                                <strong className="text-slate-400 uppercase tracking-widest block mb-0.5 text-[8px]">Barangay</strong>
+                                <span className="font-bold text-slate-700">
+                                  {lastSubmittedComplaint?.barangay || "San Fernando"}
+                                </span>
+                              </div>
+                              <div>
+                                <strong className="text-slate-400 uppercase tracking-widest block mb-0.5 text-[8px]">Coordinates</strong>
+                                <span className="font-bold text-slate-700">
+                                  {lastSubmittedComplaint?.latitude.toFixed(6)}, {lastSubmittedComplaint?.longitude.toFixed(6)}
+                                </span>
+                              </div>
+                              <div>
+                                <strong className="text-slate-400 uppercase tracking-widest block mb-0.5 text-[8px]">Urgency</strong>
+                                <span className="font-black text-rose-600 uppercase">
+                                  {aiAnalysis?.urgency || "MEDIUM"}
+                                </span>
+                              </div>
+                              <div>
+                                <strong className="text-slate-400 uppercase tracking-widest block mb-0.5 text-[8px]">Category</strong>
+                                <span className="font-bold text-slate-700 uppercase">
+                                  {aiAnalysis?.category?.replace(/_/g, " ") || "UNCLASSIFIED"}
+                                </span>
+                              </div>
+                            </div>
+                          </div>
+
+                          <div className="flex gap-3 pt-2">
+                            <button
+                              onClick={() => {
+                                setSubmitSuccess(false);
+                                setAiAnalysis(null);
+                                setLastSubmittedComplaint(null);
+                              }}
+                              className="flex-1 bg-slate-100 hover:bg-slate-200 text-[#001e66] font-black text-xs py-3 px-6 rounded-xl uppercase tracking-wider transition-all cursor-pointer text-center border border-slate-200/50"
+                            >
+                              File Another Report
+                            </button>
+                            <button
+                              onClick={() => {
+                                setSubmitSuccess(false);
+                                setAiAnalysis(null);
+                                setLastSubmittedComplaint(null);
+                                setActiveTab("track-complaint");
+                              }}
+                              className="flex-1 bg-gradient-to-r from-[#001e66] to-[#00aeef] hover:from-[#00aeef] hover:to-[#001e66] text-white font-black text-xs py-3 px-6 rounded-xl uppercase tracking-wider transition-all cursor-pointer text-center shadow"
+                            >
+                              Track Active Tickets
+                            </button>
+                          </div>
+                        </div>
+                      ) : (
+                        <form onSubmit={handleCreateComplaint} className="flex flex-col h-full justify-between gap-5">
+                          {submitError && (
+                            <div className="p-3.5 bg-red-50 border border-red-200 rounded-xl text-red-700 text-xs font-bold shrink-0">
+                              ⚠ {submitError}
+                            </div>
+                          )}
+
+                          {/* Step 1: Describe Water Issue */}
+                          <div className="space-y-2">
+                            <div className="flex items-center gap-2">
+                              <span className="w-5 h-5 rounded-full bg-blue-100 text-blue-600 font-bold text-xs flex items-center justify-center shadow-sm">1</span>
+                              <h3 className="font-black text-slate-800 text-xs uppercase tracking-wider">Describe Water Issue</h3>
+                            </div>
+                            <div className="relative">
+                              <textarea
+                                rows={5}
+                                value={complaintText}
+                                onChange={(e) => setComplaintText(e.target.value.slice(0, 1000))}
+                                placeholder="e.g. Mahina ang tubig dito sa amin sa Del Pilar, halos walang tumutulo..."
+                                className="w-full bg-white border border-slate-200 text-[#001e66] font-semibold text-xs py-3 px-4 rounded-xl focus:outline-none focus:border-[#00aeef] focus:ring-2 focus:ring-[#00aeef]/20 transition-all resize-none pb-8 shadow-inner"
+                              />
+                              <div className="absolute bottom-2.5 right-3 text-[10px] text-slate-400 font-bold font-mono">
+                                {complaintText.length}/1000
+                              </div>
+                            </div>
+                            <p className="text-[11px] text-slate-400 font-bold">
+                              Reports can be entered in Tagalog, Taglish, or English.
+                            </p>
+                          </div>
+
+                          {/* Step 2: Attach Photo (Optional) */}
+                          <div className="space-y-2">
+                            <div className="flex items-center gap-2">
+                              <span className="w-5 h-5 rounded-full bg-blue-100 text-blue-600 font-bold text-xs flex items-center justify-center shadow-sm">2</span>
+                              <h3 className="font-black text-slate-800 text-xs uppercase tracking-wider">Attach Photo (Optional)</h3>
+                            </div>
+                            
+                            <input
+                              ref={fileInputRef}
+                              type="file"
+                              accept="image/*"
+                              onChange={handlePhotoUpload}
+                              className="hidden"
+                            />
+
+                            {!complaintImageUrl ? (
+                              <div
+                                onDragOver={(e) => { e.preventDefault(); setIsDragging(true); }}
+                                onDragLeave={() => setIsDragging(false)}
+                                onDrop={(e) => {
+                                  e.preventDefault();
+                                  setIsDragging(false);
+                                  const file = e.dataTransfer.files?.[0];
+                                  if (file) uploadFile(file);
+                                }}
+                                className={`relative w-full rounded-xl border-2 border-dashed flex flex-col items-center justify-center p-5 transition-all ${
+                                  isDragging
+                                    ? "border-[#00aeef] bg-sky-50/60"
+                                    : "border-slate-200 bg-sky-50/20 hover:border-slate-300"
+                                }`}
+                              >
+                                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor" className="w-8 h-8 text-[#00aeef] mb-1.5">
+                                  <path strokeLinecap="round" strokeLinejoin="round" d="M12 16.5V9.75m0 0l3 3m-3-3l-3 3M6.75 19.5a4.5 4.5 0 01-1.41-8.775 5.25 5.25 0 0110.233-2.33 3 3 0 013.758 3.848A3.752 3.752 0 0118 19.5H6.75z" />
+                                </svg>
+                                
+                                <p className="text-xs text-slate-500 font-bold text-center mb-2">
+                                  Drag and drop an image here or
+                                </p>
+                                
+                                <button
+                                  type="button"
+                                  onClick={() => fileInputRef.current?.click()}
+                                  className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-[#00aeef] hover:bg-[#001e66] text-white font-bold text-[10px] rounded-lg transition-colors cursor-pointer shadow-sm"
+                                >
+                                  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="2.5" stroke="currentColor" className="w-3 h-3">
+                                    <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
+                                  </svg>
+                                  Choose File
+                                </button>
+                                
+                                <p className="text-[9px] text-slate-400 font-bold mt-2.5">
+                                  JPG, PNG up to 10MB
+                                </p>
+                              </div>
+                            ) : (
+                              <div className="relative w-full max-w-md mx-auto rounded-xl overflow-hidden border border-slate-200 dark:border-slate-800 shadow-sm group bg-slate-50 dark:bg-slate-900 p-2 text-center">
+                                <img src={complaintImageUrl} alt="Preview" className="w-full max-h-80 object-contain rounded-lg mx-auto" />
+                                <button
+                                  type="button"
+                                  onClick={() => setComplaintImageUrl("")}
+                                  className="absolute top-4 right-4 bg-red-600 hover:bg-red-750 text-white rounded-full w-6 h-6 flex items-center justify-center text-[11px] font-black shadow-lg transition-colors cursor-pointer"
+                                >
+                                  ✕
+                                </button>
+                              </div>
+                            )}
+                          </div>
+
+                          {/* Submit Button */}
+                          <div className="pt-2 shrink-0">
+                            <button
+                              type="submit"
+                              disabled={submitting || uploadingPhoto}
+                              className="w-full bg-[#00aeef] hover:bg-[#001e66] text-white font-black text-xs py-3.5 rounded-xl uppercase tracking-wider shadow-md hover:shadow-blue-500/10 active:scale-[0.99] transition-all flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
+                            >
+                              {submitting ? (
+                                <>
+                                  <svg className="animate-spin w-4 h-4 text-white" fill="none" viewBox="0 0 24 24">
+                                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                                  </svg>
+                                  <span>Filing &amp; Analyzing with AI…</span>
+                                </>
+                              ) : (
+                                <>
+                                  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="2" stroke="currentColor" className="w-3.5 h-3.5">
+                                    <path strokeLinecap="round" strokeLinejoin="round" d="M6 12L3.269 3.126A59.768 59.768 0 0121.485 12 59.77 59.77 0 013.27 20.876L5.999 12zm0 0h7.5" />
+                                  </svg>
+                                  <span>File Complaint</span>
+                                </>
+                              )}
+                            </button>
+                          </div>
+                        </form>
+                      )}
+                    </div>
+
+                    {/* Right Card: Geographic Dispatch Details */}
+                    <div className="bg-white rounded-2xl border border-slate-200/60 shadow-sm p-6 flex flex-col justify-between h-full gap-4">
+                      
+                      {/* Header Section */}
+                      <div className="flex items-center justify-between border-b border-slate-100 pb-3 shrink-0">
+                        <div className="flex items-center gap-2">
+                          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="2.5" stroke="#001e66" className="w-4 h-4 shrink-0">
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M15 10.5a3 3 0 11-6 0 3 3 0 016 0z" />
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 10.5c0 7.142-7.5 11.25-7.5 11.25s-7.5-4.108-7.5-11.25a7.5 7.5 0 1115 0z" />
+                          </svg>
+                          <h3 className="font-extrabold text-[#001e66] text-xs uppercase tracking-wider">Geographic Dispatch Details</h3>
+                        </div>
+                        
+                        <div className="flex items-center gap-2 px-2.5 py-1 bg-blue-50 border border-blue-100 rounded-lg text-left">
+                          <span className="relative flex h-2 w-2 shrink-0">
+                            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-blue-400 opacity-75"></span>
+                            <span className="relative inline-flex rounded-full h-2 w-2 bg-blue-500"></span>
+                          </span>
+                          <div className="flex flex-col leading-none">
+                            <span className="text-[9px] font-black text-[#001e66] uppercase">Automated GPS Location Pinpoint</span>
+                            <span className="text-[7px] text-slate-400 font-bold mt-0.5">
+                              Requesting device GPS coordinates...
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Address Search */}
+                      <div className="space-y-1.5 shrink-0">
+                        <label className="text-[9px] font-black text-slate-450 uppercase tracking-wider block">Search Address, Street, or Landmark</label>
+                        <div className="flex shadow-sm rounded-lg overflow-hidden border border-slate-200 focus-within:border-[#00aeef] focus-within:ring-2 focus-within:ring-[#00aeef]/10 transition-all bg-white">
+                          <div className="flex items-center pl-3 pr-2 text-slate-400 shrink-0">
+                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="2.5" stroke="currentColor" className="w-4 h-4">
+                              <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.637 10.637z" />
+                            </svg>
+                          </div>
+                          <input
+                            type="text"
+                            placeholder="e.g. Del Pilar Street, Sto. Rosario..."
+                            value={addressSearchQuery}
+                            onChange={(e) => setAddressSearchQuery(e.target.value)}
+                            onKeyDown={(e) => {
+                              if (e.key === "Enter") {
+                                e.preventDefault();
+                                handleAddressSearch();
+                              }
+                            }}
+                            className="flex-1 text-slate-800 font-semibold text-xs py-2 focus:outline-none placeholder-slate-450"
+                          />
+                          <button
+                            type="button"
+                            onClick={handleAddressSearch}
+                            className="bg-[#001e66] hover:bg-[#00aeef] text-white font-extrabold text-xs px-5 py-2 uppercase tracking-wider active:scale-95 transition-all cursor-pointer shrink-0"
+                          >
+                            Search
                           </button>
                         </div>
                       </div>
 
-                      {/* Right Column: Location & Mapping Details */}
-                      <div className="bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-800 rounded-2xl p-6 space-y-4">
-                        <div>
-                          <h3 className="text-xs font-black text-slate-450 dark:text-slate-400 uppercase tracking-wider border-b border-slate-200 dark:border-slate-800 pb-2">
-                            Geographic Dispatch Details
-                          </h3>
-                        </div>
-
-                        {/* GPS pinpoint stats */}
-                        <div className="flex items-start space-x-2">
-                          <div className="flex-1">
-                            <span className="font-extrabold text-[#001e66] dark:text-slate-200 block text-xs">Automated GPS Location Pinpoint</span>
-                            <span className="text-[10px] text-slate-500 font-medium">
-                              {gpsPinpointActive
-                                ? `High-precision GPS captured · ${customLat}, ${customLng}${
-                                    gpsAccuracy ? ` · Accuracy: ${gpsAccuracy.toFixed(1)}m` : ""
-                                  }`
-                                : "Requesting device GPS coordinates…"}
-                            </span>
-                          </div>
-                        </div>
-
-                        {/* Address Search Bar */}
-                        <div className="space-y-1.5 pt-1">
-                          <label className="text-[9px] font-black text-slate-400 uppercase">Search Address, Street, or Landmark</label>
-                          <div className="flex gap-2">
-                            <input
-                              type="text"
-                              placeholder="e.g. Del Pilar Street, Sto. Rosario..."
-                              value={addressSearchQuery}
-                              onChange={(e) => setAddressSearchQuery(e.target.value)}
-                              onKeyDown={(e) => {
-                                if (e.key === "Enter") {
-                                  e.preventDefault();
-                                  handleAddressSearch();
-                                }
+                      {/* Map Container */}
+                      <div className="w-full flex-1 rounded-xl border border-slate-200 overflow-hidden relative shadow-inner min-h-[220px]">
+                        {mapError ? (
+                          <div className="absolute inset-0 bg-[#F1F3F5] overflow-hidden flex flex-col items-center justify-center relative select-none">
+                            {/* Street Grid SVG Background */}
+                            <svg className="absolute inset-0 w-full h-full text-slate-200" xmlns="http://www.w3.org/2000/svg" width="100%" height="100%">
+                              <defs>
+                                <pattern id="street-grid" width="120" height="120" patternUnits="userSpaceOnUse">
+                                  <path d="M 0 10 L 120 10 M 10 0 L 10 120 M 0 60 L 120 60 M 60 0 L 60 120" fill="none" stroke="currentColor" strokeWidth="1.5" />
+                                  <path d="M 0 110 L 120 110 M 110 0 L 110 120" fill="none" stroke="currentColor" strokeWidth="0.75" strokeDasharray="3,3" />
+                                </pattern>
+                              </defs>
+                              <rect width="100%" height="100%" fill="url(#street-grid)" />
+                              
+                              {/* City blocks & Features */}
+                              <rect x="20" y="20" width="30" height="30" rx="4" fill="#e2e8f0" />
+                              <rect x="70" y="20" width="40" height="30" rx="4" fill="#e2e8f0" />
+                              <rect x="20" y="70" width="30" height="40" rx="4" fill="#e2e8f0" />
+                              
+                              {/* Rivers/water pipe lines mock */}
+                              <path d="M -10 100 Q 80 80 130 110 T 260 90 T 400 115" fill="none" stroke="#bae6fd" strokeWidth="8" strokeLinecap="round" opacity="0.6" />
+                              
+                              {/* Street labels */}
+                              <text x="18" y="15" fill="#94a3b8" fontSize="8" fontWeight="bold">Del Pilar St.</text>
+                              <text x="115" y="55" fill="#94a3b8" fontSize="8" fontWeight="bold" transform="rotate(90, 115, 55)">Sto. Rosario St.</text>
+                              <text x="65" y="75" fill="#94a3b8" fontSize="8" fontWeight="bold">Abad Santos Ave.</text>
+                            </svg>
+                            
+                            {/* Blue location pin centered with pulse ring */}
+                            <div className="absolute pointer-events-none flex items-center justify-center" style={{ left: '50%', top: '50%', transform: 'translate(-50%, -50%)' }}>
+                              <div className="absolute w-12 h-12 bg-blue-500/20 rounded-full animate-ping border border-blue-500/30"></div>
+                              <div className="absolute w-6 h-6 bg-blue-500/10 rounded-full border border-blue-500/40"></div>
+                              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="#00aeef" className="w-8 h-8 filter drop-shadow z-10 animate-bounce">
+                                <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z"/>
+                              </svg>
+                            </div>
+                            
+                            {/* Map connection status banner overlay */}
+                            <div className="absolute top-2 left-2 bg-slate-900/90 text-white text-[9px] font-mono px-2 py-0.5 rounded border border-slate-700/60 backdrop-blur-sm z-10 flex items-center gap-1.5">
+                              <span className="w-1.5 h-1.5 rounded-full bg-[#00aeef]" />
+                              Custom GIS Mock Engine (Offline Mode)
+                            </div>
+                            
+                            {/* Interactivity: clicking on mock map changes coords slightly */}
+                            <div
+                              className="absolute inset-0 w-full h-full cursor-crosshair"
+                              onClick={(e) => {
+                                const rect = e.currentTarget.getBoundingClientRect();
+                                const clickX = e.clientX - rect.left;
+                                const clickY = e.clientY - rect.top;
+                                const centerX = rect.width / 2;
+                                const centerY = rect.height / 2;
+                                
+                                // Calculate offset delta
+                                const deltaLng = (clickX - centerX) * 0.00001;
+                                const deltaLat = (centerY - clickY) * 0.00001;
+                                
+                                const nextLat = (parseFloat(customLat) + deltaLat).toFixed(6);
+                                const nextLng = (parseFloat(customLng) + deltaLng).toFixed(6);
+                                
+                                userHasManuallyPinnedRef.current = true;
+                                setCustomLat(nextLat);
+                                setCustomLng(nextLng);
+                                setGpsPinpointActive(true);
                               }}
-                              className="flex-1 bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-800 text-[#001e66] dark:text-slate-100 font-bold text-xs py-2 px-3 rounded-lg focus:outline-none focus:border-[#00aeef]"
                             />
-                            <button
-                              type="button"
-                              onClick={handleAddressSearch}
-                              className="bg-[#001e66] hover:bg-[#00aeef] text-white font-extrabold text-xs px-5 py-2 rounded-lg uppercase tracking-wider active:scale-95 transition-all shadow-sm cursor-pointer"
-                            >
-                              Search
-                            </button>
                           </div>
-                        </div>
-
-                        {/* Interactive Map Pinning Container */}
-                        <div className="w-full h-52 rounded-xl border border-slate-200 dark:border-slate-800 overflow-hidden relative shadow-inner">
+                        ) : (
                           <div ref={handleMapRef} className="absolute inset-0 w-full h-full" />
-                          {mapError ? (
-                            <div className="absolute inset-0 bg-slate-900/95 flex flex-col items-center justify-center p-4 text-center z-10">
-                              <span className="text-xl">🗺️</span>
-                              <span className="text-xs font-bold text-slate-200 mt-2">Map Connection Unreachable</span>
-                              <span className="text-[10px] text-slate-400 mt-1 max-w-[240px]">
-                                If you are using a restricted network (e.g., school or public Wi-Fi), map services may be blocked. You can still type your address manually below!
-                              </span>
-                            </div>
-                          ) : (
-                            <div className="absolute bottom-2 left-2 z-10 bg-slate-900/90 text-white text-[9px] font-mono px-2 py-0.5 rounded border border-slate-700/60 backdrop-blur-sm">
-                              Drag marker or click map to pin exact location
-                            </div>
-                          )}
+                        )}
+                        
+                        {/* Custom floating map controls on the right (stacked vertically) */}
+                        <div className="absolute right-3.5 top-1/2 -translate-y-1/2 flex flex-col gap-2 z-10">
+                          <button
+                            type="button"
+                            onClick={() => clientMapRef.current?.zoomIn()}
+                            className="w-8 h-8 rounded-lg bg-white shadow-md hover:bg-slate-50 border border-slate-200 flex items-center justify-center font-bold text-slate-655 transition-colors cursor-pointer text-sm"
+                            title="Zoom In"
+                          >
+                            +
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => clientMapRef.current?.zoomOut()}
+                            className="w-8 h-8 rounded-lg bg-white shadow-md hover:bg-slate-50 border border-slate-200 flex items-center justify-center font-bold text-slate-655 transition-colors cursor-pointer text-sm"
+                            title="Zoom Out"
+                          >
+                            −
+                          </button>
+                          <button
+                            type="button"
+                            onClick={handleRequestLocation}
+                            className="w-8 h-8 rounded-lg bg-white shadow-md hover:bg-slate-50 border border-slate-200 flex items-center justify-center text-slate-600 hover:text-blue-500 transition-colors cursor-pointer"
+                            title="Target Current Location"
+                          >
+                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="2.5" stroke="currentColor" className="w-4 h-4">
+                              <path strokeLinecap="round" strokeLinejoin="round" d="M12 3v2.25m6.364.386l-1.591 1.591M21 12h-2.25m-.386 6.364l-1.591-1.591M12 18.75V21m-4.773-4.227l-1.591 1.591M3 12h2.25m-.386-6.364l1.591 1.591M12 18.75a6.75 6.75 0 110-13.5 6.75 6.75 0 010 13.5z" />
+                            </svg>
+                          </button>
                         </div>
+                        
+                        {/* Floating Banner Overlay at bottom */}
+                        <div className="absolute bottom-3 left-1/2 -translate-x-1/2 bg-slate-900/90 text-white text-[10px] font-bold px-3 py-1.5 rounded-lg border border-slate-700/60 backdrop-blur-sm shadow z-10 flex items-center gap-1.5 pointer-events-none shrink-0">
+                          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="2.5" stroke="#00aeef" className="w-3.5 h-3.5 shrink-0">
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M15 10.5a3 3 0 11-6 0 3 3 0 016 0z" />
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 10.5c0 7.142-7.5 11.25-7.5 11.25s-7.5-4.108-7.5-11.25a7.5 7.5 0 1115 0z" />
+                          </svg>
+                          <span>Drag marker or click map to pin exact location</span>
+                        </div>
+                      </div>
 
-                        {/* Locate Me button */}
+                      {/* Location Actions & Fields */}
+                      <div className="space-y-3.5 shrink-0">
                         <button
                           type="button"
                           onClick={handleRequestLocation}
-                          className="w-full bg-gradient-to-r from-[#00aeef] to-[#08266D] hover:from-[#08266D] hover:to-[#00aeef] text-white font-black text-[10px] py-2.5 px-3 rounded-lg uppercase tracking-wider shadow-sm hover:shadow-blue-500/10 active:scale-[0.99] transition-all duration-300 flex items-center justify-center gap-1.5 cursor-pointer"
+                          className="w-full border border-[#00aeef] hover:bg-sky-50/40 text-[#00aeef] font-bold text-xs py-2.5 rounded-lg transition-colors flex items-center justify-center gap-1.5 cursor-pointer shadow-sm"
                         >
-                          Pin My Current Device Location
+                          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="2" stroke="currentColor" className="w-4 h-4">
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M12 3v2.25m6.364.386l-1.591 1.591M21 12h-2.25m-.386 6.364l-1.591-1.591M12 18.75V21m-4.773-4.227l-1.591 1.591M3 12h2.25m-.386-6.364l1.591 1.591M12 18.75a6.75 6.75 0 110-13.5 6.75 6.75 0 010 13.5z" />
+                          </svg>
+                          <span>Pin My Current Device Location</span>
                         </button>
 
-                        <div className="grid grid-cols-2 gap-3 pt-2">
+                        <div className="grid grid-cols-2 gap-3">
                           <div className="space-y-1">
-                            <label className="text-[8px] font-black text-slate-400 uppercase">Latitude</label>
+                            <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Latitude</label>
                             <input
                               type="text"
+                              readOnly
                               value={customLat}
-                              onChange={(e) => {
-                                userHasManuallyPinnedRef.current = true;
-                                setCustomLat(e.target.value);
-                                setGpsPinpointActive(true);
-                              }}
-                              className="w-full bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-800 text-[#001e66] dark:text-slate-100 font-mono text-[10px] py-1.5 px-3 rounded-lg focus:outline-none focus:border-[#00aeef] focus:ring-1 focus:ring-[#00aeef]/30"
+                              className="w-full bg-slate-50 border border-slate-200 text-[#001e66] font-mono text-xs py-2 px-3 rounded-lg focus:outline-none cursor-not-allowed select-all font-semibold"
                             />
                           </div>
                           <div className="space-y-1">
-                            <label className="text-[8px] font-black text-slate-400 uppercase">Longitude</label>
+                            <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Longitude</label>
                             <input
                               type="text"
+                              readOnly
                               value={customLng}
-                              onChange={(e) => {
-                                userHasManuallyPinnedRef.current = true;
-                                setCustomLng(e.target.value);
-                                setGpsPinpointActive(true);
-                              }}
-                              className="w-full bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-800 text-[#001e66] dark:text-slate-100 font-mono text-[10px] py-1.5 px-3 rounded-lg focus:outline-none focus:border-[#00aeef] focus:ring-1 focus:ring-[#00aeef]/30"
+                              className="w-full bg-slate-50 border border-slate-200 text-[#001e66] font-mono text-xs py-2 px-3 rounded-lg focus:outline-none cursor-not-allowed select-all font-semibold"
                             />
                           </div>
                         </div>
+                      </div>
 
-                        {/* PostGIS Barangay Detection Result */}
-                        <div className={`flex items-center justify-between rounded-lg px-3 py-2 border ${
-                          barangayLoading
-                            ? "bg-blue-50 border-blue-200 dark:bg-blue-950/20 dark:border-blue-900/40"
-                            : detectedBarangay
-                            ? "bg-emerald-50 border-emerald-200 dark:bg-emerald-950/20 dark:border-emerald-900/40"
-                            : gpsPinpointActive && !barangayLoading
-                            ? "bg-amber-50 border-amber-200 dark:bg-amber-950/20 dark:border-amber-900/40"
-                            : "bg-slate-100 border-slate-200 dark:bg-slate-850 dark:border-slate-800"
-                        }`}>
-                          <div className="flex items-center gap-2">
-                            <div>
-                              <div className="text-[10px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-wider">
-                                PostGIS · Nominatim Barangay Detection
-                              </div>
-                              <div className={`text-xs font-black ${
-                                gpsPinpointActive && !detectedBarangay && !barangayLoading
-                                  ? "text-amber-700 dark:text-amber-400"
-                                  : "text-[#001e66] dark:text-slate-200"
-                              }`}>
-                                {barangayLoading
-                                  ? "Identifying barangay via Nominatim + PostGIS…"
-                                  : detectedBarangay
-                                  ? `Brgy. ${detectedBarangay}`
-                                  : gpsPinpointActive
-                                  ? "Outside City of San Fernando service area"
-                                  : "Awaiting GPS fix…"}
-                              </div>
-                              {gpsPinpointActive && !detectedBarangay && !barangayLoading && (
-                                <div className="text-[9px] text-amber-600 dark:text-amber-400 font-bold mt-0.5">
-                                  Your location does not match any of the 35 San Fernando barangays.
-                                </div>
-                              )}
-                            </div>
-                          </div>
-                          {detectedBarangay && detectedDistanceM !== null && detectedDistanceM > 0 && !barangayLoading && (
-                            <span className="text-[9px] font-black text-emerald-700 bg-emerald-100 dark:text-emerald-400 dark:bg-emerald-950 px-2 py-0.5 rounded-full shrink-0">
-                              ~{detectedDistanceM}m · PostGIS
-                            </span>
-                          )}
-                          {detectedBarangay && (detectedDistanceM === 0 || detectedDistanceM === null) && !barangayLoading && (
-                            <span className="text-[9px] font-black text-blue-700 bg-blue-100 dark:text-blue-400 dark:bg-blue-950 px-2 py-0.5 rounded-full shrink-0">
-                              Nominatim verified
-                            </span>
-                          )}
+                      {/* Verification Footer */}
+                      <div className="bg-emerald-50/70 border border-emerald-100 rounded-xl p-3.5 flex items-center justify-between mt-auto shrink-0">
+                        <div className="flex flex-col leading-none">
+                          <span className="text-[8px] font-bold text-slate-400 uppercase tracking-wider">POSTGIS - NOMINATIM BARANGAY DETECTION</span>
+                          <span className="text-xs font-black text-emerald-800 mt-1">
+                            Brgy. {detectedBarangay || "Santo Rosario"}
+                          </span>
+                        </div>
+                        <div className="flex items-center gap-1 bg-emerald-100/60 text-emerald-700 text-[10px] font-black px-2.5 py-1.5 rounded-full border border-emerald-200/50 shrink-0">
+                          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="2.5" stroke="currentColor" className="w-3.5 h-3.5 shrink-0 text-emerald-600">
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12.75l6 6 9-13.5" />
+                          </svg>
+                          <span>Nominatim verified</span>
                         </div>
                       </div>
 
                     </div>
-                  </form>
-                </>
+                  </div>
+                </div>
               )}
-            </div>
-          )}
 
           {/* Tab 2: Track Complaints */}
           {activeTab === "track-complaint" && (

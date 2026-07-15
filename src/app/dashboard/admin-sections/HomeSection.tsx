@@ -331,55 +331,85 @@ export default function HomeSection({
       )}
 
       {/* Critical Network Alerts */}
-      <div className={`rounded-[17px] p-4 flex items-start gap-3 border shadow-sm ${
-        hasAlerts
-          ? "bg-[#970006]/5 border-[#970006]/15 animate-pulse"
-          : "bg-emerald-500/5 border-emerald-500/10"
-      }`}>
-        <div className={`p-2 rounded-xl shrink-0 mt-0.5 ${
-          hasAlerts
-            ? "bg-[#970006] text-white"
-            : "bg-emerald-50 text-emerald-600 border border-emerald-100"
-        }`}>
-          <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5">
-            {hasAlerts ? (
-              <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-            ) : (
-              <path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
-            )}
-          </svg>
+      {hasAlerts ? (
+        <div className="bg-red-50/70 border border-red-200/60 border-l-[6px] border-l-red-600 rounded-r-2xl rounded-l-md p-5 shadow-sm text-left">
+          <div className="flex items-center gap-2">
+            <span className="relative flex h-2.5 w-2.5">
+              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
+              <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-red-600"></span>
+            </span>
+            <h4 className="text-xs font-black uppercase tracking-wider text-red-950">
+              Critical System Alerts
+            </h4>
+          </div>
+          
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mt-4">
+            {offlineNodes.map((node) => (
+              <div key={node.id} className="flex items-start gap-3 bg-white/70 border border-red-100 rounded-xl p-3 shadow-sm hover:border-red-200 transition-colors">
+                <div className="w-8 h-8 rounded-lg bg-red-50 flex items-center justify-center text-red-600 shrink-0 mt-0.5">
+                  <svg className="w-4.5 h-4.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                  </svg>
+                </div>
+                <div className="text-xs text-slate-700">
+                  <p className="font-extrabold text-red-950">Telemetry Offline</p>
+                  <p className="text-[11px] font-semibold mt-0.5 leading-relaxed">
+                    Station <span className="font-black text-[#0B2E7A]">"{node.name}"</span> is currently unreachable. Immediate diagnostics advised.
+                  </p>
+                </div>
+              </div>
+            ))}
+            
+            {criticalComplaints.map((comp) => (
+              <div key={comp.id} className="flex items-start gap-3 bg-white/70 border border-red-100 rounded-xl p-3 shadow-sm hover:border-red-200 transition-colors">
+                <div className="w-8 h-8 rounded-lg bg-red-50 flex items-center justify-center text-red-600 shrink-0 mt-0.5">
+                  <svg className="w-4.5 h-4.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                  </svg>
+                </div>
+                <div className="text-xs text-slate-700">
+                  <p className="font-extrabold text-red-950">Critical Incident</p>
+                  <p className="text-[11px] font-semibold mt-0.5 leading-relaxed">
+                    Report in <span className="font-black text-[#0B2E7A]">Brgy. {comp.barangay}</span>: <span className="italic">"{comp.summary || comp.rawText}"</span>
+                  </p>
+                </div>
+              </div>
+            ))}
+
+            {warningAdvisories.map((ad) => (
+              <div key={ad.id} className="flex items-start gap-3 bg-white/70 border border-red-100 rounded-xl p-3 shadow-sm hover:border-red-200 transition-colors">
+                <div className="w-8 h-8 rounded-lg bg-red-50 flex items-center justify-center text-red-600 shrink-0 mt-0.5">
+                  <svg className="w-4.5 h-4.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M10.34 15.84c-.68.34-1.42.54-2.2.54a5.25 5.25 0 01-2.2-.49m0-6.72a4.967 4.967 0 012.2-.54c.78 0 1.52.2 2.2.54m1.86 8.59l1.62 1.62a1 1 0 001.61-.77V5.56a1 1 0 00-1.61-.77l-1.62 1.62m0 10.02a11.97 11.97 0 01-3.21.98m3.21-11a11.97 11.97 0 00-3.21-.98m0 0A12.022 12.022 0 003 9c0 2.2.6 4.26 1.65 6a12.022 12.022 0 006.69 1.86m0-8.86V16.86" />
+                  </svg>
+                </div>
+                <div className="text-xs text-slate-700">
+                  <p className="font-extrabold text-red-950">Broadcast Warning</p>
+                  <p className="text-[11px] font-semibold mt-0.5 leading-relaxed">
+                    Live Warning Announcement <span className="font-black text-[#0B2E7A]">"{ad.title}"</span> is currently visible to consumers.
+                  </p>
+                </div>
+              </div>
+            ))}
+          </div>
         </div>
-        <div className="space-y-1 flex-1">
-          <h4 className={`text-xs font-black uppercase tracking-wider ${
-            hasAlerts ? "text-[#970006]" : "text-emerald-700"
-          }`}>
-            {hasAlerts ? "Critical System Alerts" : "System Status: Nominal"}
-          </h4>
-          {hasAlerts ? (
-            <ul className="text-xs text-slate-600 font-bold space-y-1.5 list-disc pl-4">
-              {offlineNodes.map((node) => (
-                <li key={node.id}>
-                  Telemetry Station <span className="text-[#970006] font-black">"{node.name}"</span> is currently <span className="uppercase text-red-600 font-black">Offline</span>. Immediate diagnostics required.
-                </li>
-              ))}
-              {criticalComplaints.map((comp) => (
-                <li key={comp.id}>
-                  Critical incident in <span className="text-[#970006] font-black">Brgy. {comp.barangay}</span>: "{comp.summary || comp.rawText}"
-                </li>
-              ))}
-              {warningAdvisories.map((ad) => (
-                <li key={ad.id}>
-                  Broadcast Warning: <span className="text-[#970006] font-black">"{ad.title}"</span> is currently live. Residents have been notified.
-                </li>
-              ))}
-            </ul>
-          ) : (
-            <p className="text-xs text-slate-500 font-medium">
-              All municipal water nodes are online and reporting within normal telemetry limits. No pending critical reports or live warnings.
+      ) : (
+        <div className="bg-emerald-50/60 border border-emerald-100 border-l-[6px] border-l-emerald-500 rounded-r-2xl rounded-l-md p-5 shadow-sm text-left flex items-start gap-4">
+          <div className="w-8 h-8 rounded-lg bg-emerald-100/50 flex items-center justify-center text-emerald-600 shrink-0 mt-0.5">
+            <svg className="w-4.5 h-4.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="3">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12.75l6 6 9-13.5" />
+            </svg>
+          </div>
+          <div className="space-y-1">
+            <h4 className="text-xs font-black uppercase tracking-wider text-emerald-950">
+              System Status: Nominal
+            </h4>
+            <p className="text-xs text-slate-500 font-medium leading-relaxed">
+              All municipal water nodes are online and reporting within normal telemetry limits. No pending critical reports or live warnings active.
             </p>
-          )}
+          </div>
         </div>
-      </div>
+      )}
 
       {/* Lower Content Grid */}
       <div className="grid grid-cols-12 gap-[18px]">
