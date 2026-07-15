@@ -1290,86 +1290,7 @@ export default function DashboardClient({
                     </div>
                   </div>
 
-                  {/* Quick Action Cards (4 items) */}
-                  <div className="space-y-4 text-left">
-                    <h3 className="text-xs font-black text-[#0B2E7A] tracking-wider uppercase flex items-center gap-2">
-                      <span className="w-1.5 h-3 bg-[#189BFF] rounded-full inline-block" />
-                      Quick Action Shortcuts
-                    </h3>
 
-                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
-                      
-                      {/* Card 1: File Incident Report */}
-                      <div 
-                        onClick={() => setActiveTab("file-complaint")}
-                        className="bg-white rounded-[24px] border border-slate-100 p-5 shadow-[0_8px_30px_rgb(0,0,0,0.015)] transition-all duration-300 hover:-translate-y-1 hover:shadow-[0_20px_40px_rgba(24,155,255,0.04)] hover:border-blue-100/50 hover:scale-[1.01] cursor-pointer flex flex-col justify-between h-[150px] group"
-                      >
-                        <div className="flex items-start justify-between">
-                          <div className="w-10 h-10 rounded-xl bg-blue-50 flex items-center justify-center text-[#189BFF] border border-blue-100/40 group-hover:scale-110 transition-transform duration-300">
-                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="2.5" stroke="currentColor" className="w-4.5 h-4.5">
-                              <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v6m3-3H9m12 0a9 9 0 11-18 0 9 9 0 0118 0z" />
-                            </svg>
-                          </div>
-                          <div className="w-8 h-8 rounded-full bg-slate-50 flex items-center justify-center text-slate-400 group-hover:bg-blue-50 group-hover:text-[#189BFF] transition-colors">
-                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="3" stroke="currentColor" className="w-3.5 h-3.5">
-                              <path strokeLinecap="round" strokeLinejoin="round" d="M13.5 4.5L21 12m0 0l-7.5 7.5M21 12H3" />
-                            </svg>
-                          </div>
-                        </div>
-                        <div>
-                          <h4 className="text-xs font-black text-[#0B2E7A] uppercase tracking-wider">File Incident Report</h4>
-                          <p className="text-[10px] text-slate-400 font-bold mt-1">Report water quality issues, leaks, or low pressure.</p>
-                        </div>
-                      </div>
-
-                      {/* Card 2: Track Active Tickets */}
-                      <div 
-                        onClick={() => setActiveTab("track-complaint")}
-                        className="bg-white rounded-[24px] border border-slate-100 p-5 shadow-[0_8px_30px_rgb(0,0,0,0.015)] transition-all duration-300 hover:-translate-y-1 hover:shadow-[0_20px_40px_rgba(24,155,255,0.04)] hover:border-blue-100/50 hover:scale-[1.01] cursor-pointer flex flex-col justify-between h-[150px] group"
-                      >
-                        <div className="flex items-start justify-between">
-                          <div className="w-10 h-10 rounded-xl bg-amber-50 flex items-center justify-center text-amber-600 border border-amber-100/40 group-hover:scale-110 transition-transform duration-300">
-                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="2.5" stroke="currentColor" className="w-4.5 h-4.5">
-                              <path strokeLinecap="round" strokeLinejoin="round" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
-                            </svg>
-                          </div>
-                          <div className="w-8 h-8 rounded-full bg-slate-50 flex items-center justify-center text-slate-400 group-hover:bg-amber-50 group-hover:text-amber-600 transition-colors">
-                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="3" stroke="currentColor" className="w-3.5 h-3.5">
-                              <path strokeLinecap="round" strokeLinejoin="round" d="M13.5 4.5L21 12m0 0l-7.5 7.5M21 12H3" />
-                            </svg>
-                          </div>
-                        </div>
-                        <div>
-                          <h4 className="text-xs font-black text-[#0B2E7A] uppercase tracking-wider">Track Active Tickets</h4>
-                          <p className="text-[10px] text-slate-400 font-bold mt-1">View dispatch progress and technician reports.</p>
-                        </div>
-                      </div>
-
-                      {/* Card 3: View Public Bulletins */}
-                      <div 
-                        onClick={() => setActiveTab("view-announcements")}
-                        className="bg-white rounded-[24px] border border-slate-100 p-5 shadow-[0_8px_30px_rgb(0,0,0,0.015)] transition-all duration-300 hover:-translate-y-1 hover:shadow-[0_20px_40px_rgba(24,155,255,0.04)] hover:border-blue-100/50 hover:scale-[1.01] cursor-pointer flex flex-col justify-between h-[150px] group"
-                      >
-                        <div className="flex items-start justify-between">
-                          <div className="w-10 h-10 rounded-xl bg-emerald-50 flex items-center justify-center text-emerald-600 border border-emerald-100/40 group-hover:scale-110 transition-transform duration-300">
-                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="2.5" stroke="currentColor" className="w-4.5 h-4.5">
-                              <path strokeLinecap="round" strokeLinejoin="round" d="M19.114 5.636a9 9 0 010 12.728M16.463 8.288a5.25 5.25 0 010 7.424M6.75 8.25l4.72-4.72a.75.75 0 011.28.53v15.88a.75.75 0 01-1.28.53l-4.72-4.72H4.51c-.88 0-1.704-.507-1.938-1.354A9.01 9.01 0 012.25 12c0-.83.112-1.633.322-2.396C2.806 8.756 3.63 8.25 4.51 8.25H6.75z" />
-                            </svg>
-                          </div>
-                          <div className="w-8 h-8 rounded-full bg-slate-50 flex items-center justify-center text-slate-400 group-hover:bg-emerald-50 group-hover:text-emerald-600 transition-colors">
-                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="3" stroke="currentColor" className="w-3.5 h-3.5">
-                              <path strokeLinecap="round" strokeLinejoin="round" d="M13.5 4.5L21 12m0 0l-7.5 7.5M21 12H3" />
-                            </svg>
-                          </div>
-                        </div>
-                        <div>
-                          <h4 className="text-xs font-black text-[#0B2E7A] uppercase tracking-wider">View Public Bulletins</h4>
-                          <p className="text-[10px] text-slate-400 font-bold mt-1">Read water district notices and maintenance alerts.</p>
-                        </div>
-                      </div>
-
-                    </div>
-                  </div>
 
                   {/* Contact Water District Section */}
                   <div className="space-y-4 text-left pt-2">
@@ -2027,59 +1948,146 @@ export default function DashboardClient({
 
           {/* Tab 3: View Announcements */}
           {activeTab === "view-announcements" && (
-            <div className="space-y-6">
+            <div className="space-y-8">
+              {/* Advisories Header */}
               <div>
                 <h2 className="text-xl font-black text-[#001e66] tracking-tight">Community Broadcast Notices</h2>
-                <p className="text-xs text-slate-500 font-medium font-bold font-bold font-bold font-bold">Read recent municipal service updates and maintenance warnings</p>
+                <p className="text-xs text-slate-500 font-bold">Read recent municipal service updates and maintenance warnings</p>
               </div>
 
-              <div className="space-y-4">
-                {paginatedAdvisories.map((ad) => (
-                  <div key={ad.id} className="bg-slate-50 border border-slate-200 rounded-2xl p-6 shadow-sm relative">
-                    <div className="flex items-center space-x-2">
-                      <span className="text-[10px] font-bold text-slate-400">{ad.date}</span>
-                      <span className={`text-[8px] font-black uppercase px-2 py-0.5 rounded border ${
-                        ad.type === "warning"
-                          ? "bg-red-50 text-red-600 border-red-200"
-                          : ad.type === "info"
-                          ? "bg-blue-50 text-blue-600 border-blue-200"
-                          : ad.type === "news"
-                          ? "bg-emerald-50 text-emerald-600 border-emerald-200"
-                          : "bg-purple-50 text-purple-600 border-purple-200"
-                      }`}>
-                        {ad.type}
-                      </span>
-                    </div>
-                    <h3 className="font-extrabold text-[#001e66] text-sm mt-2">{ad.title}</h3>
-                    <p className="text-xs text-slate-500 mt-1 leading-relaxed">{ad.text}</p>
+              {/* Quick Advisory Summary Stats */}
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
+                <div className="bg-white rounded-2xl border border-slate-100 p-5 shadow-[0_8px_30px_rgb(0,0,0,0.015)] flex items-center justify-between">
+                  <div>
+                    <p className="text-[10px] text-slate-400 font-black uppercase tracking-wider">Total Broadcasts</p>
+                    <p className="text-xl font-black text-[#0B2E7A] mt-1">{filteredAdvisories.length}</p>
                   </div>
-                ))}
-                {filteredAdvisories.length === 0 && (
-                  <p className="text-slate-500 italic text-xs">No active notices broadcasted.</p>
-                )}
+                  <div className="w-10 h-10 rounded-xl bg-blue-50 flex items-center justify-center text-[#189BFF] border border-blue-100/40">
+                    <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5">
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M19 20H5a2 2 0 01-2-2V6a2 2 0 012-2h10a2 2 0 012 2v1m2 4a2 2 0 00-2-2m2 2a2 2 0 012 2v8a2 2 0 01-2 2h-3l-1 1-1-1m-5 0h.01" />
+                    </svg>
+                  </div>
+                </div>
 
-                {/* Pagination Controls */}
-                {totalAdvisoryPages > 1 && (
-                  <div className="flex items-center justify-between border-t border-slate-200/80 pt-4 mt-6">
-                    <button
-                      onClick={() => setAdvisoryPage((prev) => Math.max(prev - 1, 1))}
-                      disabled={currentPage === 1}
-                      className="px-4 py-2 text-xs font-bold text-[#001e66] bg-slate-100 hover:bg-slate-200 disabled:opacity-50 rounded-xl transition-all duration-200 cursor-pointer disabled:cursor-not-allowed"
-                    >
-                      &larr; Previous
-                    </button>
-                    <span className="text-xs font-extrabold text-slate-500">
-                      Page {currentPage} of {totalAdvisoryPages}
-                    </span>
-                    <button
-                      onClick={() => setAdvisoryPage((prev) => Math.min(prev + 1, totalAdvisoryPages))}
-                      disabled={currentPage === totalAdvisoryPages}
-                      className="px-4 py-2 text-xs font-bold text-[#001e66] bg-slate-100 hover:bg-slate-200 disabled:opacity-50 rounded-xl transition-all duration-200 cursor-pointer disabled:cursor-not-allowed"
-                    >
-                      Next &rarr;
-                    </button>
+                <div className="bg-white rounded-2xl border border-slate-100 p-5 shadow-[0_8px_30px_rgb(0,0,0,0.015)] flex items-center justify-between">
+                  <div>
+                    <p className="text-[10px] text-slate-400 font-black uppercase tracking-wider">Service Warnings</p>
+                    <p className="text-xl font-black text-red-600 mt-1">
+                      {filteredAdvisories.filter((ad) => ad.type === "warning").length}
+                    </p>
                   </div>
-                )}
+                  <div className="w-10 h-10 rounded-xl bg-red-50 flex items-center justify-center text-red-600 border border-red-100/40">
+                    <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5">
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                    </svg>
+                  </div>
+                </div>
+
+                <div className="bg-white rounded-2xl border border-slate-100 p-5 shadow-[0_8px_30px_rgb(0,0,0,0.015)] flex items-center justify-between">
+                  <div>
+                    <p className="text-[10px] text-slate-400 font-black uppercase tracking-wider">Info Updates</p>
+                    <p className="text-xl font-black text-emerald-600 mt-1">
+                      {filteredAdvisories.filter((ad) => ad.type !== "warning").length}
+                    </p>
+                  </div>
+                  <div className="w-10 h-10 rounded-xl bg-emerald-50 flex items-center justify-center text-emerald-600 border border-emerald-100/40">
+                    <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5">
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                  </div>
+                </div>
+              </div>
+
+              {/* Main Table + Sidebar Grid */}
+              <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start">
+                {/* Table Container */}
+                <div className="lg:col-span-2 overflow-x-auto border border-slate-100 rounded-xl bg-white shadow-[0_8px_30px_rgb(0,0,0,0.01)]">
+                  <table className="w-full text-left border-collapse text-xs">
+                    <thead>
+                      <tr className="bg-slate-50 border-b border-slate-200 text-slate-500 font-bold uppercase tracking-wider">
+                        <th className="py-3 px-4">Notice Title & Details</th>
+                        <th className="py-3 px-4">Alert Type</th>
+                        <th className="py-3 px-4">Date Issued</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-100">
+                      {paginatedAdvisories.map((ad) => (
+                        <tr key={ad.id} className="hover:bg-slate-50/50 transition-colors">
+                          <td className="py-4 px-4 font-bold text-[#001e66] max-w-sm">
+                            <div className="text-sm font-extrabold">{ad.title}</div>
+                            <div className="text-slate-500 font-medium mt-1.5 leading-relaxed">{ad.text}</div>
+                          </td>
+                          <td className="py-4 px-4">
+                            <span className={`inline-flex items-center px-2 py-0.5 rounded-[6px] text-[9px] font-black uppercase border ${
+                              ad.type === "warning"
+                                ? "bg-red-50 text-red-700 border-red-200"
+                                : "bg-blue-50 text-blue-700 border-blue-200"
+                            }`}>
+                              {ad.type}
+                            </span>
+                          </td>
+                          <td className="py-4 px-4 font-mono text-slate-500 font-bold">{ad.date}</td>
+                        </tr>
+                      ))}
+                      {filteredAdvisories.length === 0 && (
+                        <tr>
+                          <td colSpan={3} className="py-8 text-center text-slate-500 italic">
+                            No active notices broadcasted.
+                          </td>
+                        </tr>
+                      )}
+                    </tbody>
+                  </table>
+
+                  {/* Pagination Controls */}
+                  {totalAdvisoryPages > 1 && (
+                    <div className="flex items-center justify-between border-t border-slate-100 px-4 py-3 bg-slate-50/50">
+                      <button
+                        onClick={() => setAdvisoryPage((prev) => Math.max(prev - 1, 1))}
+                        disabled={currentPage === 1}
+                        className="px-3 py-1.5 text-xs font-bold text-[#001e66] bg-white border border-slate-200 hover:bg-slate-50 disabled:opacity-50 rounded-lg transition-all duration-200 cursor-pointer disabled:cursor-not-allowed"
+                      >
+                        &larr; Prev
+                      </button>
+                      <span className="text-xs font-extrabold text-slate-500">
+                        Page {currentPage} of {totalAdvisoryPages}
+                      </span>
+                      <button
+                        onClick={() => setAdvisoryPage((prev) => Math.min(prev + 1, totalAdvisoryPages))}
+                        disabled={currentPage === totalAdvisoryPages}
+                        className="px-3 py-1.5 text-xs font-bold text-[#001e66] bg-white border border-slate-200 hover:bg-slate-50 disabled:opacity-50 rounded-lg transition-all duration-200 cursor-pointer disabled:cursor-not-allowed"
+                      >
+                        Next &rarr;
+                      </button>
+                    </div>
+                  )}
+                </div>
+
+                {/* Sidebar Cards */}
+                <div className="space-y-6">
+                  {/* Status Card */}
+                  <div className="bg-white rounded-2xl border border-slate-100 p-5 shadow-[0_8px_30px_rgb(0,0,0,0.015)] text-left space-y-3">
+                    <h3 className="text-xs font-black text-[#0B2E7A] uppercase tracking-wider flex items-center gap-2">
+                      <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse inline-block" />
+                      Operations Status
+                    </h3>
+                    <p className="text-[11px] text-slate-500 leading-relaxed font-semibold">
+                      Municipal water supply lines and pump stations are currently operating under normal pressure limits. No emergency outages reported.
+                    </p>
+                  </div>
+
+                  {/* Guidelines Card */}
+                  <div className="bg-white rounded-2xl border border-slate-100 p-5 shadow-[0_8px_30px_rgb(0,0,0,0.015)] text-left space-y-3">
+                    <h3 className="text-xs font-black text-[#0B2E7A] uppercase tracking-wider">
+                      💡 Advisory Guidelines
+                    </h3>
+                    <ul className="space-y-2 text-[10px] text-slate-500 font-semibold list-disc list-inside">
+                      <li>Report discolored water or supply drops immediately.</li>
+                      <li>Store emergency water stock during scheduled maintenance warnings.</li>
+                      <li>Contact the local support desk for pipe breach assistance.</li>
+                    </ul>
+                  </div>
+                </div>
               </div>
             </div>
           )}

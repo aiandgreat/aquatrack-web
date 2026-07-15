@@ -221,85 +221,186 @@ export default function Homepage() {
 
   return (
     <div className="min-h-screen bg-white text-[#001e66] font-sans flex flex-col">
-      {/* Cinematic Water Drop Splash Screen */}
+      {/* Cinematic 3D Water Drop Splash Screen */}
       {splashStep < 2 && (
         <motion.div 
           initial={{ opacity: 1 }}
           animate={splashStep === 1 ? { opacity: 0 } : { opacity: 1 }}
           transition={{ duration: 0.6, ease: "easeOut", delay: 0.25 }}
           className="fixed inset-0 z-[9999] bg-[#001e66] flex items-center justify-center overflow-hidden"
-          style={{ pointerEvents: splashStep === 1 ? "none" : "auto", willChange: "opacity" }}
+          style={{ pointerEvents: splashStep === 1 ? "none" : "auto", willChange: "opacity", perspective: "1200px" }}
         >
-          {/* Droplet & Brand Container */}
-          <div className="relative flex items-center justify-center w-full h-full">
+          {/* Droplet & Brand Container with 3D space */}
+          <div className="relative flex items-center justify-center w-full h-full" style={{ transformStyle: "preserve-3d" }}>
             
-            {/* Background Map blend detail (subtle opacity) */}
-            <img 
+            {/* Background Map blend detail - Pushed back in 3D space with slow circulating rotation */}
+            <motion.img 
+              initial={{ scale: 1.1, translateZ: "-150px", rotate: 0 }}
+              animate={
+                splashStep === 1 
+                  ? { scale: 1.25, translateZ: "-100px", opacity: 0.08 } 
+                  : { scale: 1.1, translateZ: "-150px", rotate: 360 }
+              }
+              transition={
+                splashStep === 1
+                  ? { duration: 1.2, ease: "easeOut" }
+                  : { rotate: { repeat: Infinity, duration: 140, ease: "linear" }, default: { duration: 0.5 } }
+              }
               src="/san_fernando_map.jpg" 
               alt="San Fernando Map Background" 
               className="absolute inset-0 w-full h-full object-cover opacity-5 pointer-events-none mix-blend-overlay"
             />
 
-            {/* Falling Droplet (SVG) */}
+            {/* Floating 3D Ambient Dust Particles - Orbiting / Circulating on multiple axes */}
+            <motion.div 
+              className="absolute inset-0 pointer-events-none opacity-30" 
+              style={{ transformStyle: "preserve-3d" }}
+              animate={{ rotateY: [0, 360], rotateX: [15, -15, 15] }}
+              transition={{ 
+                rotateY: { repeat: Infinity, duration: 30, ease: "linear" },
+                rotateX: { repeat: Infinity, duration: 15, ease: "easeInOut" }
+              }}
+            >
+              <div className="absolute top-[20%] left-[30%] w-2.5 h-2.5 bg-[#00aeef] rounded-full blur-xs animate-pulse" style={{ transform: "translateZ(-80px)" }} />
+              <div className="absolute top-[60%] left-[70%] w-1.5 h-1.5 bg-[#00aeef] rounded-full blur-xxs" style={{ transform: "translateZ(-40px)" }} />
+              <div className="absolute top-[40%] left-[80%] w-2 h-2 bg-[#00aeef] rounded-full blur-xs animate-ping" style={{ transform: "translateZ(-110px)" }} />
+              <div className="absolute top-[75%] left-[20%] w-2 h-2 bg-[#00aeef]/60 rounded-full blur-xxs" style={{ transform: "translateZ(-60px)" }} />
+              <div className="absolute top-[15%] left-[65%] w-1.5 h-1.5 bg-[#00aeef]/80 rounded-full blur-xs" style={{ transform: "translateZ(-100px)" }} />
+            </motion.div>
+
+            {/* 3D Floor Shadow under the falling droplet */}
             {splashStep === 0 && (
               <motion.div
-                initial={{ y: -350, scale: 0.7, opacity: 0 }}
-                animate={{ y: 0, scale: 1, opacity: 1 }}
+                initial={{ scale: 2, opacity: 0.1 }}
+                animate={{ scale: 0.5, opacity: 0.6 }}
+                transition={{ duration: 0.48, ease: [0.25, 0.46, 0.45, 0.94] }}
+                className="absolute w-12 h-6 bg-black/40 rounded-full blur-md pointer-events-none"
+                style={{ 
+                  transform: "rotateX(75deg) translateY(120px) translateZ(-50px)",
+                  willChange: "transform, opacity" 
+                }}
+              />
+            )}
+
+            {/* Falling 3D Droplet (SVG) */}
+            {splashStep === 0 && (
+              <motion.div
+                initial={{ y: -450, scale: 0.6, opacity: 0, rotateX: -20 }}
+                animate={{ y: 0, scale: 1, opacity: 1, rotateX: 0 }}
                 transition={{ duration: 0.48, ease: [0.25, 0.46, 0.45, 0.94] }}
                 className="text-[#00aeef] z-20"
-                style={{ willChange: "transform, opacity" }}
+                style={{ 
+                  transformStyle: "preserve-3d",
+                  willChange: "transform, opacity",
+                  transform: "translateZ(50px)"
+                }}
               >
-                <svg className="w-12 h-12 fill-current drop-shadow-[0_0_15px_rgba(0,174,239,0.4)]" viewBox="0 0 24 24">
-                  <path d="M12 2.69l5.66 5.66a8 8 0 1 1-11.31 0z" />
+                {/* 3D Styled Droplet */}
+                <svg className="w-14 h-14 fill-current drop-shadow-[0_15px_20px_rgba(0,174,239,0.5)]" viewBox="0 0 24 24">
+                  <defs>
+                    <linearGradient id="drop-grad" x1="0%" y1="0%" x2="100%" y2="100%">
+                      <stop offset="0%" stopColor="#ffffff" />
+                      <stop offset="30%" stopColor="#00aeef" />
+                      <stop offset="100%" stopColor="#005b8c" />
+                    </linearGradient>
+                  </defs>
+                  <path d="M12 2.69l5.66 5.66a8 8 0 1 1-11.31 0z" fill="url(#drop-grad)" />
                 </svg>
               </motion.div>
             )}
 
-            {/* Expanding Fluid Wave (CSS Circle for hardware-accelerated composition) */}
+            {/* 3D Expanding Fluid Wave Plane */}
             {splashStep === 1 && (
               <motion.div
                 initial={{ scale: 0, opacity: 1 }}
-                animate={{ scale: 12, opacity: 0 }}
-                transition={{ duration: 0.75, ease: "easeOut" }}
-                className="absolute w-16 h-16 rounded-full bg-[#00aeef] z-20 pointer-events-none"
-                style={{ willChange: "transform, opacity" }}
+                animate={{ scale: 14, opacity: 0 }}
+                transition={{ duration: 0.85, ease: "easeOut" }}
+                className="absolute w-16 h-16 rounded-full bg-gradient-to-tr from-[#00aeef] to-[#005b8c]/50 z-20 pointer-events-none"
+                style={{ 
+                  transform: "rotateX(75deg) translateZ(-40px)",
+                  willChange: "transform, opacity" 
+                }}
               />
             )}
 
-            {/* Concentric Ripples on Impact */}
+            {/* Concentric 3D Ripples on Impact */}
             {splashStep === 1 && (
-              <>
+              <div className="absolute inset-0 flex items-center justify-center pointer-events-none" style={{ transformStyle: "preserve-3d" }}>
                 <motion.div
-                  initial={{ scale: 0, opacity: 0.7 }}
-                  animate={{ scale: 4.5, opacity: 0 }}
-                  transition={{ duration: 0.7, ease: "easeOut" }}
-                  className="absolute w-16 h-16 rounded-full border-2 border-[#00aeef] z-10 pointer-events-none"
-                  style={{ willChange: "transform, opacity" }}
+                  initial={{ scale: 0, opacity: 0.8 }}
+                  animate={{ scale: 5.5, opacity: 0 }}
+                  transition={{ duration: 0.75, ease: "easeOut" }}
+                  className="absolute w-24 h-24 rounded-full border-[3px] border-[#00aeef] shadow-[0_0_15px_rgba(0,174,239,0.3)] z-10"
+                  style={{ 
+                    transform: "rotateX(75deg) translateZ(-40px)",
+                    willChange: "transform, opacity" 
+                  }}
                 />
                 <motion.div
-                  initial={{ scale: 0, opacity: 0.5 }}
-                  animate={{ scale: 7, opacity: 0 }}
-                  transition={{ duration: 0.85, ease: "easeOut", delay: 0.06 }}
-                  className="absolute w-16 h-16 rounded-full border border-[#00aeef]/60 z-10 pointer-events-none"
-                  style={{ willChange: "transform, opacity" }}
+                  initial={{ scale: 0, opacity: 0.6 }}
+                  animate={{ scale: 8.5, opacity: 0 }}
+                  transition={{ duration: 0.9, ease: "easeOut", delay: 0.08 }}
+                  className="absolute w-24 h-24 rounded-full border-2 border-[#00aeef]/60 shadow-[0_0_25px_rgba(0,174,239,0.2)] z-10"
+                  style={{ 
+                    transform: "rotateX(75deg) translateZ(-40px)",
+                    willChange: "transform, opacity" 
+                  }}
                 />
-              </>
+              </div>
             )}
 
-            {/* Elegant Minimal Logo Text */}
+            {/* Elegant Minimal Logo Text - Brought forward in 3D space with continuous orbiting / circulating flow */}
             <motion.div
-              initial={{ opacity: 0, scale: 0.95 }}
-              animate={splashStep === 0 ? { opacity: 1, scale: 1 } : { opacity: 0, scale: 1.02 }}
-              transition={{ duration: 0.45 }}
+              initial={{ opacity: 0, scale: 0.9, translateZ: "100px", rotateX: 15, rotateY: 0 }}
+              animate={
+                splashStep === 0 
+                  ? { 
+                      opacity: 1, 
+                      scale: 1, 
+                      rotateX: [0, 6, 0, -6, 0],
+                      rotateY: [0, -10, 0, 10, 0],
+                      y: [0, -5, 0, 5, 0],
+                      x: [0, 5, 0, -5, 0],
+                      translateZ: "100px"
+                    } 
+                  : { 
+                      opacity: 0, 
+                      scale: 1.05, 
+                      translateZ: "180px", 
+                      rotateX: -5,
+                      rotateY: 0,
+                      y: 0,
+                      x: 0
+                    }
+              }
+              transition={
+                splashStep === 0
+                  ? {
+                      opacity: { duration: 0.5, ease: "easeOut" },
+                      scale: { duration: 0.5, ease: "easeOut" },
+                      rotateX: { repeat: Infinity, duration: 8, ease: "easeInOut" },
+                      rotateY: { repeat: Infinity, duration: 10, ease: "easeInOut" },
+                      y: { repeat: Infinity, duration: 6, ease: "easeInOut" },
+                      x: { repeat: Infinity, duration: 7, ease: "easeInOut" }
+                    }
+                  : { duration: 0.5, ease: "easeOut" }
+              }
               className="absolute flex flex-col items-center pointer-events-none text-center z-10"
-              style={{ willChange: "transform, opacity" }}
+              style={{ 
+                willChange: "transform, opacity",
+                transformStyle: "preserve-3d"
+              }}
             >
               <img 
                 src="/LOGO3.png" 
                 alt="AquaTrack Logo" 
-                className="h-64 md:h-80 w-auto object-contain drop-shadow-[0_0_30px_rgba(0,174,239,0.45)]"
+                className="h-64 md:h-80 w-auto object-contain drop-shadow-[0_20px_40px_rgba(0,174,239,0.35)]"
+                style={{ transform: "translateZ(30px)" }}
               />
-              <p className="text-[10px] md:text-xs font-bold uppercase tracking-widest text-[#00aeef]/80 -mt-3 md:-mt-4">
+              <p 
+                className="text-[10px] md:text-xs font-bold uppercase tracking-widest text-[#00aeef] drop-shadow-[0_2px_10px_rgba(0,0,0,0.5)] -mt-3 md:-mt-4"
+                style={{ transform: "translateZ(10px)" }}
+              >
                 City of San Fernando Water District
               </p>
             </motion.div>
@@ -307,7 +408,6 @@ export default function Homepage() {
           </div>
         </motion.div>
       )}
-
       <Navbar />
 
       {/* 2. Hero Header Section with Premium Multi-Layer Overlay */}
