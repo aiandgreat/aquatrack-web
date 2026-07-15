@@ -30,15 +30,15 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="en" className={`dark ${plusJakartaSans.variable} ${geistMono.variable}`}>
+    <html lang="en" className={`${plusJakartaSans.variable} ${geistMono.variable}`}>
       <head>
         <script dangerouslySetInnerHTML={{__html: `
           try {
             const theme = localStorage.getItem('theme');
-            if (theme === 'light') {
-              document.documentElement.classList.remove('dark');
-            } else {
+            if (theme === 'dark') {
               document.documentElement.classList.add('dark');
+            } else {
+              document.documentElement.classList.remove('dark');
             }
           } catch (_) {}
         `}} />
