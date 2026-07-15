@@ -457,7 +457,7 @@ export default function Homepage() {
                 )}
               </span>{" "}
               at a{" "}
-              <span className="bg-gradient-to-r from-[#ffd800] to-[#970006] bg-clip-text text-transparent inline-block align-baseline">
+              <span className="text-[#00aeef] inline-block align-baseline">
                 Time.
               </span>
             </h1>
@@ -728,11 +728,11 @@ export default function Homepage() {
                       transition={{ duration: 0.2, ease: "easeOut" }}
                       className="bg-white dark:bg-slate-900/60 backdrop-blur-md border border-slate-200/80 dark:border-slate-800/80 shadow-[0_8px_30px_rgba(0,0,0,0.02)] rounded-2xl p-7 md:p-9 relative overflow-hidden w-full text-left h-[280px] flex flex-col justify-between"
                     >
-                      {/* Top Accent Gradient Border Strip */}
+                      {/* Top Accent Border Strip */}
                       <div className={`absolute top-0 left-0 right-0 h-[4px] ${
                         advisories[advisoryIndex].type === "warning"
-                          ? "bg-gradient-to-r from-red-500 to-amber-500"
-                          : "bg-gradient-to-r from-[#00aeef] to-sky-400"
+                          ? "bg-red-500"
+                          : "bg-[#00aeef]"
                       }`} />
 
                       {/* Header Row */}

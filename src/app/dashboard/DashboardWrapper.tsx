@@ -100,7 +100,7 @@ export default function DashboardWrapper({
     return (
       <div className="min-h-screen bg-[#F8FAFC] flex flex-col items-center justify-center">
         {/* Top accent bar */}
-        <div className="absolute inset-x-0 top-0 h-0.5 bg-gradient-to-r from-[#001e66] via-[#00aeef] to-[#001e66] z-50" aria-hidden="true" />
+        <div className="absolute inset-x-0 top-0 h-0.5 bg-[#001e66] z-50" aria-hidden="true" />
         <div className="text-center space-y-5">
           {/* Logo lockup */}
           <div className="flex items-center justify-center space-x-3 mb-2">

@@ -35,7 +35,7 @@ export default function HomeSection({
     <div className="space-y-8 animate-fade-in pb-8">
       
       {/* Immersive Water-Themed Hero Banner */}
-      <div className="bg-gradient-to-br from-[#0B2E7A] via-[#05256e] to-[#189BFF] rounded-[24px] p-6 md:p-8 text-white relative overflow-hidden shadow-md min-h-[220px] flex flex-col justify-center">
+      <div className="bg-[#0B2E7A] rounded-[24px] p-6 md:p-8 text-white relative overflow-hidden shadow-md min-h-[220px] flex flex-col justify-center">
         {/* Animated Wave Background SVG Overlay */}
         <div className="absolute inset-0 opacity-15 pointer-events-none z-0">
           <svg className="w-full h-full" viewBox="0 0 100 100" preserveAspectRatio="none" xmlns="http://www.w3.org/2000/svg">

@@ -96,7 +96,7 @@ export default function FileComplaintSection({
 
         {/* AI Triage Analysis Card */}
         {aiAnalysis && (
-          <div className="bg-gradient-to-br from-[#00aeef]/5 to-transparent border border-[#00aeef]/15 rounded-[20px] p-5 space-y-4 animate-fade-in shadow-sm">
+          <div className="bg-slate-50 border border-slate-200 rounded-[20px] p-5 space-y-4 animate-fade-in shadow-sm">
             <div className="flex items-center justify-between">
               <div className="flex items-center space-x-2.5">
                 <span className="text-xs font-black text-[#001e66]">✨ Gemini AI Diagnostics</span>

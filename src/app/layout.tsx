@@ -30,7 +30,19 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="en" className={`${plusJakartaSans.variable} ${geistMono.variable}`}>
+    <html lang="en" className={`dark ${plusJakartaSans.variable} ${geistMono.variable}`}>
+      <head>
+        <script dangerouslySetInnerHTML={{__html: `
+          try {
+            const theme = localStorage.getItem('theme');
+            if (theme === 'light') {
+              document.documentElement.classList.remove('dark');
+            } else {
+              document.documentElement.classList.add('dark');
+            }
+          } catch (_) {}
+        `}} />
+      </head>
       <body className="antialiased bg-[#EEF4FA]">
         {children}
       </body>

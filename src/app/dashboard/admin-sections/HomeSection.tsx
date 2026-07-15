@@ -112,7 +112,7 @@ export default function HomeSection({
   return (
     <div className="space-y-6">
       {/* Executive Welcome Banner with Clickable Summary Cards */}
-      <div className="bg-gradient-to-r from-[#063A8C] via-[#076DB2] to-[#08AEEA] rounded-[17px] min-h-[220px] p-6 text-white flex flex-col justify-between shadow-md shadow-blue-950/20 relative overflow-hidden">
+      <div className="bg-[#063A8C] rounded-[17px] min-h-[220px] p-6 text-white flex flex-col justify-between shadow-md shadow-blue-950/20 relative overflow-hidden">
         <div className="space-y-2 z-10 relative">
           <div className="border border-cyan-300 text-cyan-200 text-[9px] font-mono font-bold tracking-wider px-2.5 py-1 rounded-full w-fit uppercase bg-white/5">
             EXECUTIVE OPERATIONS COMMAND
@@ -428,7 +428,7 @@ export default function HomeSection({
             </div>
 
             <div className="grid grid-cols-2 gap-4">
-              <div className="bg-gradient-to-br from-white to-slate-50 border border-slate-200 rounded-[13px] p-4 flex items-center justify-between shadow-sm">
+              <div className="bg-white border border-slate-200 rounded-[13px] p-4 flex items-center justify-between shadow-sm">
                 <div>
                   <span className="text-[10px] font-black text-slate-400 uppercase tracking-wider block">System Avg pH</span>
                   <div className="text-lg font-black text-[#001e66] mt-1">7.2 pH</div>
@@ -439,7 +439,7 @@ export default function HomeSection({
                 </div>
               </div>
 
-              <div className="bg-gradient-to-br from-white to-slate-50 border border-slate-200 rounded-[13px] p-4 flex items-center justify-between shadow-sm">
+              <div className="bg-white border border-slate-200 rounded-[13px] p-4 flex items-center justify-between shadow-sm">
                 <div>
                   <span className="text-[10px] font-black text-slate-400 uppercase tracking-wider block">Avg Turbidity</span>
                   <div className="text-lg font-black text-[#001e66] mt-1">1.8 NTU</div>
@@ -450,7 +450,7 @@ export default function HomeSection({
                 </div>
               </div>
 
-              <div className="bg-gradient-to-br from-white to-slate-50 border border-slate-200 rounded-[13px] p-4 flex items-center justify-between shadow-sm">
+              <div className="bg-white border border-slate-200 rounded-[13px] p-4 flex items-center justify-between shadow-sm">
                 <div>
                   <span className="text-[10px] font-black text-slate-400 uppercase tracking-wider block">Line Pressure</span>
                   <div className="text-lg font-black text-[#001e66] mt-1">44.0 PSI</div>
@@ -461,7 +461,7 @@ export default function HomeSection({
                 </div>
               </div>
 
-              <div className="bg-gradient-to-br from-white to-slate-50 border border-slate-200 rounded-[13px] p-4 flex items-center justify-between shadow-sm">
+              <div className="bg-white border border-slate-200 rounded-[13px] p-4 flex items-center justify-between shadow-sm">
                 <div>
                   <span className="text-[10px] font-black text-slate-400 uppercase tracking-wider block">TDS / Minerals</span>
                   <div className="text-lg font-black text-[#001e66] mt-1">240 ppm</div>

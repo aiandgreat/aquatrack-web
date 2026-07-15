@@ -675,7 +675,7 @@ export default function DashboardClient({
     return (
       <div className="min-h-screen bg-[#F8FAFC] flex flex-col items-center justify-center">
         {/* Top accent bar */}
-        <div className="absolute inset-x-0 top-0 h-0.5 bg-gradient-to-r from-[#001e66] via-[#00aeef] to-[#001e66] z-50" aria-hidden="true" />
+        <div className="absolute inset-x-0 top-0 h-0.5 bg-[#001e66] z-50" aria-hidden="true" />
         <div className="text-center space-y-5">
           {/* Logo lockup */}
           <div className="flex items-center justify-center space-x-3 mb-2">
@@ -737,6 +737,31 @@ export default function DashboardClient({
           />
         </div>
 
+        {/* Center: Navigation Tabs Navbar (Desktop Only) */}
+        <nav className="hidden lg:flex items-center gap-1 bg-slate-50 dark:bg-slate-900/60 p-1 rounded-xl border border-slate-200/50 dark:border-slate-800">
+          {[
+            { key: "home",               label: "Dashboard" },
+            { key: "file-complaint",     label: "File a Complaint" },
+            { key: "track-complaint",    label: "Track Complaints" },
+            { key: "view-announcements", label: "Advisories" },
+          ].map((item) => {
+            const isActive = activeTab === item.key;
+            return (
+              <button
+                key={item.key}
+                onClick={() => setActiveTab(item.key as any)}
+                className={`px-4 py-2 rounded-lg text-xs font-bold transition-all cursor-pointer select-none ${
+                  isActive
+                    ? "bg-white dark:bg-slate-800 text-[#001e66] dark:text-slate-100 shadow-sm border border-slate-200/40 dark:border-slate-700/40"
+                    : "text-slate-500 hover:text-[#001e66] dark:hover:text-slate-350"
+                }`}
+              >
+                {item.label}
+              </button>
+            );
+          })}
+        </nav>
+
         {/* Right Section */}
         <div className="flex items-center gap-3">
           {/* Notification bell icon with red circle badge indicating "2" notifications */}
@@ -796,79 +821,7 @@ export default function DashboardClient({
       {/* ── Body: sidebar + main ── */}
       <div className="flex flex-1 overflow-hidden p-4 gap-4 bg-transparent relative z-10">
 
-        {/* ── Left Sidebar ── */}
-        <aside className="hidden lg:flex w-56 shrink-0 bg-white border border-slate-100 flex flex-col h-full rounded-2xl overflow-hidden shadow-sm">
-          {/* Nav section */}
-          <div className="flex-1 py-3 px-2">
-            <p className="text-[9px] font-black uppercase tracking-widest text-slate-400 px-3 mb-2 mt-3">
-              My Services
-            </p>
-            <nav className="space-y-1">
-              {[
-                { key: "home",               label: "Dashboard",             icon: "M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" },
-                { key: "file-complaint",     label: "File a Complaint",      icon: "M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" },
-                { key: "track-complaint",    label: "Track Complaints",      icon: "M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01" },
-                { key: "view-announcements", label: "Community Advisories",  icon: "M11 5.882V19.24a1.76 1.76 0 01-3.417.592l-2.147-6.15M18 13a3 3 0 100-6M5.436 13.683A4.001 4.001 0 017 6h1.832c4.1 0 7.625-1.234 9.168-3v14c-1.543-1.766-5.067-3-9.168-3H7a3.988 3.988 0 01-1.564-.317z" },
-                { key: "contact-us",         label: "Contact Water District", icon: "M3 5a2 2 0 012-2h3.28a1 1 0 01.94.725l.548 2.2a1 1 0 01-.321.988l-1.305.98a10.582 10.582 0 004.872 4.872l.98-1.305a1 1 0 01.988-.321l2.2.548a1 1 0 01.725.94V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" },
-              ].map((item) => {
-                const isActive = activeTab === item.key;
-                return (
-                  <button
-                    key={item.key}
-                    onClick={() => setActiveTab(item.key as any)}
-                    className={`w-full flex items-center gap-2.5 px-3.5 py-2.5 rounded-lg text-sm transition-all focus:outline-none relative group ${
-                      isActive
-                        ? "bg-[#00aeef]/10 text-[#001e66] font-bold"
-                        : "text-slate-500 hover:text-[#001e66] hover:bg-slate-50 font-medium"
-                    }`}
-                  >
-                    {/* Active left indicator: thick blue vertical indicator line */}
-                    {isActive && (
-                      <span className="absolute left-0 top-1/2 -translate-y-1/2 w-[3.5px] h-5 bg-[#00aeef] rounded-r-md" />
-                    )}
-                    {/* Icon */}
-                    <svg
-                      xmlns="http://www.w3.org/2000/svg"
-                      className="w-4.5 h-4.5 shrink-0"
-                      fill="none"
-                      viewBox="0 0 24 24"
-                      stroke="currentColor"
-                      strokeWidth={isActive ? 2 : 1.75}
-                    >
-                      <path strokeLinecap="round" strokeLinejoin="round" d={item.icon} />
-                    </svg>
-                    <span className="truncate">{item.label}</span>
-                  </button>
-                );
-              })}
-            </nav>
-          </div>
 
-          {/* Sidebar bottom: compliance badges widget */}
-          <div className="px-3 py-3 border-t border-slate-100 space-y-2.5">
-            <div className="bg-slate-50 rounded-xl p-3 border border-slate-100 space-y-2">
-              <p className="text-[9px] font-black uppercase tracking-wider text-slate-400 mb-1">Compliance</p>
-              
-              <div className="flex items-center gap-2 text-[10px] font-bold text-emerald-700 bg-emerald-50 px-2.5 py-1.5 rounded-lg border border-emerald-100/60">
-                <svg xmlns="http://www.w3.org/2000/svg" className="w-3.5 h-3.5 text-emerald-600 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
-                </svg>
-                <span>RA 10173 Compliant</span>
-              </div>
-              
-              <div className="flex items-center gap-2 text-[10px] font-bold text-sky-700 bg-sky-50 px-2.5 py-1.5 rounded-lg border border-sky-100/60">
-                <svg xmlns="http://www.w3.org/2000/svg" className="w-3.5 h-3.5 text-sky-600 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
-                </svg>
-                <span>PNSDW Validated</span>
-              </div>
-            </div>
-            
-            <p className="text-[9px] text-slate-400 font-semibold text-center mt-1">
-              © 2026 AQUATRACK
-            </p>
-          </div>
-        </aside>
 
         {/* ── Mobile Sidebar Drawer ── */}
         <AnimatePresence>
@@ -919,7 +872,6 @@ export default function DashboardClient({
                       { key: "file-complaint",     label: "File a Complaint",      icon: "M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" },
                       { key: "track-complaint",    label: "Track Complaints",      icon: "M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01" },
                       { key: "view-announcements", label: "Community Advisories",  icon: "M11 5.882V19.24a1.76 1.76 0 01-3.417.592l-2.147-6.15M18 13a3 3 0 100-6M5.436 13.683A4.001 4.001 0 017 6h1.832c4.1 0 7.625-1.234 9.168-3v14c-1.543-1.766-5.067-3-9.168-3H7a3.988 3.988 0 01-1.564-.317z" },
-                      { key: "contact-us",         label: "Contact Water District", icon: "M3 5a2 2 0 012-2h3.28a1 1 0 01.94.725l.548 2.2a1 1 0 01-.321.988l-1.305.98a10.582 10.582 0 004.872 4.872l.98-1.305a1 1 0 01.988-.321l2.2.548a1 1 0 01.725.94V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" },
                     ].map((item) => {
                       const isActive = activeTab === item.key;
                       return (
@@ -985,11 +937,7 @@ export default function DashboardClient({
         </AnimatePresence>
 
         {/* ── Main Content Area ── */}
-        <main className={`flex-1 overflow-y-auto rounded-2xl shadow-sm flex flex-col ${
-          activeTab === "file-complaint"
-            ? "bg-[#E2EAF4]/45 backdrop-blur-md border border-slate-300/40 p-6"
-            : "bg-white border border-slate-100/80 p-8"
-        }`}>
+        <main className="flex-1 overflow-y-auto rounded-2xl shadow-sm flex flex-col bg-white border border-slate-100/80 p-8">
           <style dangerouslySetInnerHTML={{__html: `
             @keyframes pulse {
               0% { transform: scale(0.95); opacity: 0.8; }
@@ -1011,7 +959,7 @@ export default function DashboardClient({
                 <div className="space-y-8 animate-fade-in pb-8">
                   
                   {/* Immersive Water-Themed Hero Banner */}
-                  <div className="bg-gradient-to-br from-[#0B2E7A] via-[#05256e] to-[#189BFF] rounded-[24px] p-6 md:p-8 text-white relative overflow-hidden shadow-md min-h-[220px] flex flex-col justify-center">
+                  <div className="bg-[#0B2E7A] rounded-[24px] p-6 md:p-8 text-white relative overflow-hidden shadow-md min-h-[220px] flex flex-col justify-center">
                     {/* Animated Wave Background SVG Overlay */}
                     <div className="absolute inset-0 opacity-15 pointer-events-none z-0">
                       <svg className="w-full h-full" viewBox="0 0 100 100" preserveAspectRatio="none" xmlns="http://www.w3.org/2000/svg">
@@ -1298,7 +1246,7 @@ export default function DashboardClient({
                   </div>
 
                   {/* Water Supply Overview Card (Glass-inspired) */}
-                  <div className="bg-gradient-to-br from-white/90 to-white/40 backdrop-blur-md border border-white/60 p-6 rounded-[24px] shadow-[0_8px_30px_rgba(24,155,255,0.02)] relative overflow-hidden text-left">
+                  <div className="bg-white border border-slate-100 p-6 rounded-[24px] shadow-sm relative overflow-hidden text-left">
                     {/* Background Wave Graphic */}
                     <div className="absolute inset-0 opacity-5 pointer-events-none select-none z-0">
                       <svg className="w-full h-full" viewBox="0 0 1440 320" preserveAspectRatio="none" xmlns="http://www.w3.org/2000/svg">
@@ -1349,7 +1297,7 @@ export default function DashboardClient({
                       Quick Action Shortcuts
                     </h3>
 
-                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
                       
                       {/* Card 1: File Incident Report */}
                       <div 
@@ -1381,7 +1329,7 @@ export default function DashboardClient({
                       >
                         <div className="flex items-start justify-between">
                           <div className="w-10 h-10 rounded-xl bg-amber-50 flex items-center justify-center text-amber-600 border border-amber-100/40 group-hover:scale-110 transition-transform duration-300">
-                            <svg xmlns="http://www.w3.org/2000/xl bg-amber-50 flex items-center justify-center text-amber-600 border border-amber-100/40 group-hover:scale-110 transition-transform duration-300" viewBox="0 0 24 24" strokeWidth="2.5" stroke="currentColor" className="w-4.5 h-4.5">
+                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="2.5" stroke="currentColor" className="w-4.5 h-4.5">
                               <path strokeLinecap="round" strokeLinejoin="round" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
                             </svg>
                           </div>
@@ -1420,29 +1368,57 @@ export default function DashboardClient({
                         </div>
                       </div>
 
-                      {/* Card 4: Hotline Support Desk */}
-                      <div 
-                        onClick={() => setActiveTab("contact-us")}
-                        className="bg-white rounded-[24px] border border-slate-100 p-5 shadow-[0_8px_30px_rgb(0,0,0,0.015)] transition-all duration-300 hover:-translate-y-1 hover:shadow-[0_20px_40px_rgba(24,155,255,0.04)] hover:border-blue-100/50 hover:scale-[1.01] cursor-pointer flex flex-col justify-between h-[150px] group"
-                      >
-                        <div className="flex items-start justify-between">
-                          <div className="w-10 h-10 rounded-xl bg-purple-50 flex items-center justify-center text-purple-600 border border-purple-100/40 group-hover:scale-110 transition-transform duration-300">
-                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="2.5" stroke="currentColor" className="w-4.5 h-4.5">
-                              <path strokeLinecap="round" strokeLinejoin="round" d="M2.25 6.75c0 8.284 6.716 15 15 15h2.25a2.25 2.25 0 002.25-2.25v-1.372c0-.516-.351-.966-.852-1.091l-4.423-1.106c-.44-.11-.902.055-1.173.417l-.97 1.293c-2.824-1.802-5.14-4.118-6.942-6.942l1.293-.97c.363-.271.527-.734.417-1.173L6.963 3.102a1.125 1.125 0 00-1.091-.852H3.75A2.25 2.25 0 001.5 4.5v2.25z" />
-                            </svg>
+                    </div>
+                  </div>
+
+                  {/* Contact Water District Section */}
+                  <div className="space-y-4 text-left pt-2">
+                    <h3 className="text-xs font-black text-[#0B2E7A] tracking-wider uppercase flex items-center gap-2">
+                      <span className="w-1.5 h-3 bg-[#189BFF] rounded-full inline-block" />
+                      Contact Water District Support
+                    </h3>
+                    
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+                      {/* Customer Hotline Card */}
+                      <div className="bg-white rounded-[24px] border border-slate-100 p-6 shadow-[0_8px_30px_rgb(0,0,0,0.015)] text-left space-y-4">
+                        <h4 className="text-xs font-black text-[#0B2E7A] uppercase tracking-wider border-b border-slate-100 pb-2 flex items-center gap-1.5">
+                          📞 Customer Hotline Desk
+                        </h4>
+                        <div className="grid grid-cols-2 gap-4 text-xs">
+                          <div>
+                            <p className="font-bold text-slate-400">SUPPORT HELPLINE</p>
+                            <p className="text-sm font-black text-[#0B2E7A] mt-0.5">(045) 961-3546</p>
                           </div>
-                          <div className="w-8 h-8 rounded-full bg-slate-50 flex items-center justify-center text-slate-400 group-hover:bg-purple-50 group-hover:text-purple-600 transition-colors">
-                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="3" stroke="currentColor" className="w-3.5 h-3.5">
-                              <path strokeLinecap="round" strokeLinejoin="round" d="M13.5 4.5L21 12m0 0l-7.5 7.5M21 12H3" />
-                            </svg>
+                          <div>
+                            <p className="font-bold text-slate-400">EMAIL ENQUIRIES</p>
+                            <p className="text-sm font-black text-[#00aeef] mt-0.5">support@csfwd.gov.ph</p>
                           </div>
                         </div>
                         <div>
-                          <h4 className="text-xs font-black text-[#0B2E7A] uppercase tracking-wider">Hotline Support Desk</h4>
-                          <p className="text-[10px] text-slate-400 font-bold mt-1">Get in touch with customer service agents.</p>
+                          <p className="font-bold text-slate-400">MAIN OFFICE ADDRESS</p>
+                          <p className="text-xs font-semibold text-slate-600 mt-0.5">City of San Fernando, Pampanga</p>
                         </div>
                       </div>
 
+                      {/* Office Coordinates Card */}
+                      <div className="bg-white rounded-[24px] border border-slate-100 p-6 shadow-[0_8px_30px_rgb(0,0,0,0.015)] text-left flex flex-col justify-between space-y-4">
+                        <div>
+                          <h4 className="text-xs font-black text-[#0B2E7A] uppercase tracking-wider border-b border-slate-100 pb-2 flex items-center gap-1.5">
+                            📍 Command Center Coordinates
+                          </h4>
+                          <p className="text-[11px] text-slate-500 leading-relaxed font-semibold mt-2">
+                            Our operations office manages emergency crew dispatching, water quality reporting, and IoT node maintenance logs.
+                          </p>
+                        </div>
+                        <div className="bg-slate-50 dark:bg-slate-900 border border-slate-100 dark:border-slate-800 rounded-xl p-3 flex items-center justify-between">
+                          <div>
+                            <p className="text-xs font-black text-[#0B2E7A]">CSFWD District Headquarters</p>
+                            <p className="text-[9px] text-slate-400 font-bold uppercase tracking-wider mt-0.5">
+                              Lat: 15.0286 | Lng: 120.6942
+                            </p>
+                          </div>
+                        </div>
+                      </div>
                     </div>
                   </div>
 
@@ -1560,7 +1536,7 @@ export default function DashboardClient({
                                 setLastSubmittedComplaint(null);
                                 setActiveTab("track-complaint");
                               }}
-                              className="flex-1 bg-gradient-to-r from-[#001e66] to-[#00aeef] hover:from-[#00aeef] hover:to-[#001e66] text-white font-black text-xs py-3 px-6 rounded-xl uppercase tracking-wider transition-all cursor-pointer text-center shadow"
+                              className="flex-1 bg-[#001e66] hover:bg-[#00aeef] text-white font-black text-xs py-3 px-6 rounded-xl uppercase tracking-wider transition-all cursor-pointer text-center shadow"
                             >
                               Track Active Tickets
                             </button>
@@ -2108,60 +2084,7 @@ export default function DashboardClient({
             </div>
           )}
 
-          {/* Tab 4: Contact Water District */}
-          {activeTab === "contact-us" && (
-            <div className="space-y-6">
-              <div>
-                <h2 className="text-xl font-black text-[#001e66] tracking-tight">Contact Water District</h2>
-                <p className="text-xs text-slate-500 font-medium font-bold">Reach out to our customer service desk directly</p>
-              </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
-                
-                {/* Contact Card */}
-                <div className="bg-slate-50 border border-slate-200 rounded-2xl p-6 space-y-4">
-                  <h3 className="text-xs font-black text-slate-400 uppercase tracking-wider border-b border-slate-200 pb-2">
-                    Customer Hotline
-                  </h3>
-                  <div className="space-y-3.5 text-xs">
-                    <div>
-                      <p className="font-bold text-slate-400">SUPPORT HELPLINE</p>
-                      <p className="text-lg font-black text-[#001e66] mt-0.5">(045) 961-3546</p>
-                    </div>
-                    <div>
-                      <p className="font-bold text-slate-400">EMAIL ENQUIRIES</p>
-                      <p className="font-black text-[#00aeef] mt-0.5">support@csfwd.gov.ph</p>
-                    </div>
-                    <div>
-                      <p className="font-bold text-slate-400">MAIN OFFICE ADDRESS</p>
-                      <p className="font-bold text-slate-600 mt-0.5">City of San Fernando, Pampanga</p>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Office Info card */}
-                <div className="bg-slate-50 border border-slate-200 rounded-2xl p-6 space-y-4 flex flex-col justify-between">
-                  <div>
-                    <h3 className="text-xs font-black text-slate-400 uppercase tracking-wider border-b border-slate-200 pb-2">
-                      Office Coordinates
-                    </h3>
-                    <p className="text-xs text-slate-500 leading-relaxed font-semibold mt-2">
-                      Our engineering command center coordinates dispatches from pumping stations across Pampanga.
-                    </p>
-                  </div>
-                  <div className="bg-white border border-slate-100 rounded-xl p-4 flex items-center justify-between">
-                    <div>
-                      <p className="text-sm font-black text-[#001e66]">CSFWD District Main</p>
-                      <p className="text-xxs text-slate-400 font-bold uppercase tracking-wider mt-0.5">
-                        Lat: 15.0286 | Lng: 120.6942
-                      </p>
-                    </div>
-                  </div>
-                </div>
-
-              </div>
-            </div>
-          )}
             </motion.div>
           </AnimatePresence>
         </main>

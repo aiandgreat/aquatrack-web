@@ -412,7 +412,7 @@ export default function AnalyticsSection({
             </div>
 
             {/* AI Classification Summary Box */}
-            <div className="bg-gradient-to-br from-[#00aeef]/5 to-transparent border border-[#00aeef]/15 rounded-[24px] p-5 shadow-sm flex flex-col justify-between">
+            <div className="bg-slate-50 border border-slate-200 rounded-[24px] p-5 shadow-sm flex flex-col justify-between">
               <div>
                 <h4 className="text-xs font-black text-[#001e66] uppercase tracking-wider mb-3">AI Classification Summary</h4>
                 <p className="text-xs text-slate-700 font-semibold leading-relaxed">

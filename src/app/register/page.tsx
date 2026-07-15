@@ -177,7 +177,7 @@ export default function RegisterPage() {
       <div className="flex-1 flex flex-col md:flex-row">
         
         {/* Left Side: Water District Basic Info Card */}
-        <div className="w-full md:w-[40%] bg-gradient-to-br from-[#001e66] via-[#052e85] to-[#00aeef] text-white flex flex-col justify-between p-10 md:p-14 relative overflow-hidden">
+        <div className="w-full md:w-[40%] bg-[#001e66] text-white flex flex-col justify-between p-10 md:p-14 relative overflow-hidden">
           {/* Background Decorative Rings */}
           <div className="absolute top-0 right-0 w-[450px] h-[450px] bg-white/5 rounded-full blur-3xl pointer-events-none" />
           <div className="absolute bottom-0 left-0 w-[300px] h-[300px] bg-red-800/10 rounded-full blur-2xl pointer-events-none" />
