@@ -10,8 +10,9 @@ import { motion } from "framer-motion";
 
 export default function RegisterPage() {
   const router = useRouter();
-  const [fullName, setFullName] = useState("");
+   const [fullName, setFullName] = useState("");
   const [phone, setPhone] = useState("");
+  const [address, setAddress] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
@@ -72,7 +73,7 @@ export default function RegisterPage() {
     e.preventDefault();
     setError(null);
 
-    if (!fullName.trim() || !email.trim() || !phone.trim() || !password || !confirmPassword) {
+    if (!fullName.trim() || !email.trim() || !phone.trim() || !address.trim() || !password || !confirmPassword) {
       setError("All fields are mandatory. Please fill in all details.");
       return;
     }
@@ -98,7 +99,7 @@ export default function RegisterPage() {
     const { data: authData, error: authError } = await supabase.auth.signUp({
       email,
       password,
-      options: { data: { full_name: fullName, phone } },
+      options: { data: { full_name: fullName, phone, address } },
     });
 
     if (authError) {
@@ -116,7 +117,7 @@ export default function RegisterPage() {
         await fetch("/api/auth/register", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ id: authData.user.id, email: authData.user.email, fullName, phone }),
+          body: JSON.stringify({ id: authData.user.id, email: authData.user.email, fullName, phone, address }),
         });
       } catch {
         console.warn("DB profile sync failed; auth account still created.");
@@ -384,6 +385,19 @@ export default function RegisterPage() {
                     id="register-phone" type="tel" autoComplete="tel" required
                     value={phone} onChange={(e) => setPhone(e.target.value)}
                     placeholder="09XX-XXX-XXXX"
+                    className="w-full px-4 py-3.5 rounded-xl border border-slate-200 bg-slate-50 text-[#001e66] font-semibold text-sm placeholder:text-slate-300 focus:outline-none focus:ring-2 focus:ring-[#00aeef]/25 focus:border-[#00aeef] transition-all"
+                  />
+                </div>
+
+                {/* Complete Address */}
+                <div className="space-y-1.5">
+                  <label htmlFor="register-address" className="block text-[10px] font-black uppercase tracking-[0.12em] text-slate-400">
+                    Complete Address
+                  </label>
+                  <input
+                    id="register-address" type="text" required
+                    value={address} onChange={(e) => setAddress(e.target.value)}
+                    placeholder="House No., Street, Barangay, City"
                     className="w-full px-4 py-3.5 rounded-xl border border-slate-200 bg-slate-50 text-[#001e66] font-semibold text-sm placeholder:text-slate-300 focus:outline-none focus:ring-2 focus:ring-[#00aeef]/25 focus:border-[#00aeef] transition-all"
                   />
                 </div>

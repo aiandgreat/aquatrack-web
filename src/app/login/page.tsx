@@ -25,6 +25,7 @@ export default function LoginPage() {
           const res = await fetch("/api/auth/profile", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
+            cache: "no-store",
             body: JSON.stringify({ userId: session.user?.id }),
           });
           const profile = await res.json();
@@ -59,6 +60,7 @@ export default function LoginPage() {
         const res = await fetch("/api/auth/profile", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
+          cache: "no-store",
           body: JSON.stringify({ userId: authData.user?.id }),
         });
         const profile = await res.json();

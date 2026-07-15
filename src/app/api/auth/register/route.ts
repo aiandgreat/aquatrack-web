@@ -12,7 +12,7 @@ import { prisma } from "../../../../lib/prisma";
  */
 export async function POST(req: Request) {
   try {
-    const { id, email, fullName, phone } = await req.json();
+    const { id, email, fullName, phone, address } = await req.json();
 
     if (!id || !email) {
       return NextResponse.json(
@@ -26,8 +26,9 @@ export async function POST(req: Request) {
     const user = await prisma.user.upsert({
       where: { id },
       update: {
-        // Update phone if it was provided (trigger may have left it null)
+        ...(fullName ? { name: fullName.trim() } : {}),
         ...(phone ? { phone: phone.trim() } : {}),
+        ...(address ? { address: address.trim() } : {}),
       },
       create: {
         id,
@@ -35,6 +36,7 @@ export async function POST(req: Request) {
         name: fullName?.trim() || email.split("@")[0],
         role: "CONSUMER_RESIDENT",
         phone: phone?.trim() || null,
+        address: address?.trim() || null,
         serviceAccountNo: null,
       },
     });

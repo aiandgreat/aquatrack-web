@@ -39,25 +39,44 @@ export default async function DashboardPage() {
     ` as Promise<any[]>
   ]);
 
-  // 2. Fetch latest telemetry readings for nodes in parallel (resolves N+1 query waterfall)
+  // 2. Fetch latest telemetry readings for nodes in a single parallel-safe raw SQL window function query (resolves N+1 query waterfall!)
   const nodeReadings: Record<string, any[]> = {};
-  await Promise.all(
-    nodes.map(async (node) => {
-      const readings = await prisma.telemetryReading.findMany({
-        where: { nodeId: node.id },
-        orderBy: { timestamp: "desc" },
-        take: 5,
-      });
-      // Reverse to show chronologically left-to-right
-      nodeReadings[node.id] = readings.reverse().map((r) => ({
-        timestamp: r.timestamp.toISOString(),
+  nodes.forEach(n => {
+    nodeReadings[n.id] = [];
+  });
+
+  if (nodes.length > 0) {
+    const rawReadings = await prisma.$queryRaw<any[]>`
+      SELECT * FROM (
+        SELECT 
+          "id",
+          "nodeId",
+          "timestamp",
+          "pressure",
+          "ph",
+          "turbidity",
+          "tds",
+          ROW_NUMBER() OVER (PARTITION BY "nodeId" ORDER BY "timestamp" DESC) as rn
+        FROM "TelemetryReading"
+        WHERE "nodeId" = ANY(${nodes.map(n => n.id)})
+      ) t
+      WHERE rn <= 5
+      ORDER BY "nodeId", "timestamp" ASC
+    `;
+
+    rawReadings.forEach(r => {
+      if (!nodeReadings[r.nodeId]) {
+        nodeReadings[r.nodeId] = [];
+      }
+      nodeReadings[r.nodeId].push({
+        timestamp: new Date(r.timestamp).toISOString(),
         pressure: r.pressure,
         ph: r.ph,
         turbidity: r.turbidity,
         tds: r.tds,
-      }));
-    })
-  );
+      });
+    });
+  }
 
   // Format data types for client serialization
   const serializedUsers = users.map((u) => ({

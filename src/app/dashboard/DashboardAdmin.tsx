@@ -159,6 +159,33 @@ export default function DashboardAdmin({
   const [hotCacheTTL, setHotCacheTTL] = useState(60);
   const [isDark, setIsDark] = useState(false);
 
+  // Account settings states
+  const [userProfile, setUserProfile] = useState<{
+    id: string;
+    name: string;
+    email: string;
+    role: string;
+    phone: string | null;
+    address: string | null;
+    serviceAccountNo: string | null;
+  } | null>(null);
+  const [isAccountDetailsOpen, setIsAccountDetailsOpen] = useState(false);
+  const [accountModalTab, setAccountModalTab] = useState<"profile" | "security">("profile");
+  const [profileName, setProfileName] = useState("");
+  const [profileEmail, setProfileEmail] = useState("");
+  const [profilePhone, setProfilePhone] = useState("");
+  const [profileAddress, setProfileAddress] = useState("");
+  const [profileSaving, setProfileSaving] = useState(false);
+  const [profileSuccess, setProfileSuccess] = useState<string | null>(null);
+  const [profileError, setProfileError] = useState<string | null>(null);
+
+  const [newPassword, setNewPassword] = useState("");
+  const [confirmNewPassword, setConfirmNewPassword] = useState("");
+  const [securityError, setSecurityError] = useState<string | null>(null);
+  const [securitySuccess, setSecuritySuccess] = useState<string | null>(null);
+  const [updatingPassword, setUpdatingPassword] = useState(false);
+  const [isDeleteConfirmOpen, setIsDeleteConfirmOpen] = useState(false);
+
   useEffect(() => {
     const root = window.document.documentElement;
     const initialDark = root.classList.contains("dark") || localStorage.getItem("theme") === "dark";
@@ -212,6 +239,7 @@ export default function DashboardAdmin({
         const res = await fetch("/api/auth/profile", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
+          cache: "no-store",
           body: JSON.stringify({ userId: currentSession.user.id }),
         });
         const profile = await res.json();
@@ -223,6 +251,19 @@ export default function DashboardAdmin({
           }, 3000);
         } else {
           setCurrentUserRole("ADMIN");
+          setUserProfile({
+            id: currentSession.user.id,
+            name: profile.name || "Admin",
+            email: profile.email || currentSession.user.email || "",
+            role: "ADMIN",
+            phone: profile.phone || "",
+            address: profile.address || "",
+            serviceAccountNo: profile.serviceAccountNo || null
+          });
+          setProfileName(profile.name || "Admin");
+          setProfileEmail(profile.email || currentSession.user.email || "");
+          setProfilePhone(profile.phone || "");
+          setProfileAddress(profile.address || "");
           // Re-fetch current database values
           await Promise.all([fetchUsers(), fetchNodes(), fetchComplaints(), fetchStats(), fetchAdvisories()]);
         }
@@ -323,6 +364,96 @@ export default function DashboardAdmin({
       }
     } catch (err) {
       console.error("Failed to fetch advisories", err);
+    }
+  };
+
+  const handleLogout = async () => {
+    const client = getSupabaseClient();
+    await client.auth.signOut();
+    window.location.href = "/login";
+  };
+
+  const handleUpdateProfile = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setProfileSaving(true);
+    setProfileSuccess(null);
+    setProfileError(null);
+    try {
+      const client = getSupabaseClient();
+      const { error: authError } = await client.auth.updateUser({
+        email: profileEmail,
+        data: { full_name: profileName, phone: profilePhone, address: profileAddress }
+      });
+
+      if (authError) {
+        setProfileError(authError.message);
+        setProfileSaving(false);
+        return;
+      }
+
+      await fetch("/api/auth/register", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          id: userProfile?.id,
+          email: profileEmail,
+          fullName: profileName,
+          phone: profilePhone,
+          address: profileAddress
+        }),
+      });
+
+      setUserProfile((prev) => 
+        prev ? { ...prev, name: profileName, email: profileEmail, phone: profilePhone, address: profileAddress } : null
+      );
+      setProfileSuccess("Profile details updated successfully!");
+    } catch (err: any) {
+      setProfileError(err.message || "Failed to update profile details.");
+    } finally {
+      setProfileSaving(false);
+    }
+  };
+
+  const handleUpdatePassword = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setSecurityError(null);
+    setSecuritySuccess(null);
+
+    if (newPassword !== confirmNewPassword) {
+      setSecurityError("New passwords do not match.");
+      return;
+    }
+    if (newPassword.length < 8) {
+      setSecurityError("Password must be at least 8 characters.");
+      return;
+    }
+
+    setUpdatingPassword(true);
+    try {
+      const client = getSupabaseClient();
+      const { error } = await client.auth.updateUser({ password: newPassword });
+      if (error) {
+        setSecurityError(error.message);
+      } else {
+        setSecuritySuccess("Password updated successfully!");
+        setNewPassword("");
+        setConfirmNewPassword("");
+      }
+    } catch (err: any) {
+      setSecurityError(err.message || "Failed to update password.");
+    } finally {
+      setUpdatingPassword(false);
+    }
+  };
+
+  const handleDeleteAccount = async () => {
+    try {
+      const client = getSupabaseClient();
+      await client.auth.signOut();
+      localStorage.clear();
+      window.location.href = "/register?deleted=true";
+    } catch (err) {
+      console.error(err);
     }
   };
 
@@ -573,11 +704,6 @@ export default function DashboardAdmin({
     }
   };
 
-  const handleLogout = async () => {
-    const client = getSupabaseClient();
-    await client.auth.signOut();
-    window.location.href = "/login";
-  };
 
   const showFeedback = (type: "success" | "error", text: string) => {
     setAlertMessage({ type, text });
@@ -713,12 +839,12 @@ export default function DashboardAdmin({
       />
 
       {/* ── Header ─────────────────────────────────────────────────────────── */}
-      <header className="sticky top-0 z-50 h-20 bg-white border-b border-slate-100 flex items-center justify-between px-6 shrink-0">
+      <header className="sticky top-0 z-50 h-20 bg-white dark:bg-slate-900 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between px-6 shrink-0 transition-colors">
         {/* Left: Logo */}
         <div className="flex items-center gap-3">
           <button
             onClick={() => setIsMobileSidebarOpen(true)}
-            className="lg:hidden p-1.5 text-slate-500 hover:text-[#001e66] hover:bg-slate-50 rounded-xl transition-all focus:outline-none cursor-pointer"
+            className="lg:hidden p-1.5 text-slate-500 hover:text-[#001e66] dark:hover:text-[#00aeef] hover:bg-slate-50 dark:hover:bg-slate-800 rounded-xl transition-all focus:outline-none cursor-pointer"
             aria-label="Open navigation sidebar"
           >
             <svg xmlns="http://www.w3.org/2000/svg" className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
@@ -728,15 +854,15 @@ export default function DashboardAdmin({
           <img 
             src="/LOGO2.png" 
             alt="AquaTrack Logo" 
-            className="h-25 w-auto translate-y-1 hover:opacity-90 transition-opacity shrink-0" 
+            className="h-25 w-auto translate-y-1 hover:opacity-90 transition-opacity shrink-0 dark:brightness-110" 
           />
         </div>
 
         {/* Middle: Breadcrumb */}
-        <div className="hidden md:flex items-center gap-2 text-xs text-slate-400 font-medium">
+        <div className="hidden md:flex items-center gap-2 text-xs text-slate-400 dark:text-slate-400 font-medium">
           <span>Console</span>
-          <span className="text-slate-300">/</span>
-          <span className="text-[#001e66] font-semibold">{activeBreadcrumb}</span>
+          <span className="text-slate-300 dark:text-slate-700">/</span>
+          <span className="text-[#001e66] dark:text-[#00aeef] font-semibold">{activeBreadcrumb}</span>
         </div>
 
         {/* Right: Controls */}
@@ -750,48 +876,62 @@ export default function DashboardAdmin({
                 setShowHelpModal(false);
                 setShowProfileMenu(false);
               }}
-              className="w-9 h-9 rounded-xl border border-slate-100 bg-white hover:bg-slate-50 flex items-center justify-center text-slate-500 hover:text-[#970006] transition-all focus:outline-none relative"
+              className="w-9 h-9 rounded-xl border border-slate-100 dark:border-slate-800 bg-slate-50 dark:bg-slate-900 hover:bg-slate-100 dark:hover:bg-slate-800/60 flex items-center justify-center text-slate-500 hover:text-[#970006] dark:hover:text-red-400 transition-all focus:outline-none relative cursor-pointer"
             >
               <svg xmlns="http://www.w3.org/2000/svg" className="w-4.5 h-4.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                 <path strokeLinecap="round" strokeLinejoin="round" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
               </svg>
               {warningAdvisories.length > 0 && (
-                <span className="absolute -top-1 -right-1 bg-[#970006] text-white text-[8px] font-bold w-4 h-4 rounded-full flex items-center justify-center border border-white">
-                  {warningAdvisories.length}
+                <span className="absolute -top-0.5 -right-0.5 flex h-4 w-4">
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
+                  <span className="relative inline-flex rounded-full h-4 w-4 bg-red-500 text-white font-black text-[8px] items-center justify-center border-2 border-white dark:border-slate-900 shadow-sm">
+                    {warningAdvisories.length}
+                  </span>
                 </span>
               )}
             </button>
 
             {/* Alerts Dropdown */}
-            {showNotificationMenu && (
-              <div className="absolute right-0 mt-2 w-80 bg-white border border-slate-100 rounded-2xl shadow-xl py-3 z-50 text-xs">
-                <div className="px-4 pb-2 border-b border-slate-100 flex justify-between items-center">
-                  <span className="font-bold text-[#001e66]">Active System Alarms</span>
-                  <span className="text-[10px] text-slate-400 font-semibold uppercase tracking-wider">
-                    {warningAdvisories.length} Alerts
-                  </span>
-                </div>
-                {warningAdvisories.length === 0 ? (
-                  <div className="p-4 text-center text-slate-400 italic">
-                    No active system alarms.
-                  </div>
-                ) : (
-                  <div className="divide-y divide-slate-100 max-h-60 overflow-y-auto">
-                    {warningAdvisories.map((ad) => (
-                      <div key={ad.id} className="p-3 hover:bg-slate-50 transition-colors">
-                        <div className="flex justify-between items-start">
-                          <span className="font-semibold text-[#970006]">{ad.title}</span>
-                          <span className="text-[9px] text-slate-400 font-mono">{ad.date}</span>
+            <AnimatePresence>
+              {showNotificationMenu && (
+                <>
+                  <div className="fixed inset-0 z-40" onClick={() => setShowNotificationMenu(false)} />
+                  <motion.div
+                    initial={{ opacity: 0, y: 10, scale: 0.95 }}
+                    animate={{ opacity: 1, y: 0, scale: 1 }}
+                    exit={{ opacity: 0, y: 10, scale: 0.95 }}
+                    transition={{ duration: 0.15 }}
+                    className="absolute right-0 mt-2 w-80 bg-white dark:bg-slate-900 rounded-2xl border border-slate-150 dark:border-slate-800 shadow-[0_10px_35px_rgba(0,30,102,0.12)] z-50 overflow-hidden text-left"
+                  >
+                    <div className="p-4 border-b border-slate-100 dark:border-slate-800 flex justify-between items-center bg-slate-50/50 dark:bg-slate-900/50">
+                      <span className="font-black text-[#001e66] dark:text-slate-200 uppercase tracking-wider text-[10px]">Active System Alarms</span>
+                      <span className="text-[9px] text-[#00aeef] font-black uppercase tracking-wider">
+                        {warningAdvisories.length} Alerts
+                      </span>
+                    </div>
+                    
+                    <div className="divide-y divide-slate-50 dark:divide-slate-800/40 max-h-60 overflow-y-auto">
+                      {warningAdvisories.map((ad) => (
+                        <div key={ad.id} className="p-3.5 hover:bg-slate-50 dark:hover:bg-slate-800/40 transition-colors">
+                          <div className="flex justify-between items-start gap-2">
+                            <span className="font-bold text-[#970006] dark:text-red-400 text-xs">{ad.title}</span>
+                            <span className="text-[8px] text-slate-400 dark:text-slate-500 font-mono shrink-0 mt-0.5">{ad.date}</span>
+                          </div>
+                          <p className="text-slate-500 dark:text-slate-400 mt-1 text-[10px] leading-relaxed">
+                            {ad.text}
+                          </p>
                         </div>
-                        <p className="text-slate-500 mt-1 text-[11px] leading-tight">
-                          {ad.text}
-                        </p>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
-            )}
+                      ))}
+                      {warningAdvisories.length === 0 && (
+                        <div className="p-6 text-center text-slate-450 dark:text-slate-500 italic text-[11px]">
+                          No active system alarms.
+                        </div>
+                      )}
+                    </div>
+                  </motion.div>
+                </>
+              )}
+            </AnimatePresence>
           </div>
 
           {/* Help Button */}
@@ -801,7 +941,7 @@ export default function DashboardAdmin({
               setShowNotificationMenu(false);
               setShowProfileMenu(false);
             }}
-            className="w-9 h-9 rounded-xl border border-slate-100 bg-white hover:bg-slate-50 flex items-center justify-center text-slate-500 hover:text-[#001e66] transition-all focus:outline-none"
+            className="w-9 h-9 rounded-xl border border-slate-100 dark:border-slate-800 bg-slate-50 dark:bg-slate-900 hover:bg-slate-100 dark:hover:bg-slate-800/60 flex items-center justify-center text-slate-500 hover:text-[#001e66] dark:hover:text-[#00aeef] transition-all focus:outline-none cursor-pointer"
             title="Help Center"
           >
             <svg xmlns="http://www.w3.org/2000/svg" className="w-4.5 h-4.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
@@ -813,7 +953,7 @@ export default function DashboardAdmin({
           <button
             onClick={() => setIsDark(!isDark)}
             title={isDark ? "Switch to Light Mode" : "Switch to Dark Mode"}
-            className="w-9 h-9 rounded-xl border border-slate-100 bg-white hover:bg-slate-50 flex items-center justify-center text-slate-500 hover:text-[#001e66] transition-all focus:outline-none"
+            className="w-9 h-9 rounded-xl border border-slate-100 dark:border-slate-800 bg-slate-50 dark:bg-slate-900 hover:bg-slate-100 dark:hover:bg-slate-800/60 flex items-center justify-center text-slate-500 hover:text-[#001e66] dark:hover:text-[#00aeef] transition-all focus:outline-none cursor-pointer"
           >
             {isDark ? (
               <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
@@ -828,37 +968,76 @@ export default function DashboardAdmin({
 
           {/* Admin Profile Dropdown */}
           <div className="relative">
-            <button
+            <div
               onClick={() => {
                 setShowProfileMenu(!showProfileMenu);
                 setShowNotificationMenu(false);
               }}
-              className="h-9 px-3 rounded-xl border border-slate-100 bg-white flex items-center gap-2 select-none hover:bg-slate-50 transition-all focus:outline-none"
+              className="flex items-center gap-2 px-2.5 py-1.5 rounded-xl border border-slate-100 dark:border-slate-800 bg-slate-50 dark:bg-slate-900 hover:bg-slate-100 dark:hover:bg-slate-800/60 cursor-pointer transition-all select-none"
             >
-              <div className="w-6 h-6 rounded-lg bg-[#001e66] text-white text-[10px] font-bold flex items-center justify-center">
-                AD
+              <div className="w-7 h-7 rounded-lg bg-[#001e66] dark:bg-[#00aeef] text-white flex items-center justify-center text-xs font-black uppercase shadow-sm">
+                {userProfile?.name?.slice(0, 1).toLowerCase() || "a"}
               </div>
               <div className="hidden sm:flex flex-col leading-none text-left">
-                <span className="text-xs font-semibold text-[#001e66]">Administrator</span>
-                <span className="text-[8px] font-bold text-slate-400 mt-0.5 tracking-wider uppercase">Super Admin</span>
+                <span className="text-[11px] font-bold text-[#001e66] dark:text-slate-200">
+                  {userProfile?.name || "Administrator"}
+                </span>
+                <span className="text-[8px] font-black text-slate-400 dark:text-slate-450 mt-0.5 tracking-wider uppercase">
+                  Super Admin
+                </span>
               </div>
-            </button>
+              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="2.5" stroke="currentColor" className="w-3.5 h-3.5 text-slate-400 ml-1">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 8.25l-7.5 7.5-7.5-7.5" />
+              </svg>
+            </div>
 
-            {showProfileMenu && (
-              <div className="absolute right-0 mt-2 w-56 bg-white border border-slate-100 rounded-2xl shadow-xl py-3.5 px-4 z-50 text-xs">
-                <p className="font-semibold text-[#001e66] truncate">{session?.user?.email || "admin@csfwd.gov.ph"}</p>
-                <p className="text-[9px] text-[#00aeef] font-medium mt-0.5">Control Division Account</p>
-              </div>
-            )}
+            {/* Dropdown Menu */}
+            <AnimatePresence>
+              {showProfileMenu && (
+                <>
+                  <div className="fixed inset-0 z-40" onClick={() => setShowProfileMenu(false)} />
+                  <motion.div
+                    initial={{ opacity: 0, y: 8, scale: 0.95 }}
+                    animate={{ opacity: 1, y: 0, scale: 1 }}
+                    exit={{ opacity: 0, y: 8, scale: 0.95 }}
+                    transition={{ duration: 0.12 }}
+                    className="absolute right-0 mt-2 w-52 bg-white dark:bg-slate-900 rounded-2xl border border-slate-155 dark:border-slate-800 shadow-[0_10px_35px_rgba(0,30,102,0.12)] z-50 overflow-hidden text-left py-1"
+                  >
+                    <div className="px-4 py-2 border-b border-slate-50 dark:border-slate-800/50">
+                      <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Account ID</p>
+                      <p className="text-[9px] font-mono text-[#001e66] dark:text-slate-200 mt-0.5 truncate">{userProfile?.id || "AQ-SUPERADMIN"}</p>
+                    </div>
+
+                    <button
+                      onClick={() => {
+                        setIsAccountDetailsOpen(true);
+                        setShowProfileMenu(false);
+                      }}
+                      className="w-full text-left px-4 py-2.5 text-xs font-bold text-[#001e66] dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800/40 transition-colors flex items-center gap-2 cursor-pointer"
+                    >
+                      <svg className="w-4 h-4 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                      </svg>
+                      Manage Account
+                    </button>
+
+                    <button
+                      onClick={() => {
+                        setShowProfileMenu(false);
+                        handleLogout();
+                      }}
+                      className="w-full text-left px-4 py-2.5 text-xs font-bold text-red-600 dark:text-red-400 hover:bg-red-50/50 dark:hover:bg-red-950/20 transition-colors flex items-center gap-2 cursor-pointer border-t border-slate-50 dark:border-slate-800/50"
+                    >
+                      <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+                      </svg>
+                      Logout
+                    </button>
+                  </motion.div>
+                </>
+              )}
+            </AnimatePresence>
           </div>
-
-          {/* Logout Button */}
-          <button
-            onClick={() => setShowLogoutModal(true)}
-            className="h-9 px-4 bg-[#001e66] text-white rounded-xl text-xs font-semibold hover:bg-[#00aeef] transition-all focus:outline-none"
-          >
-            Logout
-          </button>
         </div>
       </header>
 
@@ -1251,6 +1430,272 @@ export default function DashboardAdmin({
         onClose={() => setPreviewComplaint(null)}
         complaint={previewComplaint}
       />
+
+      {/* Account Details Modal */}
+      <AnimatePresence>
+        {isAccountDetailsOpen && (
+          <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 overflow-y-auto">
+            {/* Backdrop */}
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setIsAccountDetailsOpen(false)}
+              className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm"
+            />
+
+            {/* Modal Box */}
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95, y: 15 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 15 }}
+              transition={{ duration: 0.25, ease: [0.16, 1, 0.3, 1] }}
+              className="relative w-full max-w-4xl bg-white dark:bg-slate-900 rounded-[32px] shadow-[0_25px_60px_rgba(0,30,102,0.18)] overflow-hidden border border-slate-100 dark:border-slate-800 flex flex-col md:flex-row h-[550px] z-10"
+            >
+              {/* Left sidebar inside modal */}
+              <div className="w-full md:w-64 bg-slate-50 dark:bg-slate-900/40 p-6 border-r border-slate-100 dark:border-slate-850 flex flex-col justify-between shrink-0">
+                <div className="space-y-6">
+                  <div>
+                    <h3 className="text-base font-black text-[#001e66] dark:text-slate-200 tracking-tight">Account Details</h3>
+                    <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider mt-1">Manage portal settings</p>
+                  </div>
+                  
+                  <div className="flex flex-col gap-1">
+                    <button
+                      onClick={() => setAccountModalTab("profile")}
+                      className={`flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-bold transition-all text-left cursor-pointer ${
+                        accountModalTab === "profile"
+                          ? "bg-[#001e66] text-white shadow-sm"
+                          : "text-slate-655 hover:bg-slate-105 dark:hover:bg-slate-800/40 dark:text-slate-400"
+                      }`}
+                    >
+                      <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                      </svg>
+                      Profile Information
+                    </button>
+                    <button
+                      onClick={() => setAccountModalTab("security")}
+                      className={`flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-bold transition-all text-left cursor-pointer ${
+                        accountModalTab === "security"
+                          ? "bg-[#001e66] text-white shadow-sm"
+                          : "text-slate-655 hover:bg-slate-105 dark:hover:bg-slate-800/40 dark:text-slate-400"
+                      }`}
+                    >
+                      <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                      </svg>
+                      Security Settings
+                    </button>
+                  </div>
+                </div>
+
+                <button
+                  onClick={() => setIsAccountDetailsOpen(false)}
+                  className="w-full text-center py-2.5 rounded-xl border border-slate-200 dark:border-slate-800 hover:bg-slate-100 dark:hover:bg-slate-800/30 text-xs font-bold text-slate-600 dark:text-slate-400 transition-colors cursor-pointer"
+                >
+                  Close Settings
+                </button>
+              </div>
+
+              {/* Right content box inside modal */}
+              <div className="flex-1 p-8 overflow-y-auto font-sans">
+                {accountModalTab === "profile" ? (
+                  <form onSubmit={handleUpdateProfile} className="space-y-6">
+                    <div>
+                      <h4 className="text-sm font-black text-[#001e66] dark:text-slate-200 uppercase tracking-wider">Profile Info</h4>
+                      <p className="text-xs text-slate-400 mt-1 font-semibold">Your basic service account records.</p>
+                    </div>
+
+                    {profileError && (
+                      <div className="p-3.5 bg-red-50 border border-red-200 text-red-700 rounded-xl text-xs font-bold text-left">
+                        {profileError}
+                      </div>
+                    )}
+                    {profileSuccess && (
+                      <div className="p-3.5 bg-emerald-50 border border-emerald-200 text-emerald-700 rounded-xl text-xs font-bold text-left">
+                        {profileSuccess}
+                      </div>
+                    )}
+
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
+                      {/* Name */}
+                      <div className="space-y-1 text-left">
+                        <label className="text-[10px] font-black uppercase text-slate-400 tracking-wider">Full Name</label>
+                        <input
+                          type="text"
+                          required
+                          value={profileName}
+                          onChange={(e) => setProfileName(e.target.value)}
+                          className="w-full px-4 py-3 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-200 text-xs font-bold outline-none focus:ring-2 focus:ring-[#00aeef]/20 focus:border-[#00aeef] transition-all"
+                        />
+                      </div>
+
+                      {/* Email */}
+                      <div className="space-y-1 text-left">
+                        <label className="text-[10px] font-black uppercase text-slate-400 tracking-wider">Email Address</label>
+                        <input
+                          type="email"
+                          required
+                          value={profileEmail}
+                          onChange={(e) => setProfileEmail(e.target.value)}
+                          className="w-full px-4 py-3 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-200 text-xs font-bold outline-none focus:ring-2 focus:ring-[#00aeef]/20 focus:border-[#00aeef] transition-all"
+                        />
+                      </div>
+
+                      {/* Phone */}
+                      <div className="space-y-1 text-left">
+                        <label className="text-[10px] font-black uppercase text-slate-400 tracking-wider">Phone Number</label>
+                        <input
+                          type="text"
+                          required
+                          value={profilePhone}
+                          onChange={(e) => setProfilePhone(e.target.value)}
+                          className="w-full px-4 py-3 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-200 text-xs font-bold outline-none focus:ring-2 focus:ring-[#00aeef]/20 focus:border-[#00aeef] transition-all"
+                        />
+                      </div>
+
+                      {/* Service Account Number */}
+                      <div className="space-y-1 text-left">
+                        <label className="text-[10px] font-black uppercase text-slate-400 tracking-wider">Service Account Number</label>
+                        <div className="relative">
+                          <input
+                            type="text"
+                            readOnly
+                            value={`CSFWD-${userProfile?.id?.slice(0, 8).toUpperCase() || "CSF-2026"}`}
+                            className="w-full px-4 py-3 pr-12 rounded-xl border border-slate-150 bg-slate-50 dark:bg-slate-900/60 dark:border-slate-850 text-slate-500 dark:text-slate-400 text-xs font-bold outline-none cursor-not-allowed select-none"
+                          />
+                          <span className="absolute right-3.5 top-1/2 -translate-y-1/2 text-[9px] font-black uppercase tracking-wider text-slate-400 bg-slate-100 dark:bg-slate-850 px-2 py-0.5 rounded border border-slate-200/50 dark:border-slate-700">
+                            Readonly
+                          </span>
+                        </div>
+                      </div>
+
+                      {/* Complete Address */}
+                      <div className="sm:col-span-2 space-y-1 text-left">
+                        <label className="text-[10px] font-black uppercase text-slate-400 tracking-wider">Complete Address</label>
+                        <input
+                          type="text"
+                          required
+                          value={profileAddress}
+                          onChange={(e) => setProfileAddress(e.target.value)}
+                          placeholder="House No., Street, Barangay, City"
+                          className="w-full px-4 py-3 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-200 text-xs font-bold outline-none focus:ring-2 focus:ring-[#00aeef]/20 focus:border-[#00aeef] transition-all"
+                        />
+                      </div>
+                    </div>
+
+                    <div className="text-left pt-2">
+                      <button
+                        type="submit"
+                        disabled={profileSaving}
+                        className="px-5 py-2.5 bg-[#001e66] hover:bg-[#00aeef] text-white text-xs font-bold rounded-xl transition-all shadow-sm cursor-pointer disabled:opacity-50 animate-pulse-subtle"
+                      >
+                        {profileSaving ? "Saving changes..." : "Save Profile Details"}
+                      </button>
+                    </div>
+                  </form>
+                ) : (
+                  <div className="space-y-8 text-left">
+                    {/* Password Update */}
+                    <div className="space-y-4">
+                      <div>
+                        <h4 className="text-sm font-black text-[#001e66] dark:text-slate-200 uppercase tracking-wider">Change Password</h4>
+                        <p className="text-xs text-slate-400 mt-1 font-semibold">Update your portal security key.</p>
+                      </div>
+
+                      <form onSubmit={handleUpdatePassword} className="space-y-4 max-w-md">
+                        {securityError && (
+                          <div className="p-3.5 bg-red-50 border border-red-200 text-red-700 rounded-xl text-xs font-bold">
+                            {securityError}
+                          </div>
+                        )}
+                        {securitySuccess && (
+                          <div className="p-3.5 bg-emerald-50 border border-emerald-200 text-emerald-700 rounded-xl text-xs font-bold">
+                            {securitySuccess}
+                          </div>
+                        )}
+
+                        <div className="space-y-1">
+                          <label className="text-[10px] font-black uppercase text-slate-400 tracking-wider">New Password</label>
+                          <input
+                            type="password"
+                            required
+                            placeholder="••••••••••••"
+                            value={newPassword}
+                            onChange={(e) => setNewPassword(e.target.value)}
+                            className="w-full px-4 py-3 rounded-xl border border-slate-200 bg-slate-50 dark:bg-slate-900 dark:border-slate-800 text-xs font-bold outline-none focus:ring-2 focus:ring-[#00aeef]/20 focus:border-[#00aeef] transition-all"
+                          />
+                        </div>
+
+                        <div className="space-y-1">
+                          <label className="text-[10px] font-black uppercase text-slate-400 tracking-wider">Confirm New Password</label>
+                          <input
+                            type="password"
+                            required
+                            placeholder="••••••••••••"
+                            value={confirmNewPassword}
+                            onChange={(e) => setConfirmNewPassword(e.target.value)}
+                            className="w-full px-4 py-3 rounded-xl border border-slate-200 bg-slate-50 dark:bg-slate-900 dark:border-slate-800 text-xs font-bold outline-none focus:ring-2 focus:ring-[#00aeef]/20 focus:border-[#00aeef] transition-all"
+                          />
+                        </div>
+
+                        <button
+                          type="submit"
+                          disabled={updatingPassword}
+                          className="px-5 py-2.5 bg-[#001e66] hover:bg-[#00aeef] text-white text-xs font-bold rounded-xl transition-all shadow-sm cursor-pointer disabled:opacity-50"
+                        >
+                          {updatingPassword ? "Updating Key..." : "Change Password"}
+                        </button>
+                      </form>
+                    </div>
+
+                    {/* Account Deletion */}
+                    <div className="border-t border-slate-100 dark:border-slate-800 pt-6 space-y-4">
+                      <div>
+                        <h4 className="text-sm font-black text-red-600 dark:text-red-400 uppercase tracking-wider">Danger Zone</h4>
+                        <p className="text-xs text-slate-400 mt-1 font-semibold">Actions here are permanent and cannot be undone.</p>
+                      </div>
+
+                      <div className="bg-red-50/50 dark:bg-red-950/5 rounded-2xl border border-red-100/50 dark:border-red-950/20 p-5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+                        <div>
+                          <p className="text-xs font-black text-red-750 dark:text-red-450 uppercase tracking-wide">Delete Account</p>
+                          <p className="text-[11px] text-slate-500 font-bold mt-1 max-w-md">
+                            Deleting your account will remove your access to the AquaTrack portal and cancel all active ticket feeds.
+                          </p>
+                        </div>
+                        {isDeleteConfirmOpen ? (
+                          <div className="flex gap-2 shrink-0">
+                            <button
+                              onClick={handleDeleteAccount}
+                              className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white text-xs font-bold rounded-xl transition-all shadow-sm cursor-pointer"
+                            >
+                              Confirm Delete
+                            </button>
+                            <button
+                              onClick={() => setIsDeleteConfirmOpen(false)}
+                              className="px-4 py-2 border border-slate-200 dark:border-slate-800 hover:bg-slate-150 text-[#001e66] dark:text-slate-350 text-xs font-bold rounded-xl transition-all cursor-pointer"
+                            >
+                              Cancel
+                            </button>
+                          </div>
+                        ) : (
+                          <button
+                            onClick={() => setIsDeleteConfirmOpen(true)}
+                            className="px-4 py-2 bg-red-100 hover:bg-red-200 text-red-700 text-xs font-bold rounded-xl transition-all cursor-pointer"
+                          >
+                            Delete Account
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }

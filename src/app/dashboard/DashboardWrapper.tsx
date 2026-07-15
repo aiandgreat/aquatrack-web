@@ -82,6 +82,7 @@ export default function DashboardWrapper({
         const res = await fetch("/api/auth/profile", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
+          cache: "no-store",
           body: JSON.stringify({ userId: session.user.id }),
         });
         const profile = await res.json();
@@ -119,6 +120,13 @@ export default function DashboardWrapper({
         </div>
       </div>
     );
+  }
+
+  if (role === "ADMIN") {
+    if (typeof window !== "undefined") {
+      window.location.href = "/admin";
+    }
+    return null;
   }
 
   if (role === "FIELD_ENGINEER_TECHNICIAN") {

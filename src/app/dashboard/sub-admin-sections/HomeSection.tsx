@@ -109,10 +109,12 @@ export default function HomeSection({
                 {assignedComplaints.length}
               </h3>
             </div>
-            <div className="w-12 h-12 rounded-xl bg-blue-50/80 flex items-center justify-center text-[#189BFF] border border-blue-100/40 shrink-0 group-hover:scale-110 transition-transform duration-300">
-              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="2.5" stroke="currentColor" className="w-5 h-5">
-                <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m0 12.75h7.5m-7.5 3H12M10.5 2.25H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z" />
-              </svg>
+            <div className="w-12 h-12 rounded-xl bg-blue-50/80 flex items-center justify-center border border-blue-100/40 shrink-0 group-hover:scale-110 transition-transform duration-300 shadow-sm">
+              <div className="w-5 h-6 rounded border-2 border-blue-500 bg-blue-50/80 flex flex-col justify-between p-1 shrink-0">
+                <div className="w-full h-0.5 bg-blue-500 rounded" />
+                <div className="w-full h-0.5 bg-blue-500 rounded" />
+                <div className="w-2/3 h-0.5 bg-blue-500 rounded" />
+              </div>
             </div>
           </div>
           <p className="text-[10px] text-slate-500 font-bold mt-4 relative z-10 text-left">Incidents assigned to you</p>
@@ -121,7 +123,7 @@ export default function HomeSection({
             <path d="M0,160L48,149.3C96,139,192,117,288,128C384,139,480,181,576,181.3C672,181,768,139,864,117.3C960,96,1056,96,1152,117.3C1248,139,1344,181,1392,202.7L1440,224L1440,320L1392,320C1344,320,1248,320,1152,320C1056,320,960,320,864,320C768,320,672,320,576,320C480,320,384,320,288,320C192,320,96,320,48,320L0,320Z"></path>
           </svg>
         </div>
-
+ 
         {/* Active IoT Sensors Stat */}
         <div className="bg-white rounded-[24px] border border-slate-100 p-6 shadow-[0_8px_30px_rgb(0,0,0,0.015)] transition-all duration-300 hover:-translate-y-1 hover:shadow-[0_20px_40px_rgba(24,155,255,0.04)] hover:border-blue-100/50 hover:scale-[1.01] relative overflow-hidden group">
           <div className="flex items-start justify-between relative z-10">
@@ -131,10 +133,10 @@ export default function HomeSection({
                 {stats.onlineNodes} <span className="text-xs text-slate-400 font-bold">/ {stats.totalNodes}</span>
               </h3>
             </div>
-            <div className="w-12 h-12 rounded-xl bg-amber-50/80 flex items-center justify-center text-amber-600 border border-amber-100/40 shrink-0 group-hover:scale-110 transition-transform duration-300">
-              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="2.5" stroke="currentColor" className="w-5 h-5">
-                <path strokeLinecap="round" strokeLinejoin="round" d="M12 21a9.004 9.004 0 008.716-6.747M12 21a9.004 9.004 0 01-8.716-6.747M12 21c2.485 0 4.5-4.03 4.5-9S14.485 3 12 3m0 18c-2.485 0-4.5-4.03-4.5-9S9.515 3 12 3m0 0a8.997 8.997 0 017.843 4.582M12 3a8.997 8.997 0 00-7.843 4.582m15.686 0A11.953 11.953 0 0112 10.5c-2.998 0-5.74-1.1-7.843-2.918m15.686 0A8.959 8.959 0 0121 12c0 .778-.099 1.533-.284 2.253m0 0A11.952 11.952 0 0112 16.5c-2.998 0-5.74-1.1-7.843-2.918m15.686 0A8.959 8.959 0 013 12c0-.778.099-1.533.284-2.253" />
-              </svg>
+            <div className="w-12 h-12 rounded-xl bg-amber-50/80 flex items-center justify-center border border-amber-100/40 shrink-0 group-hover:scale-110 transition-transform duration-300 shadow-sm">
+              <div className="w-6 h-2 bg-slate-100 rounded-full overflow-hidden border border-amber-300/80 flex shrink-0 p-0">
+                <div className="w-1/2 h-full bg-amber-500 rounded-full" />
+              </div>
             </div>
           </div>
           <p className="text-[10px] text-slate-500 font-bold mt-4 relative z-10 text-left">Online telemetry nodes in network</p>
@@ -143,7 +145,7 @@ export default function HomeSection({
             <path d="M0,224L48,208C96,192,192,160,288,144C384,128,480,128,576,144C672,160,768,192,864,208C960,224,1056,224,1152,197.3C1248,171,1344,117,1392,90.7L1440,64L1440,320L1392,320C1344,320,1248,320,1152,320C1056,320,960,320,864,320C768,320,672,320,576,320C480,320,384,320,288,320C192,320,96,320,48,320L0,320Z"></path>
           </svg>
         </div>
-
+ 
         {/* Pending Classifications Stat */}
         <div className="bg-white rounded-[24px] border border-slate-100 p-6 shadow-[0_8px_30px_rgb(0,0,0,0.015)] transition-all duration-300 hover:-translate-y-1 hover:shadow-[0_20px_40px_rgba(24,155,255,0.04)] hover:border-blue-100/50 hover:scale-[1.01] relative overflow-hidden group">
           <div className="flex items-start justify-between relative z-10">
@@ -153,10 +155,10 @@ export default function HomeSection({
                 {stats.unresolvedComplaints}
               </h3>
             </div>
-            <div className="w-12 h-12 rounded-xl bg-emerald-50/80 flex items-center justify-center text-emerald-600 border border-emerald-100/40 shrink-0 group-hover:scale-110 transition-transform duration-300">
-              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="2.5" stroke="currentColor" className="w-5 h-5">
-                <path strokeLinecap="round" strokeLinejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 11-18 0 9 9 0 0118 0z" />
-              </svg>
+            <div className="w-12 h-12 rounded-xl bg-emerald-50/80 flex items-center justify-center border border-emerald-100/40 shrink-0 group-hover:scale-110 transition-transform duration-300 shadow-sm">
+              <div className="w-5.5 h-4 bg-emerald-50 border-[2px] border-emerald-500 rounded relative flex items-center justify-center shrink-0">
+                <div className="absolute -bottom-[3px] left-1.5 w-1.2 h-1.2 bg-emerald-50 border-r-[2px] border-b-[2px] border-emerald-500 transform rotate-45 shrink-0" />
+              </div>
             </div>
           </div>
           <p className="text-[10px] text-slate-500 font-bold mt-4 relative z-10 text-left">Active tickets awaiting evaluation</p>
@@ -165,9 +167,9 @@ export default function HomeSection({
             <path d="M0,96L48,128C96,160,192,224,288,240C384,256,480,224,576,181.3C672,139,768,85,864,90.7C960,96,1056,160,1152,192C1248,224,1344,224,1392,224L1440,224L1440,320L1392,320C1344,320,1248,320,1152,320C1056,320,960,320,864,320C768,320,672,320,576,320C480,320,384,320,288,320C192,320,96,320,48,320L0,320Z"></path>
           </svg>
         </div>
-
+ 
       </div>
-
+ 
       {/* Priority Assigned Incidents Card */}
       <div className="bg-white rounded-[24px] border border-slate-100 p-6 shadow-[0_8px_30px_rgb(0,0,0,0.015)] flex flex-col justify-between min-h-[380px]">
         <div className="space-y-4">
@@ -183,7 +185,7 @@ export default function HomeSection({
               View All &rarr;
             </button>
           </div>
-
+ 
           {/* List */}
           <div className="divide-y divide-slate-50 text-left">
             {assignedComplaints.slice(0, 4).map((ticket) => {
@@ -193,10 +195,10 @@ export default function HomeSection({
               return (
                 <div key={ticket.id} className="py-3.5 flex items-center justify-between hover:bg-slate-50/50 px-2 rounded-xl transition-colors group cursor-pointer" onClick={() => setActiveTab("complaints")}>
                   <div className="flex items-center space-x-3.5 min-w-0">
-                    <div className="w-9 h-9 rounded-lg bg-blue-50 flex items-center justify-center text-[#189BFF] shrink-0">
-                      <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="2.5" stroke="currentColor" className="w-4 h-4">
-                        <path d="M12 22a7 7 0 0 0 7-7c0-4.3-7-11-7-11S5 10.7 5 15a7 7 0 0 0 7 7z" />
-                      </svg>
+                    <div className="w-9 h-9 rounded-lg bg-blue-50/60 flex items-center justify-center shrink-0 shadow-sm border border-blue-100/50">
+                      <div className="w-2.5 h-3 bg-[#189BFF] border-2 border-[#189BFF] rounded-sm relative flex items-center justify-center shrink-0">
+                        <div className="absolute -top-1 left-0 w-1.5 h-0.5 bg-blue-300 rounded-t-sm" />
+                      </div>
                     </div>
                     <div className="text-left min-w-0">
                       <p className="text-xs font-black text-[#0B2E7A] truncate group-hover:text-[#189BFF] transition-colors">
@@ -207,7 +209,7 @@ export default function HomeSection({
                       </p>
                     </div>
                   </div>
-
+ 
                   <div className="flex items-center space-x-3 shrink-0 ml-4">
                     <div className="flex flex-col items-end">
                       <span className={`px-2 py-0.5 rounded-full text-[8px] font-black uppercase tracking-wider border ${
@@ -234,13 +236,11 @@ export default function HomeSection({
                 </div>
               );
             })}
-
+ 
             {assignedComplaints.length === 0 && (
               <div className="py-12 flex flex-col items-center justify-center text-center space-y-3">
-                <div className="w-12 h-12 rounded-full bg-emerald-50 flex items-center justify-center text-emerald-500 border border-emerald-100">
-                  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="2.5" stroke="currentColor" className="w-5 h-5">
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12.75l6 6 9-13.5" />
-                  </svg>
+                <div className="w-12 h-12 rounded-full bg-emerald-50 flex items-center justify-center border border-emerald-100 shadow-sm">
+                  <div className="w-3.5 h-2 border-l-2 border-b-2 border-emerald-500 transform -rotate-45 shrink-0" />
                 </div>
                 <div>
                   <p className="text-xs font-black text-[#0B2E7A]">No Assigned Tickets</p>

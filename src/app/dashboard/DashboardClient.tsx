@@ -14,11 +14,15 @@ interface User {
   name: string;
   email: string;
   role: string;
+  phone?: string | null;
+  address?: string | null;
+  serviceAccountNo?: string | null;
 }
 
 interface Complaint {
   id: string;
   rawText: string;
+  translatedText?: string;
   summary: string;
   latitude: number;
   longitude: number;
@@ -27,6 +31,7 @@ interface Complaint {
   status?: string;
   createdAt?: string;
   barangay?: string;
+  assignedToName?: string | null;
 }
 
 interface Advisory {
@@ -61,6 +66,170 @@ export default function DashboardClient({
   // Local state
   const [isDark, setIsDark] = useState(false);
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
+  const [viewedAdvisoryIds, setViewedAdvisoryIds] = useState<string[]>([]);
+  const [isNotificationOpen, setIsNotificationOpen] = useState(false);
+
+  useEffect(() => {
+    try {
+      const stored = localStorage.getItem("viewed-advisories");
+      if (stored) {
+        setViewedAdvisoryIds(JSON.parse(stored));
+      }
+    } catch (e) {
+      console.error("Failed to load viewed advisories", e);
+    }
+  }, []);
+
+  const markAdvisoryAsRead = (id: string) => {
+    setViewedAdvisoryIds((prev) => {
+      if (prev.includes(id)) return prev;
+      const updated = [...prev, id];
+      localStorage.setItem("viewed-advisories", JSON.stringify(updated));
+      return updated;
+    });
+  };
+
+  const markAllAdvisoriesAsRead = () => {
+    const activeConsumerAdvisories = advisories.filter(
+      (ad) => !ad.targetRole || ad.targetRole === "broadcast" || ad.targetRole === "consumers"
+    );
+    const allIds = activeConsumerAdvisories.map((ad) => ad.id);
+    setViewedAdvisoryIds((prev) => {
+      const updated = Array.from(new Set([...prev, ...allIds]));
+      localStorage.setItem("viewed-advisories", JSON.stringify(updated));
+      return updated;
+    });
+  };
+
+  // Profile Dropdown and Account Details Modal States
+  const [isProfileOpen, setIsProfileOpen] = useState(false);
+  const [isAccountDetailsOpen, setIsAccountDetailsOpen] = useState(false);
+  const [accountModalTab, setAccountModalTab] = useState<"profile" | "security">("profile");
+
+  // Profile Editable states
+  const [profileName, setProfileName] = useState("");
+  const [profileEmail, setProfileEmail] = useState("");
+  const [profilePhone, setProfilePhone] = useState("");
+  const [profileAddress, setProfileAddress] = useState("");
+  const [profileSaving, setProfileSaving] = useState(false);
+  const [profileSuccess, setProfileSuccess] = useState<string | null>(null);
+  const [profileError, setProfileError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (userProfile) {
+      setProfileName(userProfile.name || "");
+      setProfileEmail(userProfile.email || "");
+      setProfilePhone(userProfile.phone || "");
+      setProfileAddress(userProfile.address || "");
+    }
+  }, [userProfile]);
+
+  const handleUpdateProfile = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setProfileSaving(true);
+    setProfileSuccess(null);
+    setProfileError(null);
+    try {
+      const client = getSupabaseClient();
+      
+      // 1. Update Supabase Auth user details
+      const { error: authError } = await client.auth.updateUser({
+        email: profileEmail,
+        data: { full_name: profileName, phone: profilePhone, address: profileAddress }
+      });
+
+      if (authError) {
+        setProfileError(authError.message);
+        setProfileSaving(false);
+        return;
+      }
+
+      // 2. Sync to PostgreSQL User database table
+      await fetch("/api/auth/register", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          id: userProfile?.id,
+          email: profileEmail,
+          fullName: profileName,
+          phone: profilePhone,
+          address: profileAddress
+        }),
+      });
+
+      // Update the local state Profile so the header updates instantly
+      setUserProfile((prev) => 
+        prev ? { ...prev, name: profileName, email: profileEmail, phone: profilePhone, address: profileAddress } : null
+      );
+      setProfileSuccess("Profile details updated successfully!");
+    } catch (err: any) {
+      setProfileError(err.message || "Failed to update profile details.");
+    } finally {
+      setProfileSaving(false);
+    }
+  };
+
+  const formatCategory = (cat: string) => {
+    if (!cat) return "Unclassified";
+    return cat
+      .replace(/_/g, " ")
+      .toLowerCase()
+      .split(" ")
+      .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+      .join(" ");
+  };
+
+  // Security Update states
+  const [newPassword, setNewPassword] = useState("");
+  const [confirmNewPassword, setConfirmNewPassword] = useState("");
+  const [securityError, setSecurityError] = useState<string | null>(null);
+  const [securitySuccess, setSecuritySuccess] = useState<string | null>(null);
+  const [updatingPassword, setUpdatingPassword] = useState(false);
+  const [isDeleteConfirmOpen, setIsDeleteConfirmOpen] = useState(false);
+
+  const handleUpdatePassword = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setSecurityError(null);
+    setSecuritySuccess(null);
+
+    if (newPassword !== confirmNewPassword) {
+      setSecurityError("New passwords do not match.");
+      return;
+    }
+    if (newPassword.length < 8) {
+      setSecurityError("Password must be at least 8 characters.");
+      return;
+    }
+
+    setUpdatingPassword(true);
+    try {
+      const client = getSupabaseClient();
+      const { error } = await client.auth.updateUser({ password: newPassword });
+      if (error) {
+        setSecurityError(error.message);
+      } else {
+        setSecuritySuccess("Password updated successfully!");
+        setNewPassword("");
+        setConfirmNewPassword("");
+      }
+    } catch (err: any) {
+      setSecurityError(err.message || "Failed to update password.");
+    } finally {
+      setUpdatingPassword(false);
+    }
+  };
+
+  const handleDeleteAccount = async () => {
+    try {
+      // Simulate profile deletion / disable profile and sign out
+      const client = getSupabaseClient();
+      await client.auth.signOut();
+      localStorage.clear();
+      window.location.href = "/register?deleted=true";
+    } catch (err) {
+      console.error(err);
+    }
+  };
 
   useEffect(() => {
     const initialDark = document.documentElement.classList.contains("dark") || localStorage.getItem("theme") === "dark";
@@ -86,8 +255,8 @@ export default function DashboardClient({
   const [detectedBarangay, setDetectedBarangay] = useState<string | null>(null);
   const [detectedDistanceM, setDetectedDistanceM] = useState<number | null>(null);
   const [barangayLoading, setBarangayLoading] = useState(false);
-  const [customLat, setCustomLat] = useState("15.0285");
-  const [customLng, setCustomLng] = useState("120.6942");
+  const [customLat, setCustomLat] = useState("15.0278");
+  const [customLng, setCustomLng] = useState("120.6936");
   const [complaintImageUrl, setComplaintImageUrl] = useState("");
   const [addressSearchQuery, setAddressSearchQuery] = useState("");
   const [mapError, setMapError] = useState(false);
@@ -97,6 +266,7 @@ export default function DashboardClient({
   const clientMapRef = useRef<mapboxgl.Map | null>(null);
   const clientMarkerRef = useRef<mapboxgl.Marker | null>(null);
   const userHasManuallyPinnedRef = useRef(false);
+  const isInitialMapCenterRef = useRef(true);
   const [submitSuccess, setSubmitSuccess] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
@@ -126,6 +296,48 @@ export default function DashboardClient({
     if (file) await uploadFile(file);
   };
 
+  const reverseGeocodeGPSAddress = async (latVal: number, lngVal: number) => {
+    // Avoid re-fetching if profile address is already populated to reduce API queries
+    if (userProfile?.address?.trim()) return;
+
+    try {
+      console.log("No address registered. Auto reverse-geocoding GPS coordinates:", latVal, lngVal);
+      const reverseGeocodeUrl = `https://api.mapbox.com/geocoding/v5/mapbox.places/${lngVal},${latVal}.json?access_token=${mapboxgl.accessToken || process.env.NEXT_PUBLIC_MAPBOX_TOKEN || ""}&limit=1`;
+      const res = await fetch(reverseGeocodeUrl);
+      if (res.ok) {
+        const data = await res.json();
+        if (data.features && data.features.length > 0) {
+          const detectedAddr = data.features[0].place_name;
+          console.log("Auto-detected address from GPS:", detectedAddr);
+
+          // 1. Set the Address Search input field
+          setAddressSearchQuery(detectedAddr);
+
+          // 2. Save it to Postgres
+          await fetch("/api/auth/register", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              id: userProfile?.id,
+              email: userProfile?.email || "",
+              fullName: userProfile?.name || "",
+              phone: userProfile?.phone || "",
+              address: detectedAddr
+            }),
+          });
+
+          // 3. Update the local state so it appears under Welcome Back instantly
+          setUserProfile((prev) =>
+            prev ? { ...prev, address: detectedAddr } : null
+          );
+          setProfileAddress(detectedAddr);
+        }
+      }
+    } catch (err) {
+      console.error("Auto reverse-geocoding failed:", err);
+    }
+  };
+
   // Request user's exact geolocation GPS coordinates on mount and watch for improvements
   useEffect(() => {
     let watchId: number | null = null;
@@ -140,6 +352,8 @@ export default function DashboardClient({
           setCustomLng(lng);
           setGpsAccuracy(position.coords.accuracy);
           setGpsPinpointActive(true);
+
+          reverseGeocodeGPSAddress(position.coords.latitude, position.coords.longitude);
         },
         (error) => {
           console.warn("Initial GPS lookup failed, seeking watch updates:", error);
@@ -157,6 +371,8 @@ export default function DashboardClient({
           setCustomLng(lng);
           setGpsAccuracy(position.coords.accuracy);
           setGpsPinpointActive(true);
+
+          reverseGeocodeGPSAddress(position.coords.latitude, position.coords.longitude);
         },
         (error) => {
           console.warn("GPS tracking refinement failed:", error);
@@ -192,8 +408,8 @@ export default function DashboardClient({
     if (clientMapRef.current) return;
 
     // Utilize refs or current component state values for map instantiation bounds
-    const lat = parseFloat(customLat) || 15.0285;
-    const lng = parseFloat(customLng) || 120.6942;
+    const lat = parseFloat(customLat) || 15.0278;
+    const lng = parseFloat(customLng) || 120.6936;
     setMapError(false);
 
     const map = new mapboxgl.Map({
@@ -252,7 +468,12 @@ export default function DashboardClient({
     clientMarkerRef.current = marker;
 
     if (gpsPinpointActive) {
-      map.easeTo({ center: [lng, lat], zoom: 17 });
+      if (isInitialMapCenterRef.current) {
+        map.jumpTo({ center: [lng, lat], zoom: 17 });
+        isInitialMapCenterRef.current = false;
+      } else {
+        map.easeTo({ center: [lng, lat], zoom: 17 });
+      }
     }
 
     marker.on("dragend", () => {
@@ -284,7 +505,12 @@ export default function DashboardClient({
         const diffLng = Math.abs(currentLngLat.lng - lng);
         if (diffLat > 0.0001 || diffLng > 0.0001) {
           marker.setLngLat([lng, lat]);
-          map.easeTo({ center: [lng, lat], zoom: 17 });
+          if (isInitialMapCenterRef.current) {
+            map.jumpTo({ center: [lng, lat], zoom: 17 });
+            isInitialMapCenterRef.current = false;
+          } else {
+            map.easeTo({ center: [lng, lat], zoom: 17 });
+          }
         }
       }
     }
@@ -343,6 +569,7 @@ export default function DashboardClient({
         const res = await fetch("/api/auth/profile", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
+          cache: "no-store",
           body: JSON.stringify({ userId: currentSession.user.id }),
         });
         const profile = await res.json();
@@ -358,8 +585,11 @@ export default function DashboardClient({
         setUserProfile({
           id: currentSession.user.id,
           name: profile?.name || "Resident",
-          email: currentSession.user.email || "",
+          email: currentSession.user.email || profile?.email || currentSession.user.email || "",
           role: profile?.role || "CONSUMER_RESIDENT",
+          phone: profile?.phone || currentSession.user.user_metadata?.phone || "",
+          address: profile?.address || currentSession.user.user_metadata?.address || "",
+          serviceAccountNo: profile?.serviceAccountNo || "",
         });
 
         // Load complaints and advisories databases
@@ -456,14 +686,6 @@ export default function DashboardClient({
 
   const handleRequestLocation = () => {
     if (typeof window !== "undefined" && navigator.geolocation) {
-      const consent = window.confirm(
-        "AquaTrack Privacy Policy:\n\n" +
-        "AquaTrack uses your location only to identify where the reported water issue occurred. " +
-        "Your location will be attached to this complaint and shared only with authorized personnel.\n\n" +
-        "Do you want to proceed and allow location access?"
-      );
-      if (!consent) return;
-
       userHasManuallyPinnedRef.current = false;
       setBarangayLoading(true);
 
@@ -477,6 +699,7 @@ export default function DashboardClient({
             setGpsAccuracy(position.coords.accuracy);
             setGpsPinpointActive(true);
             setBarangayLoading(false);
+            reverseGeocodeGPSAddress(position.coords.latitude, position.coords.longitude);
           },
           (lowError) => {
             console.error("Low-accuracy GPS fallback also failed:", lowError);
@@ -484,7 +707,7 @@ export default function DashboardClient({
             setGpsPinpointActive(false);
             setBarangayLoading(false);
           },
-          { enableHighAccuracy: false, timeout: 10000, maximumAge: 0 }
+          { enableHighAccuracy: false, timeout: 5000, maximumAge: 60000 }
         );
       };
 
@@ -497,6 +720,7 @@ export default function DashboardClient({
           setGpsAccuracy(position.coords.accuracy);
           setGpsPinpointActive(true);
           setBarangayLoading(false);
+          reverseGeocodeGPSAddress(position.coords.latitude, position.coords.longitude);
         },
         (error) => {
           console.warn("High-accuracy GPS request failed, retrying with low-accuracy fallback:", error);
@@ -508,7 +732,7 @@ export default function DashboardClient({
             getLowAccuracyPosition();
           }
         },
-        { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
+        { enableHighAccuracy: true, timeout: 4000, maximumAge: 60000 }
       );
     } else {
       alert("Geolocation is not supported by your browser.");
@@ -598,8 +822,9 @@ export default function DashboardClient({
 
       let lat = parseFloat(customLat);
       let lng = parseFloat(customLng);
+      let geoSuccess = gpsPinpointActive;
 
-      if (!gpsPinpointActive && typeof window !== "undefined" && navigator.geolocation) {
+      if (!geoSuccess && typeof window !== "undefined" && navigator.geolocation) {
         try {
           const position = await new Promise<GeolocationPosition>((resolve, reject) => {
             navigator.geolocation.getCurrentPosition(resolve, reject, {
@@ -610,8 +835,72 @@ export default function DashboardClient({
           });
           lat = position.coords.latitude;
           lng = position.coords.longitude;
+          geoSuccess = true;
         } catch (geoError) {
           console.warn("Fallback geolocation lookup timed out:", geoError);
+        }
+      }
+
+      // Failover to user's registered address coordinates if pinning/GPS failed:
+      if (!geoSuccess && userProfile?.address?.trim()) {
+        try {
+          console.log("Filing complaint location pinning failed. Using address failover:", userProfile.address);
+          const geocodeUrl = `https://api.mapbox.com/geocoding/v5/mapbox.places/${encodeURIComponent(userProfile.address)}.json?access_token=${mapboxgl.accessToken || process.env.NEXT_PUBLIC_MAPBOX_TOKEN || ""}&limit=1`;
+          const geoRes = await fetch(geocodeUrl);
+          if (geoRes.ok) {
+            const geoData = await geoRes.json();
+            if (geoData.features && geoData.features.length > 0) {
+              const [failoverLng, failoverLat] = geoData.features[0].center;
+              lat = failoverLat;
+              lng = failoverLng;
+              geoSuccess = true;
+              console.log("Geocoded failover address successfully:", lat, lng);
+              // Pin it automatically on the map:
+              setCustomLat(lat.toFixed(6));
+              setCustomLng(lng.toFixed(6));
+              setGpsPinpointActive(true);
+            }
+          }
+        } catch (geocodeErr) {
+          console.error("Geocoding failover address failed:", geocodeErr);
+        }
+      }
+
+      // Reverse geocode GPS coordinates if user has no address:
+      let finalUserAddress = userProfile?.address || "";
+      if (!finalUserAddress.trim() && lat && lng && !isNaN(lat) && !isNaN(lng)) {
+        try {
+          console.log("User address is empty. Reverse geocoding GPS coordinates:", lat, lng);
+          const reverseGeocodeUrl = `https://api.mapbox.com/geocoding/v5/mapbox.places/${lng},${lat}.json?access_token=${mapboxgl.accessToken || process.env.NEXT_PUBLIC_MAPBOX_TOKEN || ""}&limit=1`;
+          const revRes = await fetch(reverseGeocodeUrl);
+          if (revRes.ok) {
+            const revData = await revRes.json();
+            if (revData.features && revData.features.length > 0) {
+              const detectedAddr = revData.features[0].place_name;
+              console.log("Reverse geocoded GPS address successfully:", detectedAddr);
+              
+              // Save to Postgres
+              await fetch("/api/auth/register", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                  id: userProfile?.id,
+                  email: userProfile?.email || "",
+                  fullName: userProfile?.name || "",
+                  phone: userProfile?.phone || "",
+                  address: detectedAddr
+                }),
+              });
+              
+              // Update local state profile so the UI instantly updates too
+              setUserProfile((prev) =>
+                prev ? { ...prev, address: detectedAddr } : null
+              );
+              setProfileAddress(detectedAddr);
+            }
+          }
+        } catch (revErr) {
+          console.error("Reverse geocoding GPS failed:", revErr);
         }
       }
 
@@ -699,6 +988,7 @@ export default function DashboardClient({
   const filteredAdvisories = advisories.filter(
     (ad) => !ad.targetRole || ad.targetRole === "broadcast" || ad.targetRole === "consumers"
   );
+  const unreadCount = filteredAdvisories.filter((ad) => !viewedAdvisoryIds.includes(ad.id)).length;
   const ADVISORIES_PER_PAGE = 5;
   const totalAdvisoryPages = Math.ceil(filteredAdvisories.length / ADVISORIES_PER_PAGE);
   const currentPage = Math.min(advisoryPage, Math.max(totalAdvisoryPages, 1));
@@ -718,61 +1008,147 @@ export default function DashboardClient({
 
       {/* ── Header ── */}
       <header className="h-20 shrink-0 bg-white border-b border-slate-100 sticky top-0 z-50 flex items-center justify-between px-6">
-        {/* Left Section */}
-        <div className="flex items-center space-x-3">
-          <button
-            onClick={() => setIsMobileSidebarOpen(true)}
-            className="lg:hidden p-1.5 text-slate-500 hover:text-[#001e66] hover:bg-slate-50 rounded-xl transition-all focus:outline-none cursor-pointer"
-            aria-label="Open sidebar navigation"
-          >
-            <svg xmlns="http://www.w3.org/2000/svg" className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M4 6h16M4 12h16M4 18h16" />
-            </svg>
-          </button>
-          
-          <img
-            src="/LOGO2.png"
-            alt="AquaTrack Logo"
-            className="h-25 w-auto translate-y-1 hover:opacity-90 transition-opacity shrink-0"
-          />
-        </div>
+        {/* Left Section (Logo + Nav tabs side-by-side) */}
+        <div className="flex items-center space-x-6">
+          <div className="flex items-center space-x-3">
+            <button
+              onClick={() => setIsMobileSidebarOpen(true)}
+              className="lg:hidden p-1.5 text-slate-500 hover:text-[#001e66] hover:bg-slate-50 rounded-xl transition-all focus:outline-none cursor-pointer"
+              aria-label="Open sidebar navigation"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M4 6h16M4 12h16M4 18h16" />
+              </svg>
+            </button>
+            
+            <img
+              src="/LOGO2.png"
+              alt="AquaTrack Logo"
+              className="h-25 w-auto translate-y-1 hover:opacity-90 transition-opacity shrink-0"
+            />
+          </div>
 
-        {/* Center: Navigation Tabs Navbar (Desktop Only) */}
-        <nav className="hidden lg:flex items-center gap-1 bg-slate-50 dark:bg-slate-900/60 p-1 rounded-xl border border-slate-200/50 dark:border-slate-800">
-          {[
-            { key: "home",               label: "Dashboard" },
-            { key: "file-complaint",     label: "File a Complaint" },
-            { key: "track-complaint",    label: "Track Complaints" },
-            { key: "view-announcements", label: "Advisories" },
-          ].map((item) => {
-            const isActive = activeTab === item.key;
-            return (
-              <button
-                key={item.key}
-                onClick={() => setActiveTab(item.key as any)}
-                className={`px-4 py-2 rounded-lg text-xs font-bold transition-all cursor-pointer select-none ${
-                  isActive
-                    ? "bg-white dark:bg-slate-800 text-[#001e66] dark:text-slate-100 shadow-sm border border-slate-200/40 dark:border-slate-700/40"
-                    : "text-slate-500 hover:text-[#001e66] dark:hover:text-slate-350"
-                }`}
-              >
-                {item.label}
-              </button>
-            );
-          })}
-        </nav>
+          {/* Navigation Tabs Navbar (Desktop Only) next to Logo */}
+          <nav className="hidden lg:flex items-center space-x-1 rounded-full border border-slate-200/80 bg-slate-50/80 p-1 shadow-inner">
+            {[
+              { key: "home",               label: "Dashboard" },
+              { key: "file-complaint",     label: "File a Complaint" },
+              { key: "track-complaint",    label: "Track Complaints" },
+              { key: "view-announcements", label: "Advisories" },
+            ].map((item) => {
+              const isActive = activeTab === item.key;
+              return (
+                <button
+                  key={item.key}
+                  onClick={() => setActiveTab(item.key as any)}
+                  className={`rounded-full px-4 py-2 text-[10px] font-black uppercase tracking-widest transition-all duration-200 cursor-pointer select-none ${
+                    isActive
+                      ? "bg-[#001e66] text-white shadow-sm"
+                      : "text-slate-600 hover:text-[#001e66] hover:bg-slate-100/60"
+                  }`}
+                >
+                  {item.label}
+                </button>
+              );
+            })}
+          </nav>
+        </div>
 
         {/* Right Section */}
         <div className="flex items-center gap-3">
-          {/* Notification bell icon with red circle badge indicating "2" notifications */}
-          <button className="relative w-9 h-9 rounded-xl border border-slate-100 bg-slate-50 hover:bg-slate-100 flex items-center justify-center text-slate-500 hover:text-[#001e66] transition-all">
-            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="2" stroke="currentColor" className="w-4 h-4">
-              <path strokeLinecap="round" strokeLinejoin="round" d="M14.857 17.082a9.04 9.04 0 01-2.037.225 9.04 9.04 0 01-2.037-.225m5.074-1.086c.83 0 1.5.678 1.5 1.5c0 .241-.057.472-.159.678m-.159-.678A9.04 9.04 0 0018 9V6a6 6 0 10-12 0v3a9.04 9.04 0 001.074 4.996m5.074-1.086c-.83 0-1.5.678-1.5 1.5c0 .241.057.472.159.678" />
-            </svg>
-            <span className="absolute -top-1 -right-1 bg-red-600 text-white font-black text-[9px] w-4.5 h-4.5 rounded-full flex items-center justify-center border-2 border-white shadow-sm">
-              2
-            </span>
-          </button>
+          {/* Notification dropdown wrapper */}
+          <div className="relative">
+            <button 
+              onClick={() => setIsNotificationOpen(!isNotificationOpen)}
+              className="relative w-9 h-9 rounded-full border border-slate-200/80 bg-slate-50/80 hover:bg-slate-100 flex items-center justify-center text-slate-500 hover:text-[#001e66] transition-all hover:scale-105 active:scale-95 shadow-sm cursor-pointer"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" className="w-4.5 h-4.5">
+                <path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9" />
+                <path d="M10.3 21a1.94 1.94 0 0 0 3.4 0" />
+              </svg>
+              {unreadCount > 0 && (
+                <span className="absolute -top-0.5 -right-0.5 flex h-4 w-4">
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
+                  <span className="relative inline-flex rounded-full h-4 w-4 bg-red-500 text-white font-black text-[8px] items-center justify-center border-2 border-white shadow-sm">
+                    {unreadCount}
+                  </span>
+                </span>
+              )}
+            </button>
+
+            {/* Notification Popover Dropdown */}
+            <AnimatePresence>
+              {isNotificationOpen && (
+                <>
+                  {/* Invisible Backdrop to close */}
+                  <div className="fixed inset-0 z-40" onClick={() => setIsNotificationOpen(false)} />
+                  
+                  {/* Dropdown Card */}
+                  <motion.div
+                    initial={{ opacity: 0, y: 10, scale: 0.95 }}
+                    animate={{ opacity: 1, y: 0, scale: 1 }}
+                    exit={{ opacity: 0, y: 10, scale: 0.95 }}
+                    transition={{ duration: 0.15 }}
+                    className="absolute right-0 mt-2 w-80 bg-white dark:bg-slate-900 rounded-2xl border border-slate-150 dark:border-slate-800 shadow-[0_10px_35px_rgba(0,30,102,0.12)] z-50 overflow-hidden text-left"
+                  >
+                    <div className="p-4 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between bg-slate-50/50 dark:bg-slate-900/50">
+                      <span className="text-xs font-black text-[#001e66] dark:text-slate-200 uppercase tracking-wider">Advisories & Alerts</span>
+                      {unreadCount > 0 && (
+                        <button
+                          onClick={markAllAdvisoriesAsRead}
+                          className="text-[10px] font-black text-[#00aeef] hover:text-[#0090c8] uppercase tracking-wider transition-colors cursor-pointer"
+                        >
+                          Mark all as read
+                        </button>
+                      )}
+                    </div>
+                    
+                    <div className="max-h-72 overflow-y-auto divide-y divide-slate-50 dark:divide-slate-800/40">
+                      {filteredAdvisories.map((ad) => {
+                        const isUnread = !viewedAdvisoryIds.includes(ad.id);
+                        return (
+                          <div
+                            key={ad.id}
+                            onClick={() => {
+                              markAdvisoryAsRead(ad.id);
+                              setActiveTab("view-announcements");
+                              setIsNotificationOpen(false);
+                            }}
+                            className={`p-3.5 hover:bg-slate-50 dark:hover:bg-slate-800/40 transition-colors cursor-pointer flex gap-3 items-start relative ${
+                              isUnread ? "bg-[#189BFF]/3 dark:bg-[#189BFF]/3" : ""
+                            }`}
+                          >
+                            {/* Alert status indicator */}
+                            <span className={`w-1.5 h-1.5 rounded-full mt-1.5 shrink-0 ${
+                              ad.type === "warning" ? "bg-red-500" : "bg-blue-500"
+                            }`} />
+                            
+                            <div className="flex-1 min-w-0">
+                              <div className="flex justify-between items-start gap-1">
+                                <p className={`text-xs truncate text-[#001e66] dark:text-slate-200 ${isUnread ? "font-black" : "font-semibold"}`}>
+                                  {ad.title}
+                                </p>
+                                {isUnread && (
+                                  <span className="w-2 h-2 rounded-full bg-[#00aeef] shrink-0 mt-1 shadow-sm shadow-[#00aeef]/45" />
+                                )}
+                              </div>
+                              <p className="text-[10px] text-slate-400 dark:text-slate-450 truncate mt-0.5">{ad.text}</p>
+                              <p className="text-[9px] text-slate-400 dark:text-slate-500 font-mono mt-1">{ad.date}</p>
+                            </div>
+                          </div>
+                        );
+                      })}
+                      {filteredAdvisories.length === 0 && (
+                        <div className="p-6 text-center text-slate-400 dark:text-slate-500 italic text-xs">
+                          No announcements broadcasted.
+                        </div>
+                      )}
+                    </div>
+                  </motion.div>
+                </>
+              )}
+            </AnimatePresence>
+          </div>
 
           {/* Optional theme toggle */}
           <button
@@ -791,30 +1167,69 @@ export default function DashboardClient({
             )}
           </button>
 
-          {/* User Profile Selector */}
-          <div className="flex items-center gap-2 px-2.5 py-1.5 rounded-xl border border-slate-100 bg-slate-50 hover:bg-slate-100 cursor-pointer transition-all">
-            <div className="w-7 h-7 rounded-full bg-[#00aeef] text-white flex items-center justify-center text-xs font-black uppercase shadow-sm">
-              c
+          {/* User Profile Selector & Dropdown */}
+          <div className="relative">
+            <div 
+              onClick={() => setIsProfileOpen(!isProfileOpen)}
+              className="flex items-center gap-2 px-2.5 py-1.5 rounded-xl border border-slate-100 dark:border-slate-800 bg-slate-50 dark:bg-slate-900 hover:bg-slate-100 dark:hover:bg-slate-800/60 cursor-pointer transition-all select-none"
+            >
+              <div className="w-7 h-7 rounded-full bg-[#00aeef] text-white flex items-center justify-center text-xs font-black uppercase shadow-sm">
+                {userProfile?.name?.slice(0, 1).toLowerCase() || "c"}
+              </div>
+              <div className="flex flex-col text-left leading-none">
+                <span className="text-[11px] font-bold text-[#001e66] dark:text-slate-200">
+                  {userProfile?.name || "consumer"}
+                </span>
+                <span className="text-[9px] text-slate-400 font-medium mt-0.5">
+                  {userProfile?.email || "consumer@gmail.com"}
+                </span>
+              </div>
+              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="2.5" stroke="currentColor" className="w-3.5 h-3.5 text-slate-400 ml-1">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 8.25l-7.5 7.5-7.5-7.5" />
+              </svg>
             </div>
-            <div className="flex flex-col text-left leading-none">
-              <span className="text-[11px] font-bold text-[#001e66]">consumer</span>
-              <span className="text-[9px] text-slate-400 font-medium mt-0.5">consumer@gmail.com</span>
-            </div>
-            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="2.5" stroke="currentColor" className="w-3 h-3 text-slate-400 ml-1">
-              <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 8.25l-7.5 7.5-7.5-7.5" />
-            </svg>
-          </div>
 
-          {/* Logout Button */}
-          <button
-            onClick={handleLogout}
-            className="h-9 px-4 bg-[#001e66] hover:bg-[#00aeef] text-white rounded-xl text-xs font-bold transition-all shadow-sm flex items-center gap-1.5 active:scale-[0.98]"
-          >
-            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="2" stroke="currentColor" className="w-3.5 h-3.5">
-              <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 9V5.25A2.25 2.25 0 0013.5 3h-6a2.25 2.25 0 00-2.25 2.25v13.5A2.25 2.25 0 007.5 21h6a2.25 2.25 0 002.25-2.25V15M12 9l-3 3m0 0l3 3m-3-3h12.75" />
-            </svg>
-            Logout
-          </button>
+            {/* Profile Dropdown Popover */}
+            <AnimatePresence>
+              {isProfileOpen && (
+                <>
+                  <div className="fixed inset-0 z-40" onClick={() => setIsProfileOpen(false)} />
+                  <motion.div
+                    initial={{ opacity: 0, y: 8, scale: 0.95 }}
+                    animate={{ opacity: 1, y: 0, scale: 1 }}
+                    exit={{ opacity: 0, y: 8, scale: 0.95 }}
+                    transition={{ duration: 0.12 }}
+                    className="absolute right-0 mt-2 w-48 bg-white dark:bg-slate-900 rounded-2xl border border-slate-150 dark:border-slate-800 shadow-[0_10px_35px_rgba(0,30,102,0.12)] z-50 overflow-hidden text-left py-1"
+                  >
+                    <button
+                      onClick={() => {
+                        setIsAccountDetailsOpen(true);
+                        setIsProfileOpen(false);
+                      }}
+                      className="w-full text-left px-4 py-2.5 text-xs font-bold text-[#001e66] dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800/40 transition-colors flex items-center gap-2 cursor-pointer"
+                    >
+                      <svg className="w-4 h-4 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                      </svg>
+                      Manage Account
+                    </button>
+                    <button
+                      onClick={() => {
+                        setIsProfileOpen(false);
+                        handleLogout();
+                      }}
+                      className="w-full text-left px-4 py-2.5 text-xs font-bold text-red-600 dark:text-red-400 hover:bg-red-50/50 dark:hover:bg-red-950/20 transition-colors flex items-center gap-2 cursor-pointer border-t border-slate-50 dark:border-slate-800/50"
+                    >
+                      <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+                      </svg>
+                      Logout
+                    </button>
+                  </motion.div>
+                </>
+              )}
+            </AnimatePresence>
+          </div>
         </div>
       </header>
 
@@ -1009,7 +1424,7 @@ export default function DashboardClient({
                           Welcome Back, {userProfile?.name || "Valued Consumer"}!
                         </h2>
                         <p className="text-[11px] text-blue-100 font-bold tracking-wide mt-1.5 opacity-90">
-                          Account Hub: Del Pilar District • Consumer ID: #{userProfile?.id?.slice(0, 8).toUpperCase() || "CSF-2026"} • Role: Resident
+                          {userProfile?.address || "No address registered yet"}
                         </p>
                       </div>
                       <div className="flex pt-1">
@@ -1033,10 +1448,12 @@ export default function DashboardClient({
                             {myComplaints.filter(c => c.status !== "RESOLVED").length}
                           </h3>
                         </div>
-                        <div className="w-12 h-12 rounded-xl bg-blue-50/80 flex items-center justify-center text-[#189BFF] border border-blue-100/40 shrink-0 group-hover:scale-110 transition-transform duration-300">
-                          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="2.5" stroke="currentColor" className="w-5 h-5">
-                            <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m0 12.75h7.5m-7.5 3H12M10.5 2.25H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z" />
-                          </svg>
+                        <div className="w-12 h-12 rounded-xl bg-blue-50/80 flex items-center justify-center border border-blue-100 shrink-0 group-hover:scale-110 transition-transform duration-300 shadow-sm">
+                          <div className="w-5 h-6 rounded border-2 border-blue-500 bg-blue-50/80 flex flex-col justify-between p-1 shrink-0">
+                            <div className="w-full h-0.5 bg-blue-500 rounded" />
+                            <div className="w-full h-0.5 bg-blue-500 rounded" />
+                            <div className="w-2/3 h-0.5 bg-blue-500 rounded" />
+                          </div>
                         </div>
                       </div>
                       <p className="text-[10px] text-slate-500 font-bold mt-4 relative z-10">Tickets in triage or active dispatch</p>
@@ -1056,10 +1473,10 @@ export default function DashboardClient({
                             {myComplaints.filter(c => c.status === "ASSIGNED" || c.status === "INVESTIGATING").length}
                           </h3>
                         </div>
-                        <div className="w-12 h-12 rounded-xl bg-amber-50/80 flex items-center justify-center text-amber-600 border border-amber-100/40 shrink-0 group-hover:scale-110 transition-transform duration-300">
-                          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="2.5" stroke="currentColor" className="w-5 h-5">
-                            <path strokeLinecap="round" strokeLinejoin="round" d="M11.42 15.17L17.25 21A2.67 2.67 0 0021 17.25l-5.83-5.83m-3.75 3.75a2.67 2.67 0 01-3.75-3.75M11.42 15.17l-3.75-3.75M11.42 15.17L9 21H3v-6l5.83-5.83m0 0a2.67 2.67 0 013.75 3.75M11.42 15.17l3.75-3.75M21 3L3 21" />
-                          </svg>
+                        <div className="w-12 h-12 rounded-xl bg-amber-50/80 flex items-center justify-center border border-amber-100 shrink-0 group-hover:scale-110 transition-transform duration-300 shadow-sm">
+                          <div className="w-6 h-2 bg-slate-100 rounded-full overflow-hidden border border-amber-300/80 flex shrink-0 p-0">
+                            <div className="w-1/2 h-full bg-amber-500 rounded-full" />
+                          </div>
                         </div>
                       </div>
                       <p className="text-[10px] text-slate-500 font-bold mt-4 relative z-10">Crew currently dispatched to site</p>
@@ -1078,10 +1495,8 @@ export default function DashboardClient({
                             {myComplaints.filter(c => c.status === "RESOLVED").length}
                           </h3>
                         </div>
-                        <div className="w-12 h-12 rounded-xl bg-emerald-50/80 flex items-center justify-center text-emerald-600 border border-emerald-100/40 shrink-0 group-hover:scale-110 transition-transform duration-300">
-                          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="3" stroke="currentColor" className="w-5 h-5">
-                            <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12.75l6 6 9-13.5" />
-                          </svg>
+                        <div className="w-12 h-12 rounded-xl bg-emerald-50/80 flex items-center justify-center border border-emerald-100 shrink-0 group-hover:scale-110 transition-transform duration-300 shadow-sm">
+                          <div className="w-2 h-3.5 border-r-[2.5px] border-b-[2.5px] border-emerald-600 transform rotate-45 -translate-y-0.5 shrink-0" />
                         </div>
                       </div>
                       <p className="text-[10px] text-slate-500 font-bold mt-4 relative z-10">Incidents fully resolved & closed</p>
@@ -1609,10 +2024,10 @@ export default function DashboardClient({
                             <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-blue-400 opacity-75"></span>
                             <span className="relative inline-flex rounded-full h-2 w-2 bg-blue-500"></span>
                           </span>
-                          <div className="flex flex-col leading-none">
+                          <div className="flex flex-col leading-none max-w-[140px]">
                             <span className="text-[9px] font-black text-[#001e66] uppercase">Automated GPS Location Pinpoint</span>
-                            <span className="text-[7px] text-slate-400 font-bold mt-0.5">
-                              Requesting device GPS coordinates...
+                            <span className="text-[7px] text-slate-500 font-bold mt-0.5 truncate block" title={addressSearchQuery || "Awaiting GPS pinpoint..."}>
+                              {addressSearchQuery || "Awaiting GPS pinpoint..."}
                             </span>
                           </div>
                         </div>
@@ -1827,15 +2242,16 @@ export default function DashboardClient({
                   <p className="text-xs text-slate-500 font-bold">Monitor your active tickets and dispatch assignments</p>
                 </div>
 
-                <div className="overflow-x-auto border border-slate-100 rounded-xl">
+                <div className="overflow-x-auto border border-slate-100 rounded-xl bg-white shadow-sm">
                   <table className="w-full text-left border-collapse text-xs">
                     <thead>
                       <tr className="bg-slate-50 border-b border-slate-200 text-slate-500 font-bold uppercase tracking-wider">
+                        <th className="py-3 px-4">ID</th>
                         <th className="py-3 px-4">Summary</th>
                         <th className="py-3 px-4">Urgency</th>
                         <th className="py-3 px-4">Category</th>
-                        <th className="py-3 px-4">Coordinates</th>
                         <th className="py-3 px-4">Status</th>
+                        <th className="py-3 px-4">Dispatch Notes</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-100">
@@ -1843,11 +2259,16 @@ export default function DashboardClient({
                         .filter((c) => c.status !== "RESOLVED")
                         .map((c) => (
                           <tr key={c.id} className="hover:bg-slate-50/50 transition-colors">
-                            <td className="py-4 px-4 font-bold text-[#001e66]">
-                              <div>{c.summary}</div>
-                              <div className="text-slate-500 font-medium italic mt-0.5">"{c.rawText}"</div>
+                            <td className="py-4 px-4 font-mono text-[10px] font-bold text-slate-400">
+                              AQ-{c.id.slice(0, 8).toUpperCase()}
                             </td>
-                            <td className="py-4 px-4 font-black">
+                            <td className="py-4 px-4 font-bold text-[#001e66] max-w-xs">
+                              <div>{c.summary || "Resident reported issue"}</div>
+                              <div className="text-slate-500 font-medium italic mt-0.5 leading-relaxed">
+                                "{c.rawText.length > 75 ? c.rawText.slice(0, 75) + "...." : c.rawText}"
+                              </div>
+                            </td>
+                            <td className="py-4 px-4">
                               <span className={`inline-flex items-center px-2 py-0.5 rounded-[6px] text-[9px] font-black uppercase border ${
                                 c.urgency === "CRITICAL" || c.urgency === "HIGH" || c.urgency === "URGENT"
                                   ? "bg-red-50 text-red-700 border-red-200"
@@ -1858,9 +2279,8 @@ export default function DashboardClient({
                                 {c.urgency}
                               </span>
                             </td>
-                            <td className="py-4 px-4 font-mono text-[10px] text-slate-500">{c.category}</td>
-                            <td className="py-4 px-4 font-mono text-slate-500 font-bold">
-                              {c.latitude.toFixed(4)}, {c.longitude.toFixed(4)}
+                            <td className="py-4 px-4 font-bold text-slate-600">
+                              {formatCategory(c.category)}
                             </td>
                             <td className="py-4 px-4">
                               <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-[9px] font-black uppercase border ${
@@ -1879,11 +2299,20 @@ export default function DashboardClient({
                                 {c.status || "PENDING"}
                               </span>
                             </td>
+                            <td className="py-4 px-4">
+                              {c.assignedToName ? (
+                                <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded bg-blue-50/70 border border-blue-150 text-blue-700 font-bold text-[9px] uppercase tracking-wide">
+                                  🔧 {c.assignedToName}
+                                </span>
+                              ) : (
+                                <span className="text-slate-400 italic font-medium">Awaiting Dispatch</span>
+                              )}
+                            </td>
                           </tr>
                         ))}
                       {myComplaints.filter((c) => c.status !== "RESOLVED").length === 0 && (
                         <tr>
-                          <td colSpan={5} className="py-8 text-center text-slate-500 italic">
+                          <td colSpan={6} className="py-8 text-center text-slate-500 italic">
                             No active tickets recorded.
                           </td>
                         </tr>
@@ -1900,15 +2329,16 @@ export default function DashboardClient({
                   <p className="text-xs text-slate-500 font-bold">Resolved incident logs and completed audit trails</p>
                 </div>
 
-                <div className="overflow-x-auto border border-slate-100 rounded-xl">
+                <div className="overflow-x-auto border border-slate-100 rounded-xl bg-white shadow-sm">
                   <table className="w-full text-left border-collapse text-xs">
                     <thead>
                       <tr className="bg-slate-50 border-b border-slate-200 text-slate-500 font-bold uppercase tracking-wider">
-                        <th className="py-3 px-4">Resolved Ticket</th>
+                        <th className="py-3 px-4">ID</th>
+                        <th className="py-3 px-4">Summary</th>
+                        <th className="py-3 px-4">Urgency</th>
                         <th className="py-3 px-4">Category</th>
-                        <th className="py-3 px-4">Address</th>
-                        <th className="py-3 px-4">Coordinates</th>
                         <th className="py-3 px-4">Status</th>
+                        <th className="py-3 px-4">Dispatch Notes</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-100">
@@ -1916,25 +2346,42 @@ export default function DashboardClient({
                         .filter((c) => c.status === "RESOLVED")
                         .map((c) => (
                           <tr key={c.id} className="hover:bg-slate-50/50 transition-colors">
-                            <td className="py-4 px-4 font-bold text-slate-500">
-                              <div>{c.summary}</div>
-                              <div className="text-slate-400 font-medium italic mt-0.5">"{c.rawText}"</div>
+                            <td className="py-4 px-4 font-mono text-[10px] font-bold text-slate-400">
+                              AQ-{c.id.slice(0, 8).toUpperCase()}
                             </td>
-                            <td className="py-4 px-4 font-mono text-[10px] text-slate-400">{c.category}</td>
-                            <td className="py-4 px-4 font-medium text-slate-500">{c.barangay || "San Fernando"}</td>
-                            <td className="py-4 px-4 font-mono text-slate-400">
-                              {c.latitude.toFixed(4)}, {c.longitude.toFixed(4)}
+                            <td className="py-4 px-4 font-bold text-[#001e66] max-w-xs">
+                              <div>{c.summary || "Resident reported issue"}</div>
+                              <div className="text-slate-500 font-medium italic mt-0.5 leading-relaxed">
+                                "{c.rawText.length > 75 ? c.rawText.slice(0, 75) + "...." : c.rawText}"
+                              </div>
+                            </td>
+                            <td className="py-4 px-4">
+                              <span className="inline-flex items-center px-2 py-0.5 rounded-[6px] text-[9px] font-black uppercase border bg-slate-50 text-slate-700 border-slate-200">
+                                {c.urgency}
+                              </span>
+                            </td>
+                            <td className="py-4 px-4 font-bold text-slate-600">
+                              {formatCategory(c.category)}
                             </td>
                             <td className="py-4 px-4">
                               <span className="px-2.5 py-1 rounded-full text-[9px] font-black uppercase bg-emerald-50 text-emerald-700 border border-emerald-200">
                                 RESOLVED
                               </span>
                             </td>
+                            <td className="py-4 px-4">
+                              {c.assignedToName ? (
+                                <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded bg-blue-50/70 border border-blue-150 text-blue-700 font-bold text-[9px] uppercase tracking-wide">
+                                  🔧 {c.assignedToName}
+                                </span>
+                              ) : (
+                                <span className="text-slate-400 italic font-medium">No assigned technician recorded</span>
+                              )}
+                            </td>
                           </tr>
                         ))}
                       {myComplaints.filter((c) => c.status === "RESOLVED").length === 0 && (
                         <tr>
-                          <td colSpan={5} className="py-8 text-center text-slate-500 italic">
+                          <td colSpan={6} className="py-8 text-center text-slate-500 italic">
                             No resolved complaints recorded.
                           </td>
                         </tr>
@@ -1962,10 +2409,10 @@ export default function DashboardClient({
                     <p className="text-[10px] text-slate-400 font-black uppercase tracking-wider">Total Broadcasts</p>
                     <p className="text-xl font-black text-[#0B2E7A] mt-1">{filteredAdvisories.length}</p>
                   </div>
-                  <div className="w-10 h-10 rounded-xl bg-blue-50 flex items-center justify-center text-[#189BFF] border border-blue-100/40">
-                    <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5">
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M19 20H5a2 2 0 01-2-2V6a2 2 0 012-2h10a2 2 0 012 2v1m2 4a2 2 0 00-2-2m2 2a2 2 0 012 2v8a2 2 0 01-2 2h-3l-1 1-1-1m-5 0h.01" />
-                    </svg>
+                  <div className="w-10 h-10 rounded-xl bg-blue-50/80 flex items-center justify-center border border-blue-100 shrink-0 shadow-sm">
+                    <div className="w-5 h-4 bg-blue-50 border-2 border-blue-500 rounded relative flex items-center justify-center shrink-0">
+                      <div className="absolute -bottom-[3.5px] left-1 w-1.5 h-1.5 bg-blue-50 border-r-2 border-b-2 border-blue-500 transform rotate-45 shrink-0" />
+                    </div>
                   </div>
                 </div>
 
@@ -1976,10 +2423,10 @@ export default function DashboardClient({
                       {filteredAdvisories.filter((ad) => ad.type === "warning").length}
                     </p>
                   </div>
-                  <div className="w-10 h-10 rounded-xl bg-red-50 flex items-center justify-center text-red-600 border border-red-100/40">
-                    <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5">
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-                    </svg>
+                  <div className="w-10 h-10 rounded-xl bg-red-50/80 flex items-center justify-center border border-red-100 shrink-0 shadow-sm">
+                    <div className="w-5 h-5 rounded-full border-2 border-red-500 bg-red-50 flex items-center justify-center font-black text-xs text-red-600 shrink-0 select-none">
+                      !
+                    </div>
                   </div>
                 </div>
 
@@ -1990,10 +2437,10 @@ export default function DashboardClient({
                       {filteredAdvisories.filter((ad) => ad.type !== "warning").length}
                     </p>
                   </div>
-                  <div className="w-10 h-10 rounded-xl bg-emerald-50 flex items-center justify-center text-emerald-600 border border-emerald-100/40">
-                    <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5">
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                    </svg>
+                  <div className="w-10 h-10 rounded-xl bg-emerald-50/80 flex items-center justify-center border border-emerald-100 shrink-0 shadow-sm">
+                    <div className="w-5 h-5 rounded-full border-2 border-emerald-500 bg-emerald-50 flex items-center justify-center font-extrabold text-[10px] text-emerald-600 font-serif italic shrink-0 select-none">
+                      i
+                    </div>
                   </div>
                 </div>
               </div>
@@ -2078,8 +2525,11 @@ export default function DashboardClient({
 
                   {/* Guidelines Card */}
                   <div className="bg-white rounded-2xl border border-slate-100 p-5 shadow-[0_8px_30px_rgb(0,0,0,0.015)] text-left space-y-3">
-                    <h3 className="text-xs font-black text-[#0B2E7A] uppercase tracking-wider">
-                      💡 Advisory Guidelines
+                    <h3 className="text-xs font-black text-[#0B2E7A] uppercase tracking-wider flex items-center gap-2">
+                      <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="2.2" stroke="currentColor" className="w-4 h-4 text-amber-500 shrink-0">
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M12 18a3.75 3.75 0 00.495-7.467 5.99 5.99 0 00-1.925 3.546 5.974 5.974 0 01-2.133-1A3.75 3.75 0 0012 18z" />
+                      </svg>
+                      Advisory Guidelines
                     </h3>
                     <ul className="space-y-2 text-[10px] text-slate-500 font-semibold list-disc list-inside">
                       <li>Report discolored water or supply drops immediately.</li>
@@ -2097,6 +2547,272 @@ export default function DashboardClient({
           </AnimatePresence>
         </main>
       </div>
+
+      {/* Account Details Modal */}
+      <AnimatePresence>
+        {isAccountDetailsOpen && (
+          <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 overflow-y-auto">
+            {/* Backdrop */}
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setIsAccountDetailsOpen(false)}
+              className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm"
+            />
+
+            {/* Modal Box */}
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95, y: 15 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 15 }}
+              transition={{ duration: 0.25, ease: [0.16, 1, 0.3, 1] }}
+              className="relative w-full max-w-4xl bg-white dark:bg-slate-900 rounded-[32px] shadow-[0_25px_60px_rgba(0,30,102,0.18)] overflow-hidden border border-slate-100 dark:border-slate-800 flex flex-col md:flex-row h-[550px] z-10"
+            >
+              {/* Left sidebar inside modal */}
+              <div className="w-full md:w-64 bg-slate-50 dark:bg-slate-900/40 p-6 border-r border-slate-100 dark:border-slate-850 flex flex-col justify-between shrink-0">
+                <div className="space-y-6">
+                  <div>
+                    <h3 className="text-base font-black text-[#001e66] dark:text-slate-200 tracking-tight">Account Details</h3>
+                    <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider mt-1">Manage portal settings</p>
+                  </div>
+                  
+                  <div className="flex flex-col gap-1">
+                    <button
+                      onClick={() => setAccountModalTab("profile")}
+                      className={`flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-bold transition-all text-left cursor-pointer ${
+                        accountModalTab === "profile"
+                          ? "bg-[#001e66] text-white shadow-sm"
+                          : "text-slate-650 hover:bg-slate-100 dark:hover:bg-slate-800/40 dark:text-slate-400"
+                      }`}
+                    >
+                      <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                      </svg>
+                      Profile Information
+                    </button>
+                    <button
+                      onClick={() => setAccountModalTab("security")}
+                      className={`flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-bold transition-all text-left cursor-pointer ${
+                        accountModalTab === "security"
+                          ? "bg-[#001e66] text-white shadow-sm"
+                          : "text-slate-650 hover:bg-slate-100 dark:hover:bg-slate-800/40 dark:text-slate-400"
+                      }`}
+                    >
+                      <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                      </svg>
+                      Security Settings
+                    </button>
+                  </div>
+                </div>
+
+                <button
+                  onClick={() => setIsAccountDetailsOpen(false)}
+                  className="w-full text-center py-2.5 rounded-xl border border-slate-200 dark:border-slate-800 hover:bg-slate-100 dark:hover:bg-slate-800/30 text-xs font-bold text-slate-600 dark:text-slate-400 transition-colors cursor-pointer"
+                >
+                  Close Settings
+                </button>
+              </div>
+
+              {/* Right content box inside modal */}
+              <div className="flex-1 p-8 overflow-y-auto">
+                {accountModalTab === "profile" ? (
+                  <form onSubmit={handleUpdateProfile} className="space-y-6">
+                    <div>
+                      <h4 className="text-sm font-black text-[#001e66] dark:text-slate-200 uppercase tracking-wider">Profile Info</h4>
+                      <p className="text-xs text-slate-400 mt-1 font-semibold">Your basic service account records.</p>
+                    </div>
+
+                    {profileError && (
+                      <div className="p-3.5 bg-red-50 border border-red-200 text-red-700 rounded-xl text-xs font-bold text-left">
+                        {profileError}
+                      </div>
+                    )}
+                    {profileSuccess && (
+                      <div className="p-3.5 bg-emerald-50 border border-emerald-200 text-emerald-700 rounded-xl text-xs font-bold text-left">
+                        {profileSuccess}
+                      </div>
+                    )}
+
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
+                      {/* Name */}
+                      <div className="space-y-1 text-left">
+                        <label className="text-[10px] font-black uppercase text-slate-400 tracking-wider">Full Name</label>
+                        <input
+                          type="text"
+                          required
+                          value={profileName}
+                          onChange={(e) => setProfileName(e.target.value)}
+                          className="w-full px-4 py-3 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-200 text-xs font-bold outline-none focus:ring-2 focus:ring-[#00aeef]/20 focus:border-[#00aeef] transition-all"
+                        />
+                      </div>
+
+                      {/* Email */}
+                      <div className="space-y-1 text-left">
+                        <label className="text-[10px] font-black uppercase text-slate-400 tracking-wider">Email Address</label>
+                        <input
+                          type="email"
+                          required
+                          value={profileEmail}
+                          onChange={(e) => setProfileEmail(e.target.value)}
+                          className="w-full px-4 py-3 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-200 text-xs font-bold outline-none focus:ring-2 focus:ring-[#00aeef]/20 focus:border-[#00aeef] transition-all"
+                        />
+                      </div>
+
+                      {/* Phone */}
+                      <div className="space-y-1 text-left">
+                        <label className="text-[10px] font-black uppercase text-slate-400 tracking-wider">Phone Number</label>
+                        <input
+                          type="text"
+                          required
+                          value={profilePhone}
+                          onChange={(e) => setProfilePhone(e.target.value)}
+                          className="w-full px-4 py-3 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-200 text-xs font-bold outline-none focus:ring-2 focus:ring-[#00aeef]/20 focus:border-[#00aeef] transition-all"
+                        />
+                      </div>
+
+                      {/* Service Account Number */}
+                      <div className="space-y-1 text-left">
+                        <label className="text-[10px] font-black uppercase text-slate-400 tracking-wider">Service Account Number</label>
+                        <div className="relative">
+                          <input
+                            type="text"
+                            readOnly
+                            value={`CSFWD-${userProfile?.id?.slice(0, 8).toUpperCase() || "CSF-2026"}`}
+                            className="w-full px-4 py-3 pr-12 rounded-xl border border-slate-150 bg-slate-50 dark:bg-slate-900/60 dark:border-slate-850 text-slate-500 dark:text-slate-400 text-xs font-bold outline-none cursor-not-allowed select-none"
+                          />
+                          <span className="absolute right-3.5 top-1/2 -translate-y-1/2 text-[9px] font-black uppercase tracking-wider text-slate-400 bg-slate-100 dark:bg-slate-850 px-2 py-0.5 rounded border border-slate-200/50 dark:border-slate-700">
+                            Readonly
+                          </span>
+                        </div>
+                      </div>
+
+                      {/* Complete Address */}
+                      <div className="sm:col-span-2 space-y-1 text-left">
+                        <label className="text-[10px] font-black uppercase text-slate-400 tracking-wider">Complete Address</label>
+                        <input
+                          type="text"
+                          required
+                          value={profileAddress}
+                          onChange={(e) => setProfileAddress(e.target.value)}
+                          placeholder="House No., Street, Barangay, City"
+                          className="w-full px-4 py-3 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-200 text-xs font-bold outline-none focus:ring-2 focus:ring-[#00aeef]/20 focus:border-[#00aeef] transition-all"
+                        />
+                      </div>
+                    </div>
+
+                    <div className="text-left pt-2">
+                      <button
+                        type="submit"
+                        disabled={profileSaving}
+                        className="px-5 py-2.5 bg-[#001e66] hover:bg-[#00aeef] text-white text-xs font-bold rounded-xl transition-all shadow-sm cursor-pointer disabled:opacity-50"
+                      >
+                        {profileSaving ? "Saving changes..." : "Save Profile Details"}
+                      </button>
+                    </div>
+                  </form>
+                ) : (
+                  <div className="space-y-8">
+                    {/* Password Update */}
+                    <div className="space-y-4">
+                      <div>
+                        <h4 className="text-sm font-black text-[#001e66] dark:text-slate-200 uppercase tracking-wider">Change Password</h4>
+                        <p className="text-xs text-slate-400 mt-1 font-semibold">Update your portal security key.</p>
+                      </div>
+
+                      <form onSubmit={handleUpdatePassword} className="space-y-4 max-w-md">
+                        {securityError && (
+                          <div className="p-3.5 bg-red-50 border border-red-200 text-red-700 rounded-xl text-xs font-bold">
+                            {securityError}
+                          </div>
+                        )}
+                        {securitySuccess && (
+                          <div className="p-3.5 bg-emerald-50 border border-emerald-200 text-emerald-700 rounded-xl text-xs font-bold">
+                            {securitySuccess}
+                          </div>
+                        )}
+
+                        <div className="space-y-1">
+                          <label className="text-[10px] font-black uppercase text-slate-400 tracking-wider">New Password</label>
+                          <input
+                            type="password"
+                            required
+                            placeholder="••••••••••••"
+                            value={newPassword}
+                            onChange={(e) => setNewPassword(e.target.value)}
+                            className="w-full px-4 py-3 rounded-xl border border-slate-200 bg-slate-50 dark:bg-slate-900 dark:border-slate-800 text-xs font-bold outline-none focus:ring-2 focus:ring-[#00aeef]/20 focus:border-[#00aeef] transition-all"
+                          />
+                        </div>
+
+                        <div className="space-y-1">
+                          <label className="text-[10px] font-black uppercase text-slate-400 tracking-wider">Confirm New Password</label>
+                          <input
+                            type="password"
+                            required
+                            placeholder="••••••••••••"
+                            value={confirmNewPassword}
+                            onChange={(e) => setConfirmNewPassword(e.target.value)}
+                            className="w-full px-4 py-3 rounded-xl border border-slate-200 bg-slate-50 dark:bg-slate-900 dark:border-slate-800 text-xs font-bold outline-none focus:ring-2 focus:ring-[#00aeef]/20 focus:border-[#00aeef] transition-all"
+                          />
+                        </div>
+
+                        <button
+                          type="submit"
+                          disabled={updatingPassword}
+                          className="px-5 py-2.5 bg-[#001e66] hover:bg-[#00aeef] text-white text-xs font-bold rounded-xl transition-all shadow-sm cursor-pointer disabled:opacity-50"
+                        >
+                          {updatingPassword ? "Updating Key..." : "Change Password"}
+                        </button>
+                      </form>
+                    </div>
+
+                    {/* Account Deletion */}
+                    <div className="border-t border-slate-100 dark:border-slate-800 pt-6 space-y-4">
+                      <div>
+                        <h4 className="text-sm font-black text-red-600 dark:text-red-400 uppercase tracking-wider">Danger Zone</h4>
+                        <p className="text-xs text-slate-400 mt-1 font-semibold">Actions here are permanent and cannot be undone.</p>
+                      </div>
+
+                      <div className="bg-red-50/50 dark:bg-red-950/5 rounded-2xl border border-red-100/50 dark:border-red-950/20 p-5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+                        <div className="text-left">
+                          <p className="text-xs font-black text-red-750 dark:text-red-450 uppercase tracking-wide">Delete Account</p>
+                          <p className="text-[11px] text-slate-500 font-bold mt-1 max-w-md">
+                            Deleting your account will remove your access to the AquaTrack portal and cancel all active ticket feeds.
+                          </p>
+                        </div>
+                        {isDeleteConfirmOpen ? (
+                          <div className="flex gap-2 shrink-0">
+                            <button
+                              onClick={handleDeleteAccount}
+                              className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white text-xs font-bold rounded-xl transition-all shadow-sm cursor-pointer"
+                            >
+                              Confirm Delete
+                            </button>
+                            <button
+                              onClick={() => setIsDeleteConfirmOpen(false)}
+                              className="px-4 py-2 border border-slate-200 dark:border-slate-800 hover:bg-slate-150 text-[#001e66] dark:text-slate-350 text-xs font-bold rounded-xl transition-all cursor-pointer"
+                            >
+                              Cancel
+                            </button>
+                          </div>
+                        ) : (
+                          <button
+                            onClick={() => setIsDeleteConfirmOpen(true)}
+                            className="px-4 py-2 bg-red-100 hover:bg-red-200 text-red-700 text-xs font-bold rounded-xl transition-all cursor-pointer"
+                          >
+                            Delete Account
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }

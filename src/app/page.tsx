@@ -557,7 +557,7 @@ export default function Homepage() {
                 )}
               </span>{" "}
               at a{" "}
-              <span className="text-[#00aeef] inline-block align-baseline">
+              <span className="bg-clip-text text-transparent bg-gradient-to-r from-[#ffd800] via-[#ef4444] to-[#ef4444] via-[40%] inline-block align-baseline font-black">
                 Time.
               </span>
             </h1>

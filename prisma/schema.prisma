@@ -113,6 +113,9 @@ model Complaint {
   permissionStatus String?
 
   @@index([status])
+  @@index([userId])
+  @@index([assignedToId])
+  @@index([createdAt(sort: Desc)])
 }
 
 model DiagnosticAlert {
@@ -145,6 +148,7 @@ model User {
   role               UserRole    @default(CONSUMER_RESIDENT)
   phone              String?
   serviceAccountNo   String?
+  address            String?
   complaints         Complaint[]
   assignedComplaints Complaint[] @relation("AssignedComplaints")
   workOrders         WorkOrder[]

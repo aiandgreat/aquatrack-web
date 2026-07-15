@@ -26,10 +26,12 @@ export async function GET(req: Request) {
           u.name AS "userName",
           u.email AS "userEmail",
           u."serviceAccountNo" AS "serviceAccountNo",
+          tech.name AS "assignedToName",
           ST_X(c.geom) AS longitude,
           ST_Y(c.geom) AS latitude
         FROM "Complaint" c
         LEFT JOIN "User" u ON c."userId" = u.id
+        LEFT JOIN "User" tech ON c."assignedToId" = tech.id
         WHERE c."userId" = ${userId}
         ORDER BY c."createdAt" DESC
       `;
@@ -51,10 +53,12 @@ export async function GET(req: Request) {
           u.name AS "userName",
           u.email AS "userEmail",
           u."serviceAccountNo" AS "serviceAccountNo",
+          tech.name AS "assignedToName",
           ST_X(c.geom) AS longitude,
           ST_Y(c.geom) AS latitude
         FROM "Complaint" c
         LEFT JOIN "User" u ON c."userId" = u.id
+        LEFT JOIN "User" tech ON c."assignedToId" = tech.id
         ORDER BY c."createdAt" DESC
       `;
     }
@@ -73,6 +77,7 @@ export async function GET(req: Request) {
       imageUrl: c.imageUrl || "",
       createdAt: new Date(c.createdAt).toISOString(),
       assignedToId: c.assignedToId || null,
+      assignedToName: c.assignedToName || null,
       barangay: c.barangay || "",
       userName: c.userName || "Anonymous Resident",
       userEmail: c.userEmail || "",
