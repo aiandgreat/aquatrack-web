@@ -149,7 +149,9 @@ export default function ComplaintsSection({
                   >
                     <option value="PENDING">PENDING</option>
                     <option value="EVALUATING">EVALUATING</option>
-                    <option value="DISPATCHED">DISPATCHED</option>
+                    <option value="DISPATCHED" disabled={!c.assignedToId}>
+                      DISPATCHED {!c.assignedToId ? "(Requires Assignment)" : ""}
+                    </option>
                     <option value="ONGOING">ONGOING</option>
                     <option value="RESOLVED">RESOLVED</option>
                   </select>

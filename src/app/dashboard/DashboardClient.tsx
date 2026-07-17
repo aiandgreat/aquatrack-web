@@ -6,6 +6,7 @@ import { getSupabaseClient, uploadComplaintPhoto } from "../../lib/supabase";
 import { motion, AnimatePresence } from "framer-motion";
 import mapboxgl from "mapbox-gl";
 import "mapbox-gl/dist/mapbox-gl.css";
+import { isOutsideSanFernando } from "../../lib/geo-utils";
 
 mapboxgl.accessToken = process.env.NEXT_PUBLIC_MAPBOX_TOKEN || "";
 
@@ -272,6 +273,8 @@ export default function DashboardClient({
   const [submitting, setSubmitting] = useState(false);
   const [gpsPinpointActive, setGpsPinpointActive] = useState(false);
   const [gpsAccuracy, setGpsAccuracy] = useState<number | null>(null);
+  const [isOutOfScope, setIsOutOfScope] = useState(false);
+  const [clientMap3D, setClientMap3D] = useState(true);
   const [uploadingPhoto, setUploadingPhoto] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -417,13 +420,138 @@ export default function DashboardClient({
       style: "mapbox://styles/mapbox/streets-v12",
       center: [lng, lat],
       zoom: gpsPinpointActive ? 17 : 15.5,
+      pitch: 50,
+      bearing: -15,
+      antialias: true,
     });
 
     let loaded = false;
+
+    // Draw the official City of San Fernando boundary — 3D wall + neon glow outline
+    const addCityBoundaryLayer = () => {
+      import("../../lib/san-fernando-boundary").then(({ SAN_FERNANDO_POLYGON }) => {
+        if (!clientMapRef.current || clientMapRef.current !== map) return;
+        if (map.getSource("sf-boundary")) return;
+
+        map.addSource("sf-boundary", {
+          type: "geojson",
+          data: {
+            type: "Feature",
+            properties: { height: 40, base: 0 },
+            geometry: {
+              type: "Polygon",
+              coordinates: [SAN_FERNANDO_POLYGON],
+            },
+          },
+        });
+
+        // --- Layer 1: Subtle floor tint inside the city ---
+        map.addLayer({
+          id: "sf-boundary-floor",
+          type: "fill",
+          source: "sf-boundary",
+          paint: {
+            "fill-color": "#00aeef",
+            "fill-opacity": 0.06,
+          },
+        });
+
+        // --- Layer 2: 3D extruded wall along the boundary at 40m height ---
+        map.addLayer({
+          id: "sf-boundary-wall",
+          type: "fill-extrusion",
+          source: "sf-boundary",
+          paint: {
+            "fill-extrusion-color": "#00aeef",
+            "fill-extrusion-height": 40,
+            "fill-extrusion-base": 0,
+            "fill-extrusion-opacity": 0.25,
+          },
+        });
+
+        // --- Layer 3: Outer soft glow (widest, most transparent) ---
+        map.addLayer({
+          id: "sf-boundary-glow-outer",
+          type: "line",
+          source: "sf-boundary",
+          paint: {
+            "line-color": "#00aeef",
+            "line-width": 14,
+            "line-opacity": 0.08,
+            "line-blur": 6,
+          },
+        });
+
+        // --- Layer 4: Mid halo ---
+        map.addLayer({
+          id: "sf-boundary-glow-mid",
+          type: "line",
+          source: "sf-boundary",
+          paint: {
+            "line-color": "#00aeef",
+            "line-width": 6,
+            "line-opacity": 0.25,
+            "line-blur": 2,
+          },
+        });
+
+        // --- Layer 5: Bright solid core line ---
+        map.addLayer({
+          id: "sf-boundary-core",
+          type: "line",
+          source: "sf-boundary",
+          paint: {
+            "line-color": "#00aeef",
+            "line-width": 2.5,
+            "line-opacity": 1,
+          },
+        });
+      });
+    };
+
+
+    // Add 3D terrain + building extrusions once the style is ready
+    const add3DLayers = () => {
+      if (!map.getSource("mapbox-dem")) {
+        map.addSource("mapbox-dem", {
+          type: "raster-dem",
+          url: "mapbox://mapbox.mapbox-terrain-dem-v1",
+          tileSize: 512,
+          maxzoom: 14,
+        });
+      }
+      map.setTerrain({ source: "mapbox-dem", exaggeration: 1.4 });
+
+      if (!map.getLayer("client-3d-buildings")) {
+        map.addLayer({
+          id: "client-3d-buildings",
+          source: "composite",
+          "source-layer": "building",
+          filter: ["==", "extrude", "true"],
+          type: "fill-extrusion",
+          minzoom: 14,
+          paint: {
+            "fill-extrusion-color": "#cbd5e1",
+            "fill-extrusion-height": [
+              "interpolate", ["linear"], ["zoom"],
+              14, 0, 14.5, ["get", "height"]
+            ],
+            "fill-extrusion-base": [
+              "interpolate", ["linear"], ["zoom"],
+              14, 0, 14.5, ["get", "min_height"]
+            ],
+            "fill-extrusion-opacity": 0.6,
+          },
+        });
+      }
+    };
+
     map.on("load", () => {
       loaded = true;
       setMapError(false);
       map.resize();
+      add3DLayers();
+      addCityBoundaryLayer();
       setTimeout(() => {
         if (clientMapRef.current === map) {
           map.resize();
@@ -434,6 +562,8 @@ export default function DashboardClient({
       loaded = true;
       setMapError(false);
       map.resize();
+      add3DLayers();
+      addCityBoundaryLayer();
     });
 
     map.on("error", (e) => {
@@ -515,6 +645,40 @@ export default function DashboardClient({
       }
     }
   }, [customLat, customLng]);
+
+  // Accurate point-in-polygon check against the 788-vertex OSM boundary of
+  // the City of San Fernando, Pampanga (imported from @/lib/geo-utils)
+
+  // Watch pin coordinates and flag out-of-scope locations
+  useEffect(() => {
+    const lat = parseFloat(customLat);
+    const lng = parseFloat(customLng);
+    if (isNaN(lat) || isNaN(lng)) return;
+    setIsOutOfScope(isOutsideSanFernando(lat, lng));
+  }, [customLat, customLng]);
+
+  // Reactively toggle 3D terrain & buildings on the client complaint map
+  useEffect(() => {
+    const map = clientMapRef.current;
+    if (!map) return;
+    const apply = () => {
+      if (clientMap3D) {
+        if (map.getSource("mapbox-dem")) {
+          map.setTerrain({ source: "mapbox-dem", exaggeration: 1.4 });
+        }
+        if (map.getLayer("client-3d-buildings")) {
+          map.setLayoutProperty("client-3d-buildings", "visibility", "visible");
+        }
+      } else {
+        map.setTerrain(null);
+        if (map.getLayer("client-3d-buildings")) {
+          map.setLayoutProperty("client-3d-buildings", "visibility", "none");
+        }
+      }
+    };
+    if (map.isStyleLoaded()) apply();
+    else map.once("style.load", apply);
+  }, [clientMap3D]);
 
   // Auto-detect barangay from GPS coordinates via PostGIS nearest-neighbor API
   useEffect(() => {
@@ -783,6 +947,16 @@ export default function DashboardClient({
     e.preventDefault();
     if (!complaintText) {
       setSubmitError("Please write a description of the issue.");
+      return;
+    }
+
+    // Block submission if pin is outside City of San Fernando, Pampanga
+    const pinLat = parseFloat(customLat);
+    const pinLng = parseFloat(customLng);
+    if (isOutsideSanFernando(pinLat, pinLng)) {
+      setSubmitError(
+        "📍 Out of scope: Your pinned location is outside the City of San Fernando, Pampanga. Please move the map pin to a location within the city service area before filing a complaint."
+      );
       return;
     }
 
@@ -2138,22 +2312,25 @@ export default function DashboardClient({
                         
                         {/* Custom floating map controls on the right (stacked vertically) */}
                         <div className="absolute right-3.5 top-1/2 -translate-y-1/2 flex flex-col gap-2 z-10">
+                          {/* Zoom In */}
                           <button
                             type="button"
                             onClick={() => clientMapRef.current?.zoomIn()}
-                            className="w-8 h-8 rounded-lg bg-white shadow-md hover:bg-slate-50 border border-slate-200 flex items-center justify-center font-bold text-slate-655 transition-colors cursor-pointer text-sm"
+                            className="w-8 h-8 rounded-lg bg-white shadow-md hover:bg-slate-50 border border-slate-200 flex items-center justify-center font-bold text-slate-600 transition-colors cursor-pointer text-sm"
                             title="Zoom In"
                           >
                             +
                           </button>
+                          {/* Zoom Out */}
                           <button
                             type="button"
                             onClick={() => clientMapRef.current?.zoomOut()}
-                            className="w-8 h-8 rounded-lg bg-white shadow-md hover:bg-slate-50 border border-slate-200 flex items-center justify-center font-bold text-slate-655 transition-colors cursor-pointer text-sm"
+                            className="w-8 h-8 rounded-lg bg-white shadow-md hover:bg-slate-50 border border-slate-200 flex items-center justify-center font-bold text-slate-600 transition-colors cursor-pointer text-sm"
                             title="Zoom Out"
                           >
                             −
                           </button>
+                          {/* My Location */}
                           <button
                             type="button"
                             onClick={handleRequestLocation}
@@ -2164,15 +2341,73 @@ export default function DashboardClient({
                               <path strokeLinecap="round" strokeLinejoin="round" d="M12 3v2.25m6.364.386l-1.591 1.591M21 12h-2.25m-.386 6.364l-1.591-1.591M12 18.75V21m-4.773-4.227l-1.591 1.591M3 12h2.25m-.386-6.364l1.591 1.591M12 18.75a6.75 6.75 0 110-13.5 6.75 6.75 0 010 13.5z" />
                             </svg>
                           </button>
+                          {/* 3D Toggle */}
+                          <button
+                            type="button"
+                            onClick={() => setClientMap3D((v) => !v)}
+                            title={clientMap3D ? "Disable 3D View" : "Enable 3D View"}
+                            className={`w-8 h-8 rounded-lg shadow-md border flex items-center justify-center text-[9px] font-black uppercase tracking-wider transition-all cursor-pointer ${
+                              clientMap3D
+                                ? "bg-[#00aeef] border-[#00aeef] text-white shadow-[#00aeef]/30"
+                                : "bg-white border-slate-200 text-slate-500 hover:text-[#00aeef]"
+                            }`}
+                          >
+                            3D
+                          </button>
+                          {/* Compass / Reset North */}
+                          <button
+                            type="button"
+                            onClick={() => clientMapRef.current?.resetNorth({ duration: 600 })}
+                            title="Reset North"
+                            className="w-8 h-8 rounded-lg bg-white shadow-md hover:bg-slate-50 border border-slate-200 flex items-center justify-center text-slate-600 hover:text-[#00aeef] transition-colors cursor-pointer"
+                          >
+                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-4 h-4">
+                              <path d="M12 2l2.5 7h-5L12 2zm0 20l-2.5-7h5L12 22zM2 12l7-2.5v5L2 12zm20 0l-7 2.5v-5L22 12z"/>
+                            </svg>
+                          </button>
                         </div>
                         
+                        {/* Out-of-scope overlay banner */}
+                        {isOutOfScope && (
+                          <div className="absolute inset-0 z-20 flex flex-col items-center justify-center pointer-events-none">
+                            {/* Semi-transparent red tint overlay */}
+                            <div className="absolute inset-0 bg-red-900/20 backdrop-blur-[1px]" />
+                            <div className="relative flex flex-col items-center gap-2 bg-red-600/95 text-white px-5 py-3.5 rounded-2xl border-2 border-red-400/60 shadow-2xl shadow-red-900/40 max-w-[85%] text-center">
+                              <div className="flex items-center gap-2">
+                                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="2.5" stroke="currentColor" className="w-5 h-5 shrink-0 text-red-200">
+                                  <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z" />
+                                </svg>
+                                <span className="font-black text-[11px] uppercase tracking-widest text-red-100">📍 Out of Service Area</span>
+                              </div>
+                              <p className="text-[10px] font-bold text-red-100 leading-snug">
+                                Pinned location is <span className="text-white font-black">outside the City of San Fernando, Pampanga</span>. Move the pin within the city to file a complaint.
+                              </p>
+                            </div>
+                          </div>
+                        )}
+
                         {/* Floating Banner Overlay at bottom */}
-                        <div className="absolute bottom-3 left-1/2 -translate-x-1/2 bg-slate-900/90 text-white text-[10px] font-bold px-3 py-1.5 rounded-lg border border-slate-700/60 backdrop-blur-sm shadow z-10 flex items-center gap-1.5 pointer-events-none shrink-0">
-                          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="2.5" stroke="#00aeef" className="w-3.5 h-3.5 shrink-0">
-                            <path strokeLinecap="round" strokeLinejoin="round" d="M15 10.5a3 3 0 11-6 0 3 3 0 016 0z" />
-                            <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 10.5c0 7.142-7.5 11.25-7.5 11.25s-7.5-4.108-7.5-11.25a7.5 7.5 0 1115 0z" />
-                          </svg>
-                          <span>Drag marker or click map to pin exact location</span>
+                        <div className={`absolute bottom-3 left-1/2 -translate-x-1/2 text-[10px] font-bold px-3 py-1.5 rounded-lg border backdrop-blur-sm shadow z-10 flex items-center gap-1.5 pointer-events-none shrink-0 transition-all ${
+                          isOutOfScope
+                            ? "bg-red-600/90 text-white border-red-400/50"
+                            : "bg-slate-900/90 text-white border-slate-700/60"
+                        }`}>
+                          {isOutOfScope ? (
+                            <>
+                              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="2.5" stroke="currentColor" className="w-3.5 h-3.5 shrink-0 text-red-200">
+                                <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z" />
+                              </svg>
+                              <span>Out of scope — move pin inside San Fernando, Pampanga</span>
+                            </>
+                          ) : (
+                            <>
+                              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="2.5" stroke="#00aeef" className="w-3.5 h-3.5 shrink-0">
+                                <path strokeLinecap="round" strokeLinejoin="round" d="M15 10.5a3 3 0 11-6 0 3 3 0 016 0z" />
+                                <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 10.5c0 7.142-7.5 11.25-7.5 11.25s-7.5-4.108-7.5-11.25a7.5 7.5 0 1115 0z" />
+                              </svg>
+                              <span>Drag marker or click map to pin exact location</span>
+                            </>
+                          )}
                         </div>
                       </div>
 
@@ -2212,19 +2447,36 @@ export default function DashboardClient({
                       </div>
 
                       {/* Verification Footer */}
-                      <div className="bg-emerald-50/70 border border-emerald-100 rounded-xl p-3.5 flex items-center justify-between mt-auto shrink-0">
+                      <div className={`border rounded-xl p-3.5 flex items-center justify-between mt-auto shrink-0 transition-all ${
+                        isOutOfScope
+                          ? "bg-red-50/80 border-red-200"
+                          : "bg-emerald-50/70 border-emerald-100"
+                      }`}>
                         <div className="flex flex-col leading-none">
                           <span className="text-[8px] font-bold text-slate-400 uppercase tracking-wider">POSTGIS - NOMINATIM BARANGAY DETECTION</span>
-                          <span className="text-xs font-black text-emerald-800 mt-1">
-                            Brgy. {detectedBarangay || "Santo Rosario"}
-                          </span>
+                          {isOutOfScope ? (
+                            <span className="text-xs font-black text-red-700 mt-1">⚠ Outside San Fernando, Pampanga</span>
+                          ) : (
+                            <span className="text-xs font-black text-emerald-800 mt-1">
+                              Brgy. {detectedBarangay || "Santo Rosario"}
+                            </span>
+                          )}
                         </div>
-                        <div className="flex items-center gap-1 bg-emerald-100/60 text-emerald-700 text-[10px] font-black px-2.5 py-1.5 rounded-full border border-emerald-200/50 shrink-0">
-                          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="2.5" stroke="currentColor" className="w-3.5 h-3.5 shrink-0 text-emerald-600">
-                            <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12.75l6 6 9-13.5" />
-                          </svg>
-                          <span>Nominatim verified</span>
-                        </div>
+                        {isOutOfScope ? (
+                          <div className="flex items-center gap-1 bg-red-100/60 text-red-700 text-[10px] font-black px-2.5 py-1.5 rounded-full border border-red-200/50 shrink-0">
+                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="2.5" stroke="currentColor" className="w-3.5 h-3.5 shrink-0 text-red-600">
+                              <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                            </svg>
+                            <span>Out of scope</span>
+                          </div>
+                        ) : (
+                          <div className="flex items-center gap-1 bg-emerald-100/60 text-emerald-700 text-[10px] font-black px-2.5 py-1.5 rounded-full border border-emerald-200/50 shrink-0">
+                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="2.5" stroke="currentColor" className="w-3.5 h-3.5 shrink-0 text-emerald-600">
+                              <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12.75l6 6 9-13.5" />
+                            </svg>
+                            <span>Nominatim verified</span>
+                          </div>
+                        )}
                       </div>
 
                     </div>

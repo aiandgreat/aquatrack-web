@@ -96,6 +96,20 @@ export async function PUT(req: Request) {
       return NextResponse.json({ error: "Missing parameters" }, { status: 400 });
     }
 
+    if (status === "DISPATCHED") {
+      const current = await prisma.complaint.findUnique({
+        where: { id },
+        select: { assignedToId: true }
+      });
+      const finalAssignedToId = assignedToId !== undefined ? assignedToId : current?.assignedToId;
+      if (!finalAssignedToId) {
+        return NextResponse.json(
+          { error: "Cannot dispatch a complaint without an assigned field technician." },
+          { status: 400 }
+        );
+      }
+    }
+
     const updated = await prisma.complaint.update({
       where: { id },
       data: {

@@ -333,7 +333,9 @@ export default function ReportsSection({
                       >
                         <option value="PENDING">PENDING</option>
                         <option value="EVALUATING">EVALUATING</option>
-                        <option value="DISPATCHED">DISPATCHED</option>
+                        <option value="DISPATCHED" disabled={!c.assignedToId}>
+                          DISPATCHED {!c.assignedToId ? "(Requires Assignment)" : ""}
+                        </option>
                         <option value="ONGOING">ONGOING</option>
                       </select>
                     </td>
@@ -482,7 +484,9 @@ export default function ReportsSection({
                             <option value="RESOLVED">RESOLVED</option>
                             <option value="PENDING">Reopen: PENDING</option>
                             <option value="EVALUATING">Reopen: EVALUATING</option>
-                            <option value="DISPATCHED">Reopen: DISPATCHED</option>
+                            <option value="DISPATCHED" disabled={!c.assignedToId}>
+                              Reopen: DISPATCHED {!c.assignedToId ? "(Requires Assignment)" : ""}
+                            </option>
                             <option value="ONGOING">Reopen: ONGOING</option>
                           </select>
                         </div>

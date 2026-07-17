@@ -3,6 +3,7 @@
 import React, { useEffect, useRef, useState } from "react";
 import mapboxgl from "mapbox-gl";
 import "mapbox-gl/dist/mapbox-gl.css";
+import { SAN_FERNANDO_POLYGON } from "../lib/san-fernando-boundary";
 
 // Set token safely from environment variables
 mapboxgl.accessToken = process.env.NEXT_PUBLIC_MAPBOX_TOKEN || "";
@@ -390,6 +391,83 @@ export default function MapboxMap({
           },
         });
       }
+
+      // --- 6. City of San Fernando, Pampanga — 3D boundary wall + neon glow ---
+      if (!map.getSource("sf-boundary")) {
+        map.addSource("sf-boundary", {
+          type: "geojson",
+          data: {
+            type: "Feature",
+            properties: { height: 40, base: 0 },
+            geometry: {
+              type: "Polygon",
+              coordinates: [SAN_FERNANDO_POLYGON],
+            },
+          },
+        });
+
+        // Subtle cyan floor tint inside the city
+        map.addLayer({
+          id: "sf-boundary-floor",
+          type: "fill",
+          source: "sf-boundary",
+          paint: {
+            "fill-color": "#00aeef",
+            "fill-opacity": 0.06,
+          },
+        });
+
+        // 3D wall extruded 40 m along the boundary edge
+        map.addLayer({
+          id: "sf-boundary-wall",
+          type: "fill-extrusion",
+          source: "sf-boundary",
+          paint: {
+            "fill-extrusion-color": "#00aeef",
+            "fill-extrusion-height": 40,
+            "fill-extrusion-base": 0,
+            "fill-extrusion-opacity": 0.22,
+          },
+        });
+
+        // Outer soft glow halo
+        map.addLayer({
+          id: "sf-boundary-glow-outer",
+          type: "line",
+          source: "sf-boundary",
+          paint: {
+            "line-color": "#00aeef",
+            "line-width": 14,
+            "line-opacity": 0.08,
+            "line-blur": 6,
+          },
+        });
+
+        // Mid glow ring
+        map.addLayer({
+          id: "sf-boundary-glow-mid",
+          type: "line",
+          source: "sf-boundary",
+          paint: {
+            "line-color": "#00aeef",
+            "line-width": 6,
+            "line-opacity": 0.25,
+            "line-blur": 2,
+          },
+        });
+
+        // Bright solid core line
+        map.addLayer({
+          id: "sf-boundary-core",
+          type: "line",
+          source: "sf-boundary",
+          paint: {
+            "line-color": "#00aeef",
+            "line-width": 2.5,
+            "line-opacity": 1,
+          },
+        });
+      }
     });
 
     return () => {
@@ -557,18 +635,13 @@ export default function MapboxMap({
       markersRef.current[`comp-${comp.id}`] = marker;
     });
 
-    // 6. Dynamic zoom visibility sync for individual markers vs clusters (prevents clutter)
+    // 6. Dynamic zoom visibility sync for individual markers vs clusters (always visible)
     const syncMarkerVisibility = () => {
-      const zoom = map.getZoom();
       complaints.forEach((comp) => {
         const marker = markersRef.current[`comp-${comp.id}`];
         if (marker) {
           const el = marker.getElement();
-          if (zoom < 14.5) {
-            el.style.display = "none";
-          } else {
-            el.style.display = "flex";
-          }
+          el.style.display = "flex"; // Always show complaint pins regardless of zoom level
         }
       });
     };

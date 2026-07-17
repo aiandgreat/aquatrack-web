@@ -3,6 +3,7 @@
 import React, { useState, useEffect, useRef } from "react";
 import mapboxgl from "mapbox-gl";
 import "mapbox-gl/dist/mapbox-gl.css";
+import { SAN_FERNANDO_POLYGON } from "../../../lib/san-fernando-boundary";
 
 mapboxgl.accessToken = process.env.NEXT_PUBLIC_MAPBOX_TOKEN || "";
 
@@ -27,41 +28,41 @@ interface HeatmapsSectionProps {
 }
 
 const BARANGAY_COORDS: Record<string, [number, number]> = {
-  Alasas: [120.6780, 15.0120],
-  Baliti: [120.7020, 15.0560],
+  Alasas: [120.6563899, 15.0547768],
+  Baliti: [120.6242556, 15.105583],
   Bulaon: [120.6750, 15.0740],
-  Calulut: [120.7100, 15.0600],
+  Calulut: [120.6486068, 15.0959271],
   "Del Carmen": [120.7010, 15.0320],
   "Del Pilar": [120.6936, 15.0240],
-  "Del Rosario": [120.7180, 15.0080],
+  "Del Rosario": [120.6364643, 15.0624038],
   "Dela Paz Norte": [120.6860, 15.0450],
-  "Dela Paz Sur": [120.7080, 15.0180],
+  "Dela Paz Sur": [120.6365852, 15.0747509],
   Dolores: [120.6900, 15.0330],
   Juliana: [120.6910, 15.0220],
   Lara: [120.6710, 15.0440],
   Lourdes: [120.6880, 15.0250],
-  Magliman: [120.6650, 15.0180],
+  Magliman: [120.6750, 15.0250],
   Maimpis: [120.6900, 15.0520],
-  Malino: [120.7250, 15.0480],
-  Malpitic: [120.7050, 15.0480],
+  Malino: [120.6276217, 15.1220944],
+  Malpitic: [120.6560699, 15.0791112],
   Pandaras: [120.6950, 15.0150],
-  Panipuan: [120.7380, 15.0620],
+  Panipuan: [120.6244862, 15.1047486],
   "Pulung Bulu": [120.7120, 15.0250],
   Quebiawan: [120.6950, 15.0420],
-  Saguin: [120.6900, 15.0620],
+  Saguin: [120.6251223, 15.0893843],
   "San Agustin": [120.6850, 15.0290],
   "San Felipe": [120.6800, 15.0350],
-  "San Isidro": [120.7080, 15.0010],
+  "San Isidro": [120.6563899, 15.0547768],
   "San Jose": [120.6936, 15.0310],
   "San Juan": [120.6810, 15.0190],
   "San Nicolas": [120.6936, 15.0278],
-  "San Pedro Cutud": [120.7050, 15.0110],
+  "San Pedro Cutud": [120.6916473, 15.0169968],
   "Santa Lucia": [120.6950, 15.0210],
   "Santa Teresita": [120.6920, 15.0180],
   "Santo Niño": [120.6720, 15.0250],
   "Santo Rosario": [120.6936, 15.0278],
-  Sindalan: [120.6900, 15.0680],
-  Telabastagan: [120.6850, 15.0800],
+  "Sindalan": [120.6381548, 15.0744109],
+  "Telabastagan": [120.6082767, 15.1137201],
 };
 
 function getHeatColor(count: number): string {
@@ -199,6 +200,84 @@ export default function HeatmapsSection({ complaints = [] }: HeatmapsSectionProp
           ]
         }
       });
+
+      // --- City of San Fernando, Pampanga — 3D boundary wall + neon glow ---
+      if (!map.getSource("sf-boundary")) {
+        map.addSource("sf-boundary", {
+          type: "geojson",
+          data: {
+            type: "Feature",
+            properties: { height: 40, base: 0 },
+            geometry: {
+              type: "Polygon",
+              coordinates: [SAN_FERNANDO_POLYGON],
+            },
+          },
+        });
+
+        // Subtle cyan floor tint inside the city
+        map.addLayer({
+          id: "sf-boundary-floor",
+          type: "fill",
+          source: "sf-boundary",
+          paint: {
+            "fill-color": "#00aeef",
+            "fill-opacity": 0.06,
+          },
+        });
+
+        // 3D wall extruded 40 m along the boundary edge
+        map.addLayer({
+          id: "sf-boundary-wall",
+          type: "fill-extrusion",
+          source: "sf-boundary",
+          paint: {
+            "fill-extrusion-color": "#00aeef",
+            "fill-extrusion-height": 40,
+            "fill-extrusion-base": 0,
+            "fill-extrusion-opacity": 0.28,
+          },
+        });
+
+        // Outer soft glow halo
+        map.addLayer({
+          id: "sf-boundary-glow-outer",
+          type: "line",
+          source: "sf-boundary",
+          paint: {
+            "line-color": "#00aeef",
+            "line-width": 14,
+            "line-opacity": 0.10,
+            "line-blur": 6,
+          },
+        });
+
+        // Mid glow ring
+        map.addLayer({
+          id: "sf-boundary-glow-mid",
+          type: "line",
+          source: "sf-boundary",
+          paint: {
+            "line-color": "#00aeef",
+            "line-width": 6,
+            "line-opacity": 0.30,
+            "line-blur": 2,
+          },
+        });
+
+        // Bright solid core line
+        map.addLayer({
+          id: "sf-boundary-core",
+          type: "line",
+          source: "sf-boundary",
+          paint: {
+            "line-color": "#00aeef",
+            "line-width": 2.5,
+            "line-opacity": 1,
+          },
+        });
+      }
+
       map.resize();
     });
 
@@ -258,23 +337,54 @@ export default function HeatmapsSection({ complaints = [] }: HeatmapsSectionProp
     markersRef.current.forEach((m) => m.remove());
     markersRef.current = [];
 
-    // 1. Plot Barangay coordinate nodes (soft white rings)
+    // 1. Plot Barangay coordinate nodes (round pinpoints pointing to exact location)
     Object.entries(BARANGAY_COORDS).forEach(([name, coords]) => {
       const matchData = barangays.find((b) => b.name === name);
       const count = matchData ? matchData.count : 0;
 
       const el = document.createElement("div");
-      el.className = "flex flex-col items-center justify-center cursor-pointer group";
+      el.className = "relative flex flex-col items-center justify-center cursor-pointer group transition-all duration-300 hover:-translate-y-1 hover:scale-105 z-10";
+
+      // Select colors and sizes based on intensity of active incidents in the Barangay
+      let pinColor = "border-slate-500 bg-slate-900/95 text-slate-300";
+      let tipColor = "bg-slate-500";
+      let glowColor = "rgba(148, 163, 184, 0.25)";
+      
+      if (count >= 16) {
+        pinColor = "border-red-500 bg-red-950/95 text-red-100 font-extrabold";
+        tipColor = "bg-red-500";
+        glowColor = "rgba(239, 68, 68, 0.6)";
+      } else if (count >= 10) {
+        pinColor = "border-orange-500 bg-orange-950/95 text-orange-200 font-extrabold";
+        tipColor = "bg-orange-500";
+        glowColor = "rgba(249, 115, 22, 0.55)";
+      } else if (count > 0) {
+        pinColor = "border-yellow-500 bg-yellow-950/95 text-yellow-200 font-bold";
+        tipColor = "bg-yellow-500";
+        glowColor = "rgba(234, 179, 8, 0.45)";
+      } else {
+        pinColor = "border-cyan-500 bg-slate-900/95 text-cyan-300 font-bold";
+        tipColor = "bg-cyan-500";
+        glowColor = "rgba(6, 182, 212, 0.3)";
+      }
+
       el.innerHTML = `
-        <div class="w-6 h-6 rounded-full border border-slate-600 bg-slate-900/90 text-[8px] font-black text-slate-300 flex items-center justify-center shadow-lg group-hover:border-cyan-400 group-hover:scale-110 transition-all ${
-          count >= 16 ? "border-red-500 text-red-400 bg-red-950/40" :
-          count >= 10 ? "border-orange-500 text-orange-400 bg-orange-950/40" :
-          count > 0 ? "border-yellow-500 text-yellow-400 bg-yellow-950/40" : ""
-        }">
-          ${count}
+        <!-- Outer Pulsing Ring for Visual Severity Alert -->
+        <div class="absolute -inset-1 rounded-full animate-ping pointer-events-none opacity-40" style="background-color: ${glowColor}; animation-duration: 2.5s;"></div>
+        
+        <!-- Round Pin Head -->
+        <div class="relative w-7 h-7 rounded-full border-2 flex items-center justify-center shadow-lg transition-colors ${pinColor}">
+          <span class="text-[9px] leading-none">${count}</span>
         </div>
-        <div class="absolute -bottom-5 bg-slate-950/90 border border-slate-800 text-[8px] font-bold text-slate-300 px-1 py-0.5 rounded opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap shadow-md">
-          Brgy. ${name} (${count} complaints)
+        
+        <!-- Pin Tip pointing precisely to coordinate -->
+        <div class="w-1.5 h-1.5 rotate-45 -mt-[4px] shadow-sm ${tipColor}"></div>
+        
+        <!-- Modernized Hover Tooltip -->
+        <div class="absolute bottom-9 bg-slate-950/95 border border-slate-800 text-[9px] font-mono font-bold text-slate-200 px-2.5 py-1.5 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none whitespace-nowrap shadow-2xl z-20">
+          <span class="text-cyan-400">Brgy. ${name}</span>
+          <span class="text-slate-500 mx-1">•</span>
+          <span>${count} complaints</span>
         </div>
       `;
 
