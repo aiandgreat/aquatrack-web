@@ -74,6 +74,11 @@ RESEND_API_KEY="re_..."
 
 # Mapbox (public — safe to expose)
 NEXT_PUBLIC_MAPBOX_TOKEN="pk.eyJ1..."
+
+# Firebase Cloud Messaging Credentials
+FIREBASE_PROJECT_ID="your-firebase-project-id"
+FIREBASE_CLIENT_EMAIL="your-client-email@project.iam.gserviceaccount.com"
+FIREBASE_PRIVATE_KEY="-----BEGIN PRIVATE KEY-----\nMIIEvgIBADANBg..."
 ```
 
 ### 4. Database Setup
@@ -143,6 +148,7 @@ To populate your map and telemetry charts with real-time streaming data:
 | `GET`, `POST`, `DELETE` | `/api/advisories` | Manages community alerts and bulletins (fetch all, create new, delete by ID). |
 | `POST` | `/api/auth/profile` | Resolves a user's role and details for a given Supabase Auth ID. |
 | `POST` | `/api/auth/register` | Syncs a newly signed-up Supabase Auth user to the database's `User` model. |
+| `POST` | `/api/auth/push-token` | Registers or updates a user's Firebase Cloud Messaging (FCM) push token, purging their Redis profile cache. |
 | `GET`, `PUT` | `/api/admin/complaints` | Administrative route to list all complaints or modify status and engineer dispatches. |
 | `GET` | `/api/admin/heatmap` | Aggregates and counts complaints grouped by barangay for mapping. |
 | `GET`, `PUT` | `/api/admin/nodes` | Fetches all telemetry nodes or toggles sensor statuses (`ONLINE`, `OFFLINE`, `MAINTENANCE`). |
@@ -187,6 +193,7 @@ This installs the `on_auth_user_created` trigger. After that, every new account 
 | `role` | `CONSUMER_RESIDENT` (default; admin can promote later) |
 | `phone` | `null` (can be set later via admin panel) |
 | `serviceAccountNo` | `null` (assigned by CSFWD admin) |
+| `pushToken` | `null` (registered on mobile login) |
 
 ## Useful Operations
 
@@ -227,6 +234,7 @@ npm start
 
 ## Recent Platform Upgrades (July 2026)
 
+- **Firebase Cloud Messaging (FCM) Integration**: Added a `pushToken` string column to the `User` database model, introduced a Next.js `/api/auth/push-token` token registration route, and created an FCM notification trigger pipeline in the `/api/advisories` creation handler via `fcm-sender.ts`, allowing targeted push broadcasts to Residents or Field Technicians.
 - **Searchable, Sortable, and Filterable Spatial Heatmaps**: Refactored the Barangay Grid incident heatmap in the Admin Portal's command center (`HeatmapsSection.tsx`) to support instant search by name, multi-tier severity filters (All, Critical, Moderate, Low Risk, Clean), and incident count/alphabetical sorting. Added real-time metadata counts and filter-clear buttons to provide a highly manageable incident-density dashboard.
 - **Race-Condition-Free Mapbox Mounting**: Resolved map loading bugs within the client's "File a Complaint" tab (`DashboardClient.tsx`) by replacing fragile `setTimeout` hooks with React callback refs (`handleMapRef`). This guarantees that the Mapbox GL map instance initializes only after the DOM element is fully mounted following exit animations, and forces layout recalculations to fit transition states cleanly.
 - **Operational News & Events Broadcasting**: Expanded the community broadcasting subsystem to support publishing `NEWS` (green theme) and `EVENT` (purple theme) notices. These are dynamically linked to automatically populate the "Latest District News" and "Upcoming District Events" columns on the administrator homepage dashboard.

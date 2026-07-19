@@ -149,6 +149,7 @@ model User {
   phone              String?
   serviceAccountNo   String?
   address            String?
+  pushToken          String?     // Added for FCM push notification support
   complaints         Complaint[]
   assignedComplaints Complaint[] @relation("AssignedComplaints")
   workOrders         WorkOrder[]

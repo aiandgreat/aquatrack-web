@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { prisma } from "../../../lib/prisma";
+import { sendFcmNotification } from "../../../lib/fcm-sender";
 
 export async function GET() {
   try {
@@ -34,6 +35,31 @@ export async function POST(req: Request) {
         targetRole,
       },
     });
+
+    // Query user push tokens
+    let userQuery: any = {};
+    if (targetRole === "consumers") {
+      userQuery = { role: "CONSUMER_RESIDENT" };
+    } else if (targetRole === "technicians") {
+      userQuery = { role: "FIELD_ENGINEER_TECHNICIAN" };
+    }
+    
+    const usersWithTokens = await prisma.user.findMany({
+      where: {
+        ...userQuery,
+        pushToken: { not: null },
+      },
+      select: { pushToken: true },
+    });
+
+    const tokens = usersWithTokens.map((u) => u.pushToken as string).filter(Boolean);
+    if (tokens.length > 0) {
+      try {
+        await sendFcmNotification(tokens, title, text, { type: "advisory", advisoryId: newAd.id });
+      } catch (fcmErr) {
+        console.error("FCM dispatch warning:", fcmErr);
+      }
+    }
 
     return NextResponse.json({ success: true, advisory: newAd });
   } catch (error: any) {
