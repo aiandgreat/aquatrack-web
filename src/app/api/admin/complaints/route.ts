@@ -96,12 +96,23 @@ export async function PUT(req: Request) {
       return NextResponse.json({ error: "Missing parameters" }, { status: 400 });
     }
 
+    const current = await prisma.complaint.findUnique({
+      where: { id },
+      select: { 
+        userId: true, 
+        category: true, 
+        summary: true, 
+        status: true, 
+        assignedToId: true 
+      }
+    });
+
+    if (!current) {
+      return NextResponse.json({ error: "Complaint not found" }, { status: 404 });
+    }
+
     if (status === "DISPATCHED") {
-      const current = await prisma.complaint.findUnique({
-        where: { id },
-        select: { assignedToId: true }
-      });
-      const finalAssignedToId = assignedToId !== undefined ? assignedToId : current?.assignedToId;
+      const finalAssignedToId = assignedToId !== undefined ? assignedToId : current.assignedToId;
       if (!finalAssignedToId) {
         return NextResponse.json(
           { error: "Cannot dispatch a complaint without an assigned field technician." },
@@ -117,6 +128,49 @@ export async function PUT(req: Request) {
         ...(assignedToId !== undefined ? { assignedToId: assignedToId || null } : {}),
       },
     });
+
+    // Fire-and-forget push notifications (try/catch to avoid breaking API on connection errors)
+    try {
+      const { sendFcmNotification } = await import("../../../../lib/fcm-sender");
+
+      // 1. Notify Consumer if the status of their ticket has updated
+      if (status !== undefined && status !== current.status) {
+        if (current.userId) {
+          const consumerUser = await prisma.user.findUnique({
+            where: { id: current.userId },
+            select: { pushToken: true }
+          });
+          if (consumerUser?.pushToken) {
+            const ticketName = current.summary || current.category || "Reported Issue";
+            await sendFcmNotification(
+              [consumerUser.pushToken],
+              "Complaint Status Updated",
+              `Your ticket regarding "${ticketName}" is now "${status}".`,
+              { type: "complaint_status", complaintId: id, status }
+            );
+          }
+        }
+      }
+
+      // 2. Notify Field Technician if assigned to a new complaint
+      if (assignedToId !== undefined && assignedToId !== current.assignedToId && assignedToId !== null) {
+        const technician = await prisma.user.findUnique({
+          where: { id: assignedToId },
+          select: { pushToken: true }
+        });
+        if (technician?.pushToken) {
+          const ticketName = current.summary || current.category || "Reported Issue";
+          await sendFcmNotification(
+            [technician.pushToken],
+            "New Work Order Assigned",
+            `You have been assigned a new job: "${ticketName}".`,
+            { type: "new_assignment", complaintId: id }
+          );
+        }
+      }
+    } catch (pushErr) {
+      console.error("[COMPLAINTS API] Failed to send push notifications:", pushErr);
+    }
 
     return NextResponse.json({ success: true, complaint: updated });
   } catch (error: any) {

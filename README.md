@@ -282,4 +282,15 @@ npm start
 - **Barangay Coordinate Normalization**: Relocated the centroids of all 35 mock barangays inside the administrative database to coordinates 100% verified to be within the San Fernando bounding polygon, avoiding boundary false-outliers.
 - **Always-on Map Complaint Pins**: Adjusted marker visibility rules to render individual complaint pin points at all zoom levels, ensuring immediate visibility even when zoomed out to the entire city view.
 - **Dispatched Status Safety Guard**: Added database and API-level constraints that prevent changing a complaint status to `DISPATCHED` (both via admin/sub-admin select interfaces and direct HTTP PUT requests) unless the ticket has a field technician assigned. Option tags are dynamically disabled on the client side with helpful assignment instructions.
+- **Automated Push Notifications**: Implemented automated Firebase Cloud Messaging (FCM) push notifications. The backend now instantly notifies the resident consumer when an admin/technician updates their ticket status, and notifies field technicians immediately when they are assigned a new work order.
+
+---
+
+## 🔔 Push Notification Triggers (Firebase Cloud Messaging)
+
+The platform automatically sends push notifications to the mobile client in three scenarios:
+
+1.  **Community Advisories**: Triggered when an admin creates a system-wide advisory bulletin (e.g., water quality alerts, planned maintenance schedules) via the Web Dashboard.
+2.  **Ticket Status Updates**: Automatically dispatched to the resident consumer when an admin or technician changes their complaint status (e.g., `PENDING` → `RESOLVED`) in the Web Console.
+3.  **Work Order Assignment**: Sent immediately to a field technician when an admin assigns them to investigate or repair a reported leak/anomaly.
 
