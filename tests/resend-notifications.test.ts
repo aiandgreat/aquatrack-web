@@ -1,26 +1,20 @@
-import { expect, test, vi } from "vitest";
+import { expect, test, vi, beforeEach } from "vitest";
+
+// Set env vars BEFORE importing the module so top-level `const apiKey` picks them up
+vi.stubEnv("BREVO_API_KEY", "test-brevo-key");
+vi.stubEnv("BREVO_SENDER_EMAIL", "test@aquatrack.gov");
+
 import { sendCrewNotification, sendReactEmailNotification } from "../src/lib/resend";
 
-vi.mock("resend", () => {
-  return {
-    Resend: vi.fn().mockImplementation(() => ({
-      emails: {
-        send: vi.fn().mockImplementation(async (payload) => {
-          if (!payload.to) {
-            return { error: { message: "Missing email" } };
-          }
-          if (payload.to === "error@district.gov") {
-            return { error: { message: "Resend API error" } };
-          }
-          if (payload.to === "throw@district.gov") {
-            throw new Error("Network connection failed");
-          }
-          return { data: { id: "resend-email-id-123" } };
-        })
-      }
-    }))
-  };
+// Mock global fetch to simulate Brevo API responses
+const mockFetch = vi.fn();
+vi.stubGlobal("fetch", mockFetch);
+
+beforeEach(() => {
+  mockFetch.mockReset();
 });
+
+// ─── sendCrewNotification ────────────────────────────────────────────────────
 
 test("sendCrewNotification returns status 400 (success: false) for empty emails", async () => {
   const result = await sendCrewNotification("", "Alert", "<p>Content</p>");
@@ -28,23 +22,38 @@ test("sendCrewNotification returns status 400 (success: false) for empty emails"
   expect(result.error).toBe("Recipient email is required");
 });
 
-test("mocked resend matches success cases", async () => {
-  const resultOk = await sendCrewNotification("crew1@district.gov", "Incident", "<h1>Alert</h1>");
-  expect(resultOk.success).toBe(true);
-  expect(resultOk.id).toBe("resend-email-id-123");
+test("sendCrewNotification successfully sends via Brevo API", async () => {
+  mockFetch.mockResolvedValueOnce({
+    ok: true,
+    json: async () => ({ messageId: "brevo-msg-id-123" }),
+  });
+
+  const result = await sendCrewNotification("crew1@district.gov", "Incident", "<h1>Alert</h1>");
+  expect(result.success).toBe(true);
+  expect(result.id).toBe("brevo-msg-id-123");
 });
 
-test("sendCrewNotification handles Resend API errors", async () => {
-  const resultErr = await sendCrewNotification("error@district.gov", "Incident", "<h1>Alert</h1>");
-  expect(resultErr.success).toBe(false);
-  expect(resultErr.error).toBe("Resend API error");
-});
-test("sendCrewNotification handles Resend API unexpected exceptions", async () => {
-  const resultThrow = await sendCrewNotification("throw@district.gov", "Incident", "<h1>Alert</h1>");
-  expect(resultThrow.success).toBe(false);
-  expect(resultThrow.error).toBe("Network connection failed");
+test("sendCrewNotification handles Brevo API errors (non-ok response)", async () => {
+  mockFetch.mockResolvedValueOnce({
+    ok: false,
+    status: 401,
+    json: async () => ({ message: "Brevo API error" }),
+  });
+
+  const result = await sendCrewNotification("error@district.gov", "Incident", "<h1>Alert</h1>");
+  expect(result.success).toBe(false);
+  expect(result.error).toBe("Brevo API error");
 });
 
+test("sendCrewNotification handles unexpected network exceptions", async () => {
+  mockFetch.mockRejectedValueOnce(new Error("Network connection failed"));
+
+  const result = await sendCrewNotification("throw@district.gov", "Incident", "<h1>Alert</h1>");
+  expect(result.success).toBe(false);
+  expect(result.error).toBe("Network connection failed");
+});
+
+// ─── sendReactEmailNotification ──────────────────────────────────────────────
 
 test("sendReactEmailNotification returns status 400 (success: false) for empty emails", async () => {
   const result = await sendReactEmailNotification("", "Alert", {
@@ -58,6 +67,11 @@ test("sendReactEmailNotification returns status 400 (success: false) for empty e
 });
 
 test("sendReactEmailNotification successfully sends email using React Email component template", async () => {
+  mockFetch.mockResolvedValueOnce({
+    ok: true,
+    json: async () => ({ messageId: "brevo-msg-id-123" }),
+  });
+
   const result = await sendReactEmailNotification("crew1@district.gov", "Alert", {
     crewName: "Santos",
     incidentId: "123",
@@ -65,7 +79,5 @@ test("sendReactEmailNotification successfully sends email using React Email comp
     description: "Leak",
   });
   expect(result.success).toBe(true);
-  expect(result.id).toBe("resend-email-id-123");
+  expect(result.id).toBe("brevo-msg-id-123");
 });
-
-

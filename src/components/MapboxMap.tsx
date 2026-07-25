@@ -43,6 +43,7 @@ export default function MapboxMap({
   const [mapStyle, setMapStyle] = useState<"streets" | "satellite" | "dark">("streets");
   const [show3D, setShow3D] = useState(true);
   const [hoveredComplaintId, setHoveredComplaintId] = useState<string | null>(null);
+  const [hoveredNodeId, setHoveredNodeId] = useState<string | null>(null);
   const isFirstStyleRender = useRef(true);
   const isMapMovingRef = useRef(false);
 
@@ -67,6 +68,7 @@ export default function MapboxMap({
     map.on("movestart", () => {
       isMapMovingRef.current = true;
       setHoveredComplaintId(null);
+      setHoveredNodeId(null);
     });
 
     map.on("moveend", () => {
@@ -571,25 +573,37 @@ export default function MapboxMap({
 
     // 4. Plot Telemetry Nodes
     nodes.forEach((node) => {
+      // Outer stable hitbox wrapper (prevents boundary shifts/glitching during hover/scale events)
       const el = document.createElement("div");
-      el.className = `w-6 h-6 rounded-full flex items-center justify-center border-2 border-slate-900 cursor-pointer shadow-lg transition-transform hover:scale-125 ${
-        node.status === "ONLINE"
-          ? "bg-emerald-500 shadow-emerald-500/50"
-          : node.status === "MAINTENANCE"
-          ? "bg-amber-500 shadow-amber-500/50"
-          : "bg-rose-500 shadow-rose-500/50"
-      }`;
+      el.className = "w-9 h-9 flex items-center justify-center cursor-pointer bg-transparent relative";
 
-      // Custom node inside marker icon
+      // Inner visible dot
       el.innerHTML = `
-        <svg class="w-3.5 h-3.5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
-          <path stroke-linecap="round" stroke-linejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z" />
-        </svg>
+        <div class="node-dot w-6 h-6 rounded-full flex items-center justify-center border-2 border-slate-900 shadow-lg transition-all duration-200 ${
+          node.status === "ONLINE"
+            ? "bg-emerald-500 shadow-emerald-500/50"
+            : node.status === "MAINTENANCE"
+            ? "bg-amber-500 shadow-amber-500/50"
+            : "bg-rose-500 shadow-rose-500/50"
+        }">
+          <svg class="w-3.5 h-3.5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z" />
+          </svg>
+        </div>
       `;
 
       el.addEventListener("click", (e) => {
         e.stopPropagation();
         onSelectNode(node.id);
+      });
+
+      el.addEventListener("mouseenter", () => {
+        if (isMapMovingRef.current) return;
+        setHoveredNodeId(node.id);
+      });
+
+      el.addEventListener("mouseleave", () => {
+        setHoveredNodeId(null);
       });
 
       const marker = new mapboxgl.Marker(el)
@@ -679,12 +693,40 @@ export default function MapboxMap({
     });
   }, [selectedComplaintId, hoveredComplaintId, complaints]);
 
+  // Dynamic node selection and hover visual styling
+  useEffect(() => {
+    nodes.forEach((node) => {
+      const marker = markersRef.current[`node-${node.id}`];
+      if (!marker) return;
+      const el = marker.getElement();
+      const dot = el.querySelector(".node-dot");
+      if (!dot) return;
+
+      const isSelected = node.id === selectedNodeId;
+      const isHovered = node.id === hoveredNodeId;
+
+      if (isSelected) {
+        dot.classList.add("scale-125", "ring-4", "ring-cyan-500/50");
+        dot.classList.remove("scale-110", "ring-2", "ring-cyan-400/40");
+      } else if (isHovered) {
+        dot.classList.add("scale-110", "ring-2", "ring-cyan-400/40");
+        dot.classList.remove("scale-125", "ring-4", "ring-cyan-500/50");
+      } else {
+        dot.classList.remove("scale-125", "scale-110", "ring-4", "ring-2", "ring-cyan-500/50", "ring-cyan-400/40");
+      }
+    });
+  }, [selectedNodeId, hoveredNodeId, nodes]);
+
+  const lastSelectedNodeId = useRef<string | null>(null);
+  const lastSelectedComplaintId = useRef<string | null>(null);
+
   // Proximity Focus & Camera flying
   useEffect(() => {
     const map = mapRef.current;
     if (!map) return;
 
-    if (selectedComplaintId) {
+    if (selectedComplaintId && selectedComplaintId !== lastSelectedComplaintId.current) {
+      lastSelectedComplaintId.current = selectedComplaintId;
       const comp = complaints.find((c) => c.id === selectedComplaintId);
       if (comp) {
         map.flyTo({
@@ -693,7 +735,8 @@ export default function MapboxMap({
           essential: true,
         });
       }
-    } else if (selectedNodeId) {
+    } else if (selectedNodeId && selectedNodeId !== lastSelectedNodeId.current) {
+      lastSelectedNodeId.current = selectedNodeId;
       const node = nodes.find((n) => n.id === selectedNodeId);
       if (node) {
         map.flyTo({
@@ -703,7 +746,10 @@ export default function MapboxMap({
         });
       }
     }
-  }, [selectedComplaintId, selectedNodeId]);
+
+    if (!selectedComplaintId) lastSelectedComplaintId.current = null;
+    if (!selectedNodeId) lastSelectedNodeId.current = null;
+  }, [selectedComplaintId, selectedNodeId, nodes, complaints]);
 
   return (
     <div className="relative w-full h-full bg-slate-950 border border-slate-800 rounded-xl overflow-hidden shadow-2xl">
@@ -745,8 +791,8 @@ export default function MapboxMap({
       {/* HUD Layer Grid (top transparent layer) */}
       <div className="absolute inset-0 bg-[linear-gradient(to_right,#1e293b_1.5px,transparent_1.5px),linear-gradient(to_bottom,#1e293b_1.5px,transparent_1.5px)] bg-[size:5rem_5rem] opacity-5 pointer-events-none" />
 
-      {/* Selected Indicator HUD overlay (Hover for Complaints, Select for Nodes) */}
-      {(selectedNodeId || hoveredComplaintId) && (
+      {/* Selected Indicator HUD overlay (Hover for Complaints and Nodes) */}
+      {(hoveredComplaintId || hoveredNodeId) && (
         <div className="absolute bottom-4 left-4 z-10 bg-slate-950/95 border border-slate-800 rounded-xl p-4 text-xs font-mono backdrop-blur-md text-slate-200 max-w-xs sm:max-w-sm shadow-2xl z-20">
           {hoveredComplaintId ? (() => {
             const comp = complaints.find((c) => c.id === hoveredComplaintId);
@@ -775,16 +821,34 @@ export default function MapboxMap({
               </div>
             );
           })() : (() => {
-            const node = nodes.find((n) => n.id === selectedNodeId);
+            const activeNodeId = hoveredNodeId;
+            const node = nodes.find((n) => n.id === activeNodeId);
             if (!node) return null;
+            const mapboxToken = mapboxgl.accessToken || process.env.NEXT_PUBLIC_MAPBOX_TOKEN || "";
+            const staticMapUrl = `https://api.mapbox.com/styles/v1/mapbox/satellite-v9/static/${node.longitude},${node.latitude},16.5,0/280x120?access_token=${mapboxToken}`;
+            const barangay = node.name.split(" ")[0] || "San Fernando";
             return (
-              <div className="space-y-1.5">
+              <div className="space-y-2">
                 <div className="text-cyan-400 font-black text-[9px] tracking-widest uppercase">📡 TELEMETRY NODE FOCUS</div>
-                <div className="text-white font-black text-xs">{node.name}</div>
-                <div className="text-slate-400 text-xxs font-bold">
-                  Status: <span className={node.status === "ONLINE" ? "text-emerald-400" : "text-rose-400"}>{node.status}</span>
+                <div className="text-white font-black text-xs leading-tight">{node.name}</div>
+                <div className="border-t border-slate-800 my-2 pt-2 space-y-1.5 text-slate-400 text-xxs leading-normal">
+                  <div>
+                    <strong className="text-slate-300">Status:</strong>{" "}
+                    <span className={node.status === "ONLINE" ? "text-emerald-400 font-bold" : node.status === "MAINTENANCE" ? "text-amber-400 font-bold" : "text-rose-400 font-bold"}>
+                      {node.status}
+                    </span>
+                  </div>
+                  <div><strong className="text-slate-300">Type:</strong> {node.type.replace(/_/g, " ")}</div>
+                  <div><strong className="text-slate-300">Barangay:</strong> {barangay}</div>
+                  <div><strong className="text-slate-300">Location:</strong> {node.latitude.toFixed(5)}, {node.longitude.toFixed(5)}</div>
+                  
+                  <div className="mt-2.5">
+                    <span className="text-[9px] font-black text-slate-400 uppercase block mb-1">📍 Location Satellite Preview</span>
+                    <div className="rounded-lg overflow-hidden border border-slate-800 shadow-md">
+                      <img src={staticMapUrl} alt="Location Satellite Preview" className="w-full h-[120px] object-cover" />
+                    </div>
+                  </div>
                 </div>
-                <div className="text-slate-500 text-[10px] pt-1">ID: {node.id}</div>
               </div>
             );
           })()}

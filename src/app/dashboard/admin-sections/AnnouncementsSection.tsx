@@ -19,6 +19,8 @@ interface AnnouncementsSectionProps {
   setNewAdvisoryType: (v: "warning" | "info" | "news" | "event") => void;
   newAdvisoryTargetRole: "broadcast" | "consumers" | "technicians";
   setNewAdvisoryTargetRole: (v: "broadcast" | "consumers" | "technicians") => void;
+  newAdvisoryEventDate?: string;
+  setNewAdvisoryEventDate?: (v: string) => void;
   handleCreateAdvisory: (e: React.FormEvent) => void;
   handleDeleteAdvisory: (id: string) => void;
 }
@@ -33,6 +35,8 @@ export default function AnnouncementsSection({
   setNewAdvisoryType,
   newAdvisoryTargetRole,
   setNewAdvisoryTargetRole,
+  newAdvisoryEventDate = "",
+  setNewAdvisoryEventDate,
   handleCreateAdvisory,
   handleDeleteAdvisory,
 }: AnnouncementsSectionProps) {
@@ -179,6 +183,19 @@ export default function AnnouncementsSection({
               <option value="technicians">Technicians (Field Engineers)</option>
             </select>
           </div>
+
+          {newAdvisoryType === "event" && setNewAdvisoryEventDate && (
+            <div className="space-y-1.5 animate-fadeIn">
+              <label className="text-xxs font-bold text-slate-500 uppercase tracking-wider">Event Scheduled Date</label>
+              <input
+                type="date"
+                required
+                value={newAdvisoryEventDate}
+                onChange={(e) => setNewAdvisoryEventDate(e.target.value)}
+                className="w-full bg-white border border-slate-200 text-[#001e66] font-bold text-xs py-2.5 px-3 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#00aeef]/40 transition-all cursor-pointer"
+              />
+            </div>
+          )}
 
           <div className="space-y-1.5">
             <label className="text-xxs font-bold text-slate-500 uppercase tracking-wider">Notice Content Description</label>

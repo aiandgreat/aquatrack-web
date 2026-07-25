@@ -3,6 +3,8 @@
 import React, { useEffect, useRef } from "react";
 import mapboxgl from "mapbox-gl";
 import "mapbox-gl/dist/mapbox-gl.css";
+import { calculateDistance } from "../lib/spatial-sorting";
+import DiagnosticAlertDrawer from "./DiagnosticAlertDrawer";
 
 mapboxgl.accessToken = process.env.NEXT_PUBLIC_MAPBOX_TOKEN || "";
 
@@ -19,11 +21,38 @@ interface MapPreviewModalProps {
     category: string | null;
     urgency: string | null;
   } | null;
+  diagnosticAlerts?: any[];
+  crews?: any[];
+  onDispatch?: (alertId: string, crewId: string) => void;
 }
 
-export default function MapPreviewModal({ isOpen, onClose, complaint }: MapPreviewModalProps) {
+export default function MapPreviewModal({ 
+  isOpen, 
+  onClose, 
+  complaint,
+  diagnosticAlerts = [],
+  crews = [],
+  onDispatch
+}: MapPreviewModalProps) {
   const mapContainerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<mapboxgl.Map | null>(null);
+
+  // Compute if there is an active PostGIS diagnostic alert matching this complaint's location buffer
+  console.log("[MapPreviewModal] Opening for complaint:", complaint?.id, "at", complaint?.latitude, complaint?.longitude);
+  console.log("[MapPreviewModal] Total active diagnostic alerts fetched:", diagnosticAlerts.length);
+
+  const matchedAlert = complaint && diagnosticAlerts.length > 0
+    ? diagnosticAlerts.find(alert => {
+        const dist = calculateDistance(
+          { latitude: complaint.latitude, longitude: complaint.longitude },
+          { latitude: alert.node.latitude, longitude: alert.node.longitude }
+        );
+        console.log(`[MapPreviewModal] Checking alert node '${alert.node.name}', distance: ${dist.toFixed(1)} meters (limit: 500m)`);
+        return dist <= 500; // 500 meters spatial threshold
+      })
+    : null;
+
+  console.log("[MapPreviewModal] Matched Alert Result:", matchedAlert ? "FOUND" : "NOT FOUND");
 
   useEffect(() => {
     if (!isOpen || !complaint || !mapContainerRef.current) return;
@@ -36,7 +65,7 @@ export default function MapPreviewModal({ isOpen, onClose, complaint }: MapPrevi
         container: mapContainerRef.current,
         style: "mapbox://styles/mapbox/streets-v12",
         center: [complaint.longitude, complaint.latitude],
-        zoom: 16,
+        zoom: 15,
       });
 
       mapRef.current = map;
@@ -82,7 +111,7 @@ export default function MapPreviewModal({ isOpen, onClose, complaint }: MapPrevi
           source: "preview-ring",
           paint: {
             "fill-color": "#f43f5e",
-            "fill-opacity": 0.1,
+            "fill-opacity": 0.08,
           },
         });
 
@@ -117,71 +146,106 @@ export default function MapPreviewModal({ isOpen, onClose, complaint }: MapPrevi
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/70 backdrop-blur-sm p-4 animate-fade-in font-sans">
-      <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl w-full max-w-lg overflow-hidden shadow-2xl flex flex-col">
-        {/* Header */}
-        <div className="px-5 py-4 border-b border-slate-100 dark:border-slate-800/80 flex items-center justify-between">
-          <div>
-            <h3 className="text-xs font-black text-slate-450 dark:text-slate-500 uppercase tracking-widest leading-none">
-              Location Preview
-            </h3>
-            <h2 className="text-sm font-black text-[#001e66] dark:text-slate-200 mt-1.5 line-clamp-1">
-              {complaint.summary || complaint.rawText}
-            </h2>
-          </div>
-          <button
-            onClick={onClose}
-            className="w-8 h-8 rounded-full bg-slate-50 dark:bg-slate-800 flex items-center justify-center text-slate-400 hover:text-slate-650 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-700 transition-all font-black text-sm cursor-pointer"
-          >
-            ✕
-          </button>
-        </div>
-
-        {/* Map Area */}
-        <div className="relative w-full h-80 bg-slate-950 border-b border-slate-100 dark:border-slate-800/80">
-          <div ref={mapContainerRef} className="absolute inset-0 w-full h-full" />
-        </div>
-
-        {/* Details Footer */}
-        <div className="p-5 space-y-3 bg-slate-50/55 dark:bg-slate-900/50">
-          <div className="grid grid-cols-2 gap-4 text-[10px] font-mono text-slate-500 dark:text-slate-400">
-            <div>
-              <strong className="text-slate-400 uppercase tracking-wider block mb-0.5 text-[8px]">Coordinates</strong>
-              <span className="font-bold text-slate-700 dark:text-slate-200">
-                {complaint.latitude.toFixed(6)}, {complaint.longitude.toFixed(6)}
-              </span>
-            </div>
-            <div>
-              <strong className="text-slate-400 uppercase tracking-wider block mb-0.5 text-[8px]">Barangay</strong>
-              <span className="font-bold text-slate-700 dark:text-slate-200">
-                {complaint.barangay || "Outside Service Area"}
-              </span>
-            </div>
-            <div>
-              <strong className="text-slate-400 uppercase tracking-wider block mb-0.5 text-[8px]">Category</strong>
-              <span className="font-bold text-slate-700 dark:text-slate-200 uppercase">
-                {complaint.category || "Unclassified"}
-              </span>
-            </div>
-            <div>
-              <strong className="text-slate-400 uppercase tracking-wider block mb-0.5 text-[8px]">Urgency</strong>
-              <span className={`font-black uppercase ${
-                complaint.urgency === "CRITICAL" ? "text-red-600 dark:text-red-400" :
-                complaint.urgency === "HIGH" ? "text-amber-600 dark:text-amber-400" :
-                "text-slate-600 dark:text-slate-400"
-              }`}>
-                {complaint.urgency || "MEDIUM"}
-              </span>
-            </div>
-          </div>
+      <div className={`bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl w-full ${
+        matchedAlert ? "max-w-4xl" : "max-w-lg"
+      } overflow-hidden shadow-2xl flex flex-col transition-all duration-300`}>
+        
+        <div className={matchedAlert ? "grid grid-cols-1 md:grid-cols-2 divide-x divide-slate-100 dark:divide-slate-800/80" : ""}>
           
-          <div className="pt-3 border-t border-slate-100 dark:border-slate-800/50 flex justify-end">
-            <button
-              onClick={onClose}
-              className="bg-[#001e66] hover:bg-[#00aeef] text-white font-extrabold text-xs px-5 py-2.5 rounded-xl uppercase tracking-wider transition-all cursor-pointer"
-            >
-              Close Preview
-            </button>
+          {/* Left panel: Map + Details */}
+          <div className="flex flex-col min-w-0">
+            {/* Header */}
+            <div className="px-5 py-4 border-b border-slate-100 dark:border-slate-800/80 flex items-center justify-between">
+              <div>
+                <h3 className="text-xs font-black text-slate-450 dark:text-slate-500 uppercase tracking-widest leading-none">
+                  Location Preview
+                </h3>
+                <h2 className="text-sm font-black text-[#001e66] dark:text-slate-200 mt-1.5 line-clamp-1">
+                  {complaint.summary || complaint.rawText}
+                </h2>
+              </div>
+              {!matchedAlert && (
+                <button
+                  onClick={onClose}
+                  className="w-8 h-8 rounded-full bg-slate-50 dark:bg-slate-800 flex items-center justify-center text-slate-400 hover:text-slate-650 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-700 transition-all font-black text-sm cursor-pointer"
+                >
+                  ✕
+                </button>
+              )}
+            </div>
+
+            {/* Map Area */}
+            <div className="relative w-full h-80 bg-slate-950 border-b border-slate-100 dark:border-slate-800/80">
+              <div ref={mapContainerRef} className="absolute inset-0 w-full h-full" />
+            </div>
+
+            {/* Details Footer */}
+            <div className="p-5 bg-slate-50/55 dark:bg-slate-900/50 flex flex-col justify-between flex-1 gap-4">
+              <div className="grid grid-cols-2 gap-4 text-[10px] font-mono text-slate-500 dark:text-slate-400">
+                <div>
+                  <strong className="text-slate-400 uppercase tracking-wider block mb-0.5 text-[8px]">Coordinates</strong>
+                  <span className="font-bold text-slate-700 dark:text-slate-200">
+                    {complaint.latitude.toFixed(6)}, {complaint.longitude.toFixed(6)}
+                  </span>
+                </div>
+                <div>
+                  <strong className="text-slate-400 uppercase tracking-wider block mb-0.5 text-[8px]">Barangay</strong>
+                  <span className="font-bold text-slate-700 dark:text-slate-200">
+                    {complaint.barangay || "Outside Service Area"}
+                  </span>
+                </div>
+                <div>
+                  <strong className="text-slate-400 uppercase tracking-wider block mb-0.5 text-[8px]">Category</strong>
+                  <span className="font-bold text-slate-700 dark:text-slate-200 uppercase">
+                    {complaint.category || "Unclassified"}
+                  </span>
+                </div>
+                <div>
+                  <strong className="text-slate-400 uppercase tracking-wider block mb-0.5 text-[8px]">Urgency</strong>
+                  <span className={`font-black uppercase ${
+                    complaint.urgency === "CRITICAL" ? "text-red-600 dark:text-red-400" :
+                    complaint.urgency === "HIGH" ? "text-amber-600 dark:text-amber-400" :
+                    "text-slate-600 dark:text-slate-400"
+                  }`}>
+                    {complaint.urgency || "MEDIUM"}
+                  </span>
+                </div>
+              </div>
+              
+              {!matchedAlert && (
+                <div className="pt-3 border-t border-slate-100 dark:border-slate-800/50 flex justify-end">
+                  <button
+                    onClick={onClose}
+                    className="bg-[#001e66] hover:bg-[#00aeef] text-white font-extrabold text-xs px-5 py-2.5 rounded-xl uppercase tracking-wider transition-all cursor-pointer"
+                  >
+                    Close Preview
+                  </button>
+                </div>
+              )}
+            </div>
           </div>
+
+          {/* Right Panel: AI Spatial Diagnostics (Only rendered if PostGIS correlated alert exists) */}
+          {matchedAlert && (
+            <div className="bg-slate-950 text-slate-100 flex flex-col relative min-w-0">
+              {/* Close Button overlay in upper right for split-screen */}
+              <button
+                onClick={onClose}
+                className="absolute top-4 right-4 z-10 w-8 h-8 rounded-full bg-slate-900 flex items-center justify-center text-slate-400 hover:text-slate-200 hover:bg-slate-850 transition-all font-black text-sm cursor-pointer border border-slate-800 active:scale-95"
+              >
+                ✕
+              </button>
+              
+              <div className="p-5 flex-1 overflow-y-auto max-h-[580px] scrollbar-thin scrollbar-thumb-slate-800 scrollbar-track-transparent">
+                <DiagnosticAlertDrawer
+                  alert={matchedAlert}
+                  crews={crews}
+                  onDispatch={(crewId) => onDispatch && onDispatch(matchedAlert.id, crewId)}
+                />
+              </div>
+            </div>
+          )}
+
         </div>
       </div>
     </div>

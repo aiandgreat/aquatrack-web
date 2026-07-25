@@ -5,16 +5,32 @@ export async function GET() {
   try {
     const nodes = await prisma.telemetryNode.findMany({
       orderBy: { name: "asc" },
+      include: {
+        readings: {
+          orderBy: { timestamp: "desc" },
+          take: 1,
+        },
+      },
     });
     // Format geom fields or exclude them to avoid circular references/issues in JSON serialization
-    const serializedNodes = nodes.map(n => ({
-      id: n.id,
-      name: n.name,
-      type: n.type,
-      latitude: n.latitude,
-      longitude: n.longitude,
-      status: n.status,
-    }));
+    const serializedNodes = nodes.map(n => {
+      const latest = n.readings[0] || null;
+      return {
+        id: n.id,
+        name: n.name,
+        type: n.type,
+        latitude: n.latitude,
+        longitude: n.longitude,
+        status: n.status,
+        reading: latest ? {
+          ph: latest.ph,
+          turbidity: latest.turbidity,
+          tds: latest.tds,
+          pressure: latest.pressure,
+          timestamp: latest.timestamp,
+        } : null,
+      };
+    });
     return NextResponse.json({ success: true, nodes: serializedNodes });
   } catch (error: any) {
     return NextResponse.json({ error: error.message }, { status: 500 });

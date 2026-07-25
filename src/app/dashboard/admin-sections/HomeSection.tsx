@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import DiagnosticAlertDrawer from "../../../components/DiagnosticAlertDrawer";
 
 interface DashboardStats {
   totalUsers: number;
@@ -6,6 +7,10 @@ interface DashboardStats {
   totalNodes: number;
   unresolvedComplaints: number;
   complianceIndex: number;
+  avgPh?: number;
+  avgTurbidity?: number;
+  avgTds?: number;
+  avgPressure?: number;
 }
 
 interface Advisory {
@@ -44,6 +49,10 @@ interface HomeSectionProps {
   setActiveDetailEvent: (event: any) => void;
   complaints?: Complaint[];
   nodes?: TelemetryNode[];
+  diagnosticAlerts?: any[];
+  crews?: any[];
+  handleDispatchAlert?: (alertId: string, crewId: string) => void;
+  setActiveTab?: (tab: string) => void;
 }
 
 export default function HomeSection({
@@ -53,8 +62,20 @@ export default function HomeSection({
   setActiveDetailEvent,
   complaints = [],
   nodes = [],
+  diagnosticAlerts = [],
+  crews = [],
+  handleDispatchAlert = () => {},
+  setActiveTab,
 }: HomeSectionProps) {
   const [expandedCard, setExpandedCard] = useState<"compliance" | "sensors" | "reports" | "advisories" | null>(null);
+  const [calDate, setCalDate] = useState(new Date(2026, 6, 25)); // Set baseline to July 2026
+
+  const handlePrevMonth = () => {
+    setCalDate(new Date(calDate.getFullYear(), calDate.getMonth() - 1, 1));
+  };
+  const handleNextMonth = () => {
+    setCalDate(new Date(calDate.getFullYear(), calDate.getMonth() + 1, 1));
+  };
 
   const parseEventDate = (dateStr: string) => {
     try {
@@ -79,7 +100,8 @@ export default function HomeSection({
       title: ad.title,
       description: ad.text,
       tag: ad.targetRole === "consumers" ? "CONSUMERS" : ad.targetRole === "technicians" ? "STAFF" : "PUBLIC",
-    }));
+    }))
+    .slice(0, 2); // Display only the latest 2 news items
 
   const eventsList = advisories
     .filter((ad) => ad.type === "event")
@@ -330,330 +352,495 @@ export default function HomeSection({
         </div>
       )}
 
-      {/* Critical Network Alerts */}
-      {hasAlerts ? (
-        <div className="bg-red-50/70 border border-red-200/60 border-l-[6px] border-l-red-600 rounded-r-2xl rounded-l-md p-5 shadow-sm text-left">
-          <div className="flex items-center gap-2">
-            <span className="relative flex h-2.5 w-2.5">
-              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
-              <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-red-600"></span>
-            </span>
-            <h4 className="text-xs font-black uppercase tracking-wider text-red-950">
-              Critical System Alerts
-            </h4>
-          </div>
-          
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mt-4">
-            {offlineNodes.map((node) => (
-              <div key={node.id} className="flex items-start gap-3 bg-white/70 border border-red-100 rounded-xl p-3 shadow-sm hover:border-red-200 transition-colors">
-                <div className="w-8 h-8 rounded-lg bg-red-50 flex items-center justify-center text-red-600 shrink-0 mt-0.5">
-                  <svg className="w-4.5 h-4.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5">
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-                  </svg>
-                </div>
-                <div className="text-xs text-slate-700">
-                  <p className="font-extrabold text-red-950">Telemetry Offline</p>
-                  <p className="text-[11px] font-semibold mt-0.5 leading-relaxed">
-                    Station <span className="font-black text-[#0B2E7A]">"{node.name}"</span> is currently unreachable. Immediate diagnostics advised.
-                  </p>
-                </div>
-              </div>
-            ))}
-            
-            {criticalComplaints.map((comp) => (
-              <div key={comp.id} className="flex items-start gap-3 bg-white/70 border border-red-100 rounded-xl p-3 shadow-sm hover:border-red-200 transition-colors">
-                <div className="w-8 h-8 rounded-lg bg-red-50 flex items-center justify-center text-red-600 shrink-0 mt-0.5">
-                  <svg className="w-4.5 h-4.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5">
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-                  </svg>
-                </div>
-                <div className="text-xs text-slate-700">
-                  <p className="font-extrabold text-red-950">Critical Incident</p>
-                  <p className="text-[11px] font-semibold mt-0.5 leading-relaxed">
-                    Report in <span className="font-black text-[#0B2E7A]">Brgy. {comp.barangay}</span>: <span className="italic">"{comp.summary || comp.rawText}"</span>
-                  </p>
-                </div>
-              </div>
-            ))}
+      {/* Dynamic Activity Feed Compiler */}
+      {(() => {
+        const getDynamicActivities = () => {
+          const activities: Array<{
+            id: string;
+            timestamp: Date;
+            tag: string;
+            tagColor: string;
+            ringColor: string;
+            text: string;
+          }> = [];
 
-            {warningAdvisories.map((ad) => (
-              <div key={ad.id} className="flex items-start gap-3 bg-white/70 border border-red-100 rounded-xl p-3 shadow-sm hover:border-red-200 transition-colors">
-                <div className="w-8 h-8 rounded-lg bg-red-50 flex items-center justify-center text-red-600 shrink-0 mt-0.5">
-                  <svg className="w-4.5 h-4.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5">
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M10.34 15.84c-.68.34-1.42.54-2.2.54a5.25 5.25 0 01-2.2-.49m0-6.72a4.967 4.967 0 012.2-.54c.78 0 1.52.2 2.2.54m1.86 8.59l1.62 1.62a1 1 0 001.61-.77V5.56a1 1 0 00-1.61-.77l-1.62 1.62m0 10.02a11.97 11.97 0 01-3.21.98m3.21-11a11.97 11.97 0 00-3.21-.98m0 0A12.022 12.022 0 003 9c0 2.2.6 4.26 1.65 6a12.022 12.022 0 006.69 1.86m0-8.86V16.86" />
-                  </svg>
-                </div>
-                <div className="text-xs text-slate-700">
-                  <p className="font-extrabold text-red-950">Broadcast Warning</p>
-                  <p className="text-[11px] font-semibold mt-0.5 leading-relaxed">
-                    Live Warning Announcement <span className="font-black text-[#0B2E7A]">"{ad.title}"</span> is currently visible to consumers.
-                  </p>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      ) : (
-        <div className="bg-emerald-50/60 border border-emerald-100 border-l-[6px] border-l-emerald-500 rounded-r-2xl rounded-l-md p-5 shadow-sm text-left flex items-start gap-4">
-          <div className="w-8 h-8 rounded-lg bg-emerald-100/50 flex items-center justify-center text-emerald-600 shrink-0 mt-0.5">
-            <svg className="w-4.5 h-4.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="3">
-              <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12.75l6 6 9-13.5" />
-            </svg>
-          </div>
-          <div className="space-y-1">
-            <h4 className="text-xs font-black uppercase tracking-wider text-emerald-950">
-              System Status: Nominal
-            </h4>
-            <p className="text-xs text-slate-500 font-medium leading-relaxed">
-              All municipal water nodes are online and reporting within normal telemetry limits. No pending critical reports or live warnings active.
-            </p>
-          </div>
-        </div>
-      )}
+          // 1. Add citizen complaints (up to 5)
+          complaints.forEach((comp) => {
+            activities.push({
+              id: `complaint-${comp.id}`,
+              timestamp: new Date(comp.createdAt),
+              tag: "AI Triage",
+              tagColor: "text-rose-500",
+              ringColor: "bg-rose-500 ring-rose-500/20",
+              text: `Citizen in Brgy. ${comp.barangay || "San Fernando"} reported: "${comp.summary || comp.rawText}" (${comp.urgency})`
+            });
+          });
 
-      {/* Lower Content Grid */}
-      <div className="grid grid-cols-12 gap-[18px]">
-        {/* Left Column: Quick Analytics & District News */}
-        <div className="col-span-12 lg:col-span-7 space-y-[18px]">
-          {/* Quick Analytics Grid */}
-          <div className="space-y-4">
-            <div className="flex items-center space-x-2 pb-2 border-b border-slate-200">
-              <svg className="w-5 h-5 text-[#001e66]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5">
-                <path strokeLinecap="round" strokeLinejoin="round" d="M11 3.055A9.003 9.003 0 1020.945 13H11V3.055z" />
-                <path strokeLinecap="round" strokeLinejoin="round" d="M20.488 9H15V3.512A9.025 9.025 0 0120.488 9z" />
-              </svg>
-              <h3 className="text-sm font-black uppercase text-[#001e66] tracking-wider">
-                Quick District Analytics
-              </h3>
-            </div>
+          // 2. Add faulty sensor node events (if any nodes are not ONLINE)
+          nodes.filter(n => n.status !== "ONLINE").forEach((node) => {
+            activities.push({
+              id: `node-${node.id}`,
+              timestamp: new Date(Date.now() - 1000 * 60 * 2), // Mock slightly in past for layout ordering
+              tag: "Sensor Alert",
+              tagColor: "text-amber-500",
+              ringColor: "bg-amber-500 ring-amber-500/20",
+              text: `Sensor node "${node.name}" status changed to ${node.status} due to threshold breach.`
+            });
+          });
 
-            <div className="grid grid-cols-2 gap-4">
-              <div className="bg-white border border-slate-200 rounded-[13px] p-4 flex items-center justify-between shadow-sm">
-                <div>
-                  <span className="text-[10px] font-black text-slate-400 uppercase tracking-wider block">System Avg pH</span>
-                  <div className="text-lg font-black text-[#001e66] mt-1">7.2 pH</div>
-                  <span className="text-[9px] text-emerald-600 font-bold bg-emerald-50 px-1.5 py-0.5 rounded border border-emerald-150 mt-1.5 inline-block">✓ STABLE</span>
-                </div>
-                <div className="w-12 h-12 flex items-center justify-center bg-emerald-50 text-emerald-600 rounded-full border border-emerald-100 shrink-0">
-                  <span className="text-xs font-black">7.2</span>
-                </div>
-              </div>
+          // 3. Fallback baseline activity logs if no complaints or faulty nodes exist
+          if (activities.length === 0) {
+            activities.push({
+              id: "sys-ok-1",
+              timestamp: new Date(Date.now() - 1000 * 60 * 15),
+              tag: "Telemetry Stream",
+              tagColor: "text-emerald-500",
+              ringColor: "bg-emerald-500 ring-emerald-500/20",
+              text: "Global water telemetry stream is active. All pump sensors reporting normal pressures."
+            });
+            activities.push({
+              id: "sys-ok-2",
+              timestamp: new Date(Date.now() - 1000 * 60 * 120),
+              tag: "AI Coeff Update",
+              tagColor: "text-purple-500",
+              ringColor: "bg-purple-500 ring-purple-500/20",
+              text: "System-wide automated diagnostic sensitivity updated: standard filtering verified."
+            });
+          }
 
-              <div className="bg-white border border-slate-200 rounded-[13px] p-4 flex items-center justify-between shadow-sm">
-                <div>
-                  <span className="text-[10px] font-black text-slate-400 uppercase tracking-wider block">Avg Turbidity</span>
-                  <div className="text-lg font-black text-[#001e66] mt-1">1.8 NTU</div>
-                  <span className="text-[9px] text-emerald-600 font-bold bg-emerald-50 px-1.5 py-0.5 rounded border border-emerald-150 mt-1.5 inline-block">✓ OPTIMAL</span>
-                </div>
-                <div className="w-12 h-12 flex items-center justify-center bg-sky-50 text-sky-600 rounded-full border border-sky-100 shrink-0">
-                  <span className="text-xs font-black">1.8</span>
-                </div>
-              </div>
+          // Sort chronologically descending (newest first)
+          activities.sort((a, b) => b.timestamp.getTime() - a.timestamp.getTime());
+          return activities.slice(0, 5); // Limit to top 5 logs
+        };
 
-              <div className="bg-white border border-slate-200 rounded-[13px] p-4 flex items-center justify-between shadow-sm">
-                <div>
-                  <span className="text-[10px] font-black text-slate-400 uppercase tracking-wider block">Line Pressure</span>
-                  <div className="text-lg font-black text-[#001e66] mt-1">44.0 PSI</div>
-                  <span className="text-[9px] text-emerald-600 font-bold bg-emerald-50 px-1.5 py-0.5 rounded border border-emerald-150 mt-1.5 inline-block">✓ NOMINAL</span>
-                </div>
-                <div className="w-12 h-12 flex items-center justify-center bg-blue-50 text-blue-600 rounded-full border border-blue-100 shrink-0">
-                  <span className="text-xs font-black">44</span>
-                </div>
-              </div>
+        const dynamicActivities = getDynamicActivities();
+        const phVal = stats.avgPh ?? 7.2;
+        const turbVal = stats.avgTurbidity ?? 1.8;
+        const pressVal = stats.avgPressure ?? 44.0;
+        const tdsVal = stats.avgTds ?? 240;
 
-              <div className="bg-white border border-slate-200 rounded-[13px] p-4 flex items-center justify-between shadow-sm">
-                <div>
-                  <span className="text-[10px] font-black text-slate-400 uppercase tracking-wider block">TDS / Minerals</span>
-                  <div className="text-lg font-black text-[#001e66] mt-1">240 ppm</div>
-                  <span className="text-[9px] text-emerald-600 font-bold bg-emerald-50 px-1.5 py-0.5 rounded border border-emerald-150 mt-1.5 inline-block">✓ SECURE</span>
+        return (
+          /* Lower Content Grid (Adjusted spans: left takes 8 cols, right takes 4 cols) */
+          <div className="grid grid-cols-12 gap-[18px]">
+            {/* Left Column: Quick Analytics & District News (Expanded to 8 columns) */}
+            <div className="col-span-12 lg:col-span-8 space-y-[18px]">
+              
+              {/* Quick Analytics Grid */}
+              <div className="space-y-4">
+                <div className="flex items-center space-x-3 pb-2 border-b border-slate-200">
+                  <div className="w-8 h-8 rounded-lg bg-[#001e66]/5 dark:bg-[#00aeef]/10 flex items-center justify-center text-[#001e66] dark:text-[#00aeef] shrink-0">
+                    <svg className="w-4.5 h-4.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5">
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 002 2h2a2 2 0 002-2z" />
+                    </svg>
+                  </div>
+                  <h3 className="text-sm font-black uppercase text-[#001e66] dark:text-slate-200 tracking-wider">
+                    Quick District Analytics
+                  </h3>
                 </div>
-                <div className="w-12 h-12 flex items-center justify-center bg-purple-50 text-purple-600 rounded-full border border-purple-100 shrink-0">
-                  <span className="text-xs font-black">240</span>
-                </div>
-              </div>
-            </div>
-          </div>
 
-          {/* Latest News */}
-          <div className="space-y-4 pt-2">
-            <div className="flex items-center space-x-2 pb-2 border-b border-slate-200">
-              <svg className="w-5 h-5 text-[#001e66]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5">
-                <path strokeLinecap="round" strokeLinejoin="round" d="M19 20H5a2 2 0 01-2-2V6a2 2 0 012-2h10a2 2 0 012 2v1m2 4h-2m2 0a2 2 0 00-2-2m2 2v5a2 2 0 01-2 2h-2" />
-              </svg>
-              <h3 className="text-sm font-black uppercase text-[#001e66] tracking-wider">
-                Latest District News
-              </h3>
-            </div>
-
-            <div className="space-y-3">
-              {newsList.length > 0 ? (
-                newsList.map((news: any) => (
-                  <div
-                    key={news.id}
-                    onClick={() => setActiveDetailNews(news)}
-                    className="bg-white border border-slate-200 rounded-[13px] p-4 hover:border-[#00aeef] transition-all cursor-pointer shadow-sm relative pr-28 text-left"
-                  >
-                    <span className="text-[10px] font-bold text-slate-400">{news.date}</span>
-                    <h4 className="font-black text-[#001e66] text-sm mt-1">{news.title}</h4>
-                    <p className="text-xs text-slate-500 leading-relaxed mt-1.5 line-clamp-2">
-                      {news.description}
-                    </p>
-                    <span className={`absolute top-4 right-4 text-[9px] font-mono font-black uppercase px-2 py-0.5 rounded ${
-                      news.tag === "CORE UPGRADE" ? "bg-blue-50 text-blue-600" :
-                      news.tag === "COMPLIANCE" ? "bg-emerald-50 text-emerald-600" :
-                      "bg-slate-55 text-[#001e66]"
+                <div className="grid grid-cols-2 gap-4">
+                  {/* pH Card */}
+                  <div className="bg-white border border-slate-200 rounded-[13px] p-4 flex items-center justify-between shadow-sm">
+                    <div>
+                      <span className="text-[10px] font-black text-slate-400 uppercase tracking-wider block">System Avg pH</span>
+                      <div className="text-lg font-black text-[#001e66] mt-1">{phVal.toFixed(1)} pH</div>
+                      {phVal < 6.5 || phVal > 8.5 ? (
+                        <span className="text-[9px] text-rose-600 font-bold bg-rose-50 px-1.5 py-0.5 rounded border border-rose-150 mt-1.5 inline-block">⚠️ ANOMALOUS</span>
+                      ) : (
+                        <span className="text-[9px] text-emerald-600 font-bold bg-emerald-50 px-1.5 py-0.5 rounded border border-emerald-150 mt-1.5 inline-block">✓ STABLE</span>
+                      )}
+                    </div>
+                    <div className={`w-12 h-12 flex items-center justify-center rounded-full border shrink-0 font-black text-xs ${
+                      phVal < 6.5 || phVal > 8.5 ? "bg-rose-50 text-rose-600 border-rose-100" : "bg-emerald-50 text-emerald-600 border-emerald-100"
                     }`}>
-                      {news.tag}
-                    </span>
-                  </div>
-                ))
-              ) : (
-                <div className="border border-dashed border-slate-200 rounded-[13px] p-8 text-center text-slate-400 bg-slate-50/50">
-                  <p className="text-xs font-bold uppercase tracking-wider">No News Broadcasts Posted</p>
-                  <p className="text-[11px] text-slate-500 mt-1">Operational announcements will appear here once published.</p>
-                </div>
-              )}
-            </div>
-          </div>
-        </div>
-
-        {/* Right Column: Live Activity Feed & Events & Advisories */}
-        <div className="col-span-12 lg:col-span-5 space-y-[18px]">
-          {/* Live Activity Feed */}
-          <div className="space-y-4">
-            <div className="flex items-center space-x-2 pb-2 border-b border-slate-200">
-              <svg className="w-5 h-5 text-[#001e66]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5">
-                <path strokeLinecap="round" strokeLinejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-              </svg>
-              <h3 className="text-sm font-black uppercase text-[#001e66] tracking-wider">
-                Live Activity Feed
-              </h3>
-            </div>
-
-            <div className="bg-white border border-slate-200 rounded-[17px] p-4 shadow-sm space-y-4 max-h-[295px] overflow-y-auto">
-              {complaints && complaints.slice(0, 3).map((comp, idx) => (
-                <div key={`dynamic-feed-${comp.id}`} className="flex gap-3 text-xs">
-                  <div className="flex flex-col items-center">
-                    <div className="w-2.5 h-2.5 rounded-full bg-[#00aeef] ring-4 ring-[#00aeef]/20 shrink-0"></div>
-                    <div className="w-[1.5px] bg-slate-200 flex-1 my-1"></div>
-                  </div>
-                  <div className="space-y-0.5 text-left">
-                    <span className="text-[10px] text-slate-400 font-mono block">
-                      {new Date(comp.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                    </span>
-                    <p className="text-slate-600 font-bold leading-normal">
-                      [AI Triage] Citizen report in <span className="text-[#001e66]">Brgy. {comp.barangay || "San Fernando"}</span> classified as <span className="text-[#00aeef] font-black">{comp.urgency}</span>.
-                    </p>
-                  </div>
-                </div>
-              ))}
-
-              <div className="flex gap-3 text-xs">
-                <div className="flex flex-col items-center">
-                  <div className="w-2.5 h-2.5 rounded-full bg-emerald-500 ring-4 ring-emerald-500/20 shrink-0"></div>
-                  <div className="w-[1.5px] bg-slate-200 flex-1 my-1"></div>
-                </div>
-                <div className="space-y-0.5 text-left">
-                  <span className="text-[10px] text-slate-400 font-mono block">Just Now</span>
-                  <p className="text-slate-600 font-bold leading-normal">
-                    [Telemetry] Ingest stream active for <span className="text-[#001e66]">East Reservoir Station</span>: normal pressures reported.
-                  </p>
-                </div>
-              </div>
-
-              <div className="flex gap-3 text-xs">
-                <div className="flex flex-col items-center">
-                  <div className="w-2.5 h-2.5 rounded-full bg-amber-500 ring-4 ring-amber-500/20 shrink-0"></div>
-                  <div className="w-[1.5px] bg-slate-200 flex-1 my-1"></div>
-                </div>
-                <div className="space-y-0.5 text-left">
-                  <span className="text-[10px] text-slate-400 font-mono block">35m ago</span>
-                  <p className="text-slate-600 font-bold leading-normal">
-                    [Field Crew] Technical evaluation dispatched for reported water leakage.
-                  </p>
-                </div>
-              </div>
-
-              <div className="flex gap-3 text-xs">
-                <div className="flex flex-col items-center">
-                  <div className="w-2.5 h-2.5 rounded-full bg-purple-500 ring-4 ring-purple-500/20 shrink-0"></div>
-                </div>
-                <div className="space-y-0.5 text-left">
-                  <span className="text-[10px] text-slate-400 font-mono block">2h ago</span>
-                  <p className="text-slate-600 font-bold leading-normal">
-                    [System] Global AI strictness coefficient updated.
-                  </p>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {/* Events */}
-          <div className="space-y-4">
-            <div className="flex items-center space-x-2 pb-2 border-b border-slate-200">
-              <svg className="w-5 h-5 text-[#001e66]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5">
-                <path strokeLinecap="round" strokeLinejoin="round" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-              </svg>
-              <h3 className="text-sm font-black uppercase text-[#001e66] tracking-wider">
-                Upcoming District Events
-              </h3>
-            </div>
-
-            <div className="space-y-3.5">
-              {eventsList.length > 0 ? (
-                eventsList.map((evt: any) => (
-                  <div
-                    key={evt.id}
-                    onClick={() => setActiveDetailEvent(evt)}
-                    className="flex items-start space-x-4 cursor-pointer hover:opacity-85 transition-opacity"
-                  >
-                    <div className={`w-11 h-11 shrink-0 rounded-xl flex flex-col items-center justify-center font-black ${evt.color}`}>
-                      <span className="text-[9px] uppercase tracking-wider">{evt.month}</span>
-                      <span className="text-sm -mt-0.5">{evt.day}</span>
-                    </div>
-                    <div className="text-left flex-1 min-w-0">
-                      <h4 className="font-extrabold text-[#001e66] text-xs truncate">{evt.title}</h4>
-                      <p className="text-[11px] text-slate-500 mt-0.5 line-clamp-1">{evt.description}</p>
+                      <span>{phVal.toFixed(1)}</span>
                     </div>
                   </div>
-                ))
-              ) : (
-                <div className="border border-dashed border-slate-200 rounded-2xl p-6 text-center text-slate-400 bg-slate-50/50">
-                  <p className="text-xs font-bold uppercase tracking-wider">No Scheduled Events</p>
-                  <p className="text-[11px] text-slate-500 mt-1">Calendar assemblies and sensor demos will list here.</p>
+
+                  {/* Turbidity Card */}
+                  <div className="bg-white border border-slate-200 rounded-[13px] p-4 flex items-center justify-between shadow-sm">
+                    <div>
+                      <span className="text-[10px] font-black text-slate-400 uppercase tracking-wider block">Avg Turbidity</span>
+                      <div className="text-lg font-black text-[#001e66] mt-1">{turbVal.toFixed(1)} NTU</div>
+                      {turbVal > 5.0 ? (
+                        <span className="text-[9px] text-amber-600 font-bold bg-amber-50 px-1.5 py-0.5 rounded border border-amber-150 mt-1.5 inline-block">⚠️ ELEVATED</span>
+                      ) : (
+                        <span className="text-[9px] text-emerald-600 font-bold bg-emerald-50 px-1.5 py-0.5 rounded border border-emerald-150 mt-1.5 inline-block">✓ OPTIMAL</span>
+                      )}
+                    </div>
+                    <div className={`w-12 h-12 flex items-center justify-center rounded-full border shrink-0 font-black text-xs ${
+                      turbVal > 5.0 ? "bg-amber-50 text-amber-600 border-amber-100" : "bg-sky-50 text-sky-600 border-sky-100"
+                    }`}>
+                      <span>{turbVal.toFixed(1)}</span>
+                    </div>
+                  </div>
+
+                  {/* Pressure Card */}
+                  <div className="bg-white border border-slate-200 rounded-[13px] p-4 flex items-center justify-between shadow-sm">
+                    <div>
+                      <span className="text-[10px] font-black text-slate-400 uppercase tracking-wider block">Line Pressure</span>
+                      <div className="text-lg font-black text-[#001e66] mt-1">{pressVal.toFixed(1)} PSI</div>
+                      {pressVal <= 5.0 ? (
+                        <span className="text-[9px] text-rose-600 font-bold bg-rose-50 px-1.5 py-0.5 rounded border border-rose-150 mt-1.5 inline-block">❌ OFFLINE</span>
+                      ) : pressVal < 30.0 ? (
+                        <span className="text-[9px] text-amber-600 font-bold bg-amber-50 px-1.5 py-0.5 rounded border border-amber-150 mt-1.5 inline-block">⚠️ LOW PRESSURE</span>
+                      ) : (
+                        <span className="text-[9px] text-emerald-600 font-bold bg-emerald-50 px-1.5 py-0.5 rounded border border-emerald-150 mt-1.5 inline-block">✓ NOMINAL</span>
+                      )}
+                    </div>
+                    <div className={`w-12 h-12 flex items-center justify-center rounded-full border shrink-0 font-black text-xs ${
+                      pressVal <= 5.0 ? "bg-rose-50 text-rose-600 border-rose-100" :
+                      pressVal < 30.0 ? "bg-amber-50 text-amber-600 border-amber-100" :
+                      "bg-blue-50 text-blue-600 border-blue-100"
+                    }`}>
+                      <span>{Math.round(pressVal)}</span>
+                    </div>
+                  </div>
+
+                  {/* TDS Card */}
+                  <div className="bg-white border border-slate-200 rounded-[13px] p-4 flex items-center justify-between shadow-sm">
+                    <div>
+                      <span className="text-[10px] font-black text-slate-400 uppercase tracking-wider block">TDS / Minerals</span>
+                      <div className="text-lg font-black text-[#001e66] mt-1">{tdsVal} ppm</div>
+                      {tdsVal > 500 ? (
+                        <span className="text-[9px] text-amber-600 font-bold bg-amber-50 px-1.5 py-0.5 rounded border border-amber-150 mt-1.5 inline-block">⚠️ HIGH MINERAL</span>
+                      ) : (
+                        <span className="text-[9px] text-emerald-600 font-bold bg-emerald-50 px-1.5 py-0.5 rounded border border-emerald-150 mt-1.5 inline-block">✓ SECURE</span>
+                      )}
+                    </div>
+                    <div className={`w-12 h-12 flex items-center justify-center rounded-full border shrink-0 font-black text-xs ${
+                      tdsVal > 500 ? "bg-amber-50 text-amber-600 border-amber-100" : "bg-purple-50 text-purple-600 border-purple-100"
+                    }`}>
+                      <span>{tdsVal}</span>
+                    </div>
+                  </div>
                 </div>
-              )}
+              </div>
+
+              {/* Latest News */}
+              <div className="space-y-4 pt-2">
+                <div className="flex items-center space-x-3 pb-2 border-b border-slate-200">
+                  <div className="w-8 h-8 rounded-lg bg-[#001e66]/5 dark:bg-[#00aeef]/10 flex items-center justify-center text-[#001e66] dark:text-[#00aeef] shrink-0">
+                    <svg className="w-4.5 h-4.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5">
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M19 20H5a2 2 0 01-2-2V6a2 2 0 012-2h10a2 2 0 012 2v1m2 4h-2m2 0a2 2 0 00-2-2m2 2v5a2 2 0 01-2 2h-2" />
+                    </svg>
+                  </div>
+                  <h3 className="text-sm font-black uppercase text-[#001e66] dark:text-slate-200 tracking-wider">
+                    Latest District News
+                  </h3>
+                </div>
+
+                <div className="space-y-3">
+                  {newsList.length > 0 ? (
+                    <div className="relative pb-6">
+                      <div
+                        className="space-y-3 pb-6"
+                        style={{
+                          maskImage: "linear-gradient(to bottom, black 50%, transparent 100%)",
+                          WebkitMaskImage: "linear-gradient(to bottom, black 50%, transparent 100%)",
+                        }}
+                      >
+                        {newsList.map((news: any) => (
+                          <div
+                            key={news.id}
+                            onClick={() => setActiveDetailNews(news)}
+                            className="bg-white border border-slate-200 rounded-[13px] p-4 hover:border-[#00aeef] transition-all cursor-pointer shadow-sm relative pr-28 text-left"
+                          >
+                            <span className="text-[10px] font-bold text-slate-400">{news.date}</span>
+                            <h4 className="font-black text-[#001e66] text-sm mt-1">{news.title}</h4>
+                            <p className="text-xs text-slate-500 leading-relaxed mt-1.5 line-clamp-2">
+                              {news.description}
+                            </p>
+                            <span className={`absolute top-4 right-4 text-[9px] font-mono font-black uppercase px-2 py-0.5 rounded ${
+                              news.tag === "CORE UPGRADE" ? "bg-blue-50 text-blue-600" :
+                              news.tag === "COMPLIANCE" ? "bg-emerald-50 text-emerald-600" :
+                              "bg-slate-55 text-[#001e66]"
+                            }`}>
+                              {news.tag}
+                            </span>
+                          </div>
+                        ))}
+                      </div>
+
+                      {setActiveTab && (
+                        <div className="absolute bottom-0 right-0 left-0 flex justify-center z-20">
+                          <button
+                            type="button"
+                            onClick={() => setActiveTab("announcements")}
+                            className="text-[10px] font-black text-[#00aeef] hover:text-[#001e66] transition-all flex items-center gap-1 group cursor-pointer bg-white px-3 py-1 rounded-full border border-slate-200 shadow-sm hover:shadow-md active:scale-95"
+                          >
+                            See More Bulletins
+                            <span className="transform translate-x-0 group-hover:translate-x-1 transition-transform">→</span>
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  ) : (
+                    <div className="border border-dashed border-slate-200 rounded-[13px] p-8 text-center text-slate-400 bg-slate-50/55">
+                      <p className="text-xs font-bold uppercase tracking-wider">No News Broadcasts Posted</p>
+                      <p className="text-[11px] text-slate-500 mt-1">Operational announcements will appear here once published.</p>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* Advisories Panel Notice */}
+              {(() => {
+                const staffAdvisories = advisories
+                  .filter(ad => ad.type === "warning" || ad.type === "info")
+                  .slice(0, 2);
+
+                return staffAdvisories.length > 0 ? (
+                  <div className="space-y-3 mt-2">
+                    <div className="flex items-center space-x-2 pb-1 border-b border-slate-200">
+                      <div className="w-8 h-8 rounded-lg bg-[#001e66]/5 dark:bg-[#00aeef]/10 flex items-center justify-center text-[#001e66] dark:text-[#00aeef] shrink-0">
+                        <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5">
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M11 5.882V19.24a1.76 1.76 0 01-3.417.592l-2.147-6.15M18 13a3 3 0 100-6M5.436 13.683A4.001 4.001 0 017 6h1.832c4.1 0 7.625-1.234 9.168-3v14c-1.543-1.766-5.067-3-9.168-3H7a3.988 3.988 0 01-1.564-.317z" />
+                        </svg>
+                      </div>
+                      <span className="text-[10px] font-black text-[#001e66] dark:text-[#00aeef] uppercase tracking-wider">
+                        Active Staff Advisories ({staffAdvisories.length})
+                      </span>
+                    </div>
+
+                    <div className="relative pb-6">
+                      <div
+                        className="space-y-2 pb-6"
+                        style={{
+                          maskImage: "linear-gradient(to bottom, black 50%, transparent 100%)",
+                          WebkitMaskImage: "linear-gradient(to bottom, black 50%, transparent 100%)",
+                        }}
+                      >
+                        {staffAdvisories.map((ad) => (
+                          <div
+                            key={ad.id}
+                            className={`border-l-[4px] rounded-r-xl rounded-l-md p-3.5 shadow-sm text-left ${
+                              ad.type === "warning"
+                                ? "bg-red-50/60 dark:bg-red-950/20 border border-red-200 dark:border-red-900 border-l-red-500"
+                                : "bg-blue-50/60 dark:bg-slate-900/40 border border-blue-200 dark:border-slate-800 border-l-blue-500"
+                            }`}
+                          >
+                            <div className="flex items-center justify-between">
+                              <span className={`text-[8px] font-black px-1.5 py-0.5 rounded ${
+                                ad.type === "warning" ? "bg-red-100 text-red-700" : "bg-blue-100 text-blue-700"
+                              }`}>
+                                {ad.type.toUpperCase()}
+                              </span>
+                              <span className="text-[9px] font-mono text-slate-400">{ad.date}</span>
+                            </div>
+                            <h4 className={`text-xs font-black mt-2 leading-tight ${
+                              ad.type === "warning" ? "text-red-950 dark:text-red-300" : "text-[#001e66] dark:text-blue-300"
+                            }`}>
+                              {ad.title}
+                            </h4>
+                            <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-1 leading-relaxed line-clamp-3">
+                              {ad.text}
+                            </p>
+                          </div>
+                        ))}
+                      </div>
+
+
+
+                      {setActiveTab && (
+                        <div className="absolute bottom-0 right-0 left-0 flex justify-center z-20">
+                          <button
+                            type="button"
+                            onClick={() => setActiveTab("announcements")}
+                            className="text-[10px] font-black text-[#00aeef] hover:text-[#001e66] transition-all flex items-center gap-1 group cursor-pointer bg-white px-3 py-1 rounded-full border border-slate-200 shadow-sm hover:shadow-md active:scale-95"
+                          >
+                            See More Advisories
+                            <span className="transform translate-x-0 group-hover:translate-x-1 transition-transform">→</span>
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                ) : (
+                  <div className="bg-[#EEF4FC]/50 dark:bg-slate-900/20 border border-slate-200 dark:border-slate-800 border-dashed rounded-[13px] p-4 text-center text-slate-400 mt-2">
+                    <p className="text-xs font-bold uppercase tracking-wider">No Active Staff Advisories</p>
+                    <p className="text-[11px] text-slate-500 mt-1">Global maintenance broadcasts will list here.</p>
+                  </div>
+                );
+              })()}
+            </div>
+
+            {/* Right Column: Live Activity Feed & Events (Reduced to 4 columns) */}
+            <div className="col-span-12 lg:col-span-4 space-y-[18px]">
+              
+              {/* Live Activity Feed */}
+              <div className="space-y-4">
+                <div className="flex items-center space-x-3 pb-2 border-b border-slate-200">
+                  <div className="w-8 h-8 rounded-lg bg-[#001e66]/5 dark:bg-[#00aeef]/10 flex items-center justify-center text-[#001e66] dark:text-[#00aeef] shrink-0">
+                    <svg className="w-4.5 h-4.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5">
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z" />
+                    </svg>
+                  </div>
+                  <h3 className="text-sm font-black uppercase text-[#001e66] dark:text-slate-200 tracking-wider">
+                    Live Activity Feed
+                  </h3>
+                </div>
+
+                <div className="bg-white border border-slate-200 rounded-[17px] p-4 shadow-sm space-y-4 max-h-[310px] overflow-y-auto">
+                  {dynamicActivities.map((act) => (
+                    <div key={act.id} className="flex gap-3 text-xs">
+                      <div className="flex flex-col items-center">
+                        <div className={`w-2.5 h-2.5 rounded-full shrink-0 ring-4 ${act.ringColor}`}></div>
+                        <div className="w-[1.5px] bg-slate-200 flex-1 my-1"></div>
+                      </div>
+                      <div className="space-y-0.5 text-left min-w-0 flex-1">
+                        <span className="text-[9px] text-slate-400 font-mono block">
+                          {act.timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                        </span>
+                        <p className="text-slate-600 font-bold leading-normal line-clamp-2" title={act.text}>
+                          <span className={`${act.tagColor} font-black`}>[{act.tag}]</span> {act.text}
+                        </p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Events */}
+              <div className="space-y-4">
+                <div className="flex items-center space-x-3 pb-2 border-b border-slate-200">
+                  <div className="w-8 h-8 rounded-lg bg-[#001e66]/5 dark:bg-[#00aeef]/10 flex items-center justify-center text-[#001e66] dark:text-[#00aeef] shrink-0">
+                    <svg className="w-4.5 h-4.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5">
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                    </svg>
+                  </div>
+                  <h3 className="text-sm font-black uppercase text-[#001e66] dark:text-slate-200 tracking-wider">
+                    Upcoming District Events
+                  </h3>
+                </div>
+
+                <div className="space-y-3.5">
+                  {/* Visual Monthly Calendar Widget */}
+                  {(() => {
+                    const year = calDate.getFullYear();
+                    const month = calDate.getMonth();
+                    const monthName = calDate.toLocaleString("en-US", { month: "long" });
+
+                    const firstDayIndex = new Date(year, month, 1).getDay();
+                    const daysInMonth = new Date(year, month + 1, 0).getDate();
+
+                    const daysArray: Array<number | null> = [];
+                    // Add empty slots for month starting offset
+                    for (let i = 0; i < firstDayIndex; i++) {
+                      daysArray.push(null);
+                    }
+                    // Add days of month
+                    for (let i = 1; i <= daysInMonth; i++) {
+                      daysArray.push(i);
+                    }
+
+                    const curMonthAbbr = calDate.toLocaleString("en-US", { month: "short" }).toUpperCase();
+
+                    return (
+                      <div className="bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-5 space-y-4 shadow-sm">
+                        {/* Calendar Header with navigation buttons */}
+                        <div className="flex justify-between items-center px-1">
+                          <span className="text-xs font-black text-[#001e66] dark:text-slate-300 uppercase tracking-wider">{monthName} {year}</span>
+                          <div className="flex gap-1.5">
+                            <button
+                              type="button"
+                              onClick={handlePrevMonth}
+                              className="w-6 h-6 rounded-md bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-500 hover:text-slate-800 dark:hover:text-slate-200 flex items-center justify-center text-[10px] cursor-pointer shadow-sm active:scale-90 select-none font-bold"
+                            >
+                              ◀
+                            </button>
+                            <button
+                              type="button"
+                              onClick={handleNextMonth}
+                              className="w-6 h-6 rounded-md bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-500 hover:text-slate-800 dark:hover:text-slate-200 flex items-center justify-center text-[10px] cursor-pointer shadow-sm active:scale-90 select-none font-bold"
+                            >
+                              ▶
+                            </button>
+                          </div>
+                        </div>
+
+                        {/* Weekday headers */}
+                        <div className="grid grid-cols-7 gap-2 text-center font-bold">
+                          {["S", "M", "T", "W", "T", "F", "S"].map((d, idx) => (
+                            <span key={idx} className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest">{d}</span>
+                          ))}
+                        </div>
+
+                        {/* Calendar Grid */}
+                        <div className="grid grid-cols-7 gap-2 text-center font-semibold">
+                          {daysArray.map((dayNum, idx) => {
+                            if (dayNum === null) {
+                              return <div key={`empty-${idx}`} className="w-8 h-8" />;
+                            }
+
+                            // Match node event
+                            const event = eventsList.find(e => Number(e.day) === dayNum && e.month.toUpperCase().startsWith(curMonthAbbr.substring(0, 3)));
+                            const isToday = dayNum === 25 && month === 6 && year === 2026; // Match Jul 25, 2026 baseline
+
+                            if (event) {
+                              return (
+                                <button
+                                  key={`day-evt-${dayNum}`}
+                                  type="button"
+                                  onClick={() => setActiveDetailEvent(event)}
+                                  title={event.title}
+                                  className="w-8 h-8 text-[11px] font-black rounded-full flex items-center justify-center bg-[#00aeef] text-white ring-4 ring-[#00aeef]/20 shadow-md cursor-pointer mx-auto transition-transform hover:scale-110 active:scale-90"
+                                >
+                                  {dayNum}
+                                </button>
+                              );
+                            }
+
+                            return (
+                              <div
+                                key={`day-${dayNum}`}
+                                className={`w-8 h-8 text-[11px] font-bold rounded-full flex items-center justify-center mx-auto transition-all ${
+                                  isToday
+                                    ? "border-2 border-[#001e66] dark:border-[#00aeef] text-[#001e66] dark:text-[#00aeef]"
+                                    : "text-slate-500 dark:text-slate-400 hover:bg-slate-200/50 dark:hover:bg-slate-800"
+                                }`}
+                              >
+                                {dayNum}
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    );
+                  })()}
+
+                  {/* List Feed of Upcoming Events */}
+                  <div className="space-y-2.5 pt-2">
+                    {eventsList.length > 0 ? (
+                      eventsList.map((evt: any) => (
+                        <div
+                          key={evt.id}
+                          onClick={() => setActiveDetailEvent(evt)}
+                          className="flex items-start space-x-3.5 cursor-pointer hover:opacity-85 transition-opacity"
+                        >
+                          <div className={`w-10 h-10 shrink-0 rounded-xl flex flex-col items-center justify-center font-black ${evt.color} shadow-sm`}>
+                            <span className="text-[8px] uppercase tracking-wider">{evt.month}</span>
+                            <span className="text-xs -mt-0.5">{evt.day}</span>
+                          </div>
+                          <div className="text-left flex-1 min-w-0">
+                            <h4 className="font-extrabold text-[#001e66] dark:text-slate-200 text-xs truncate leading-tight">{evt.title}</h4>
+                            <p className="text-[11px] text-slate-500 mt-0.5 line-clamp-1 leading-normal">{evt.description}</p>
+                          </div>
+                        </div>
+                      ))
+                    ) : (
+                      <div className="border border-dashed border-slate-200 dark:border-slate-800 rounded-xl p-4 text-center text-slate-400 bg-slate-50/50 dark:bg-slate-900/30">
+                        <p className="text-xs font-bold uppercase tracking-wider">No Scheduled Events</p>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+
             </div>
           </div>
-
-          {/* Advisories Panel Notice */}
-          {advisories.length > 0 ? (
-            <div className="bg-[#EEF4FC] border border-blue-100 rounded-[13px] p-4 space-y-3 shadow-sm text-left">
-              <div className="flex items-center space-x-2 text-[#001e66]">
-                <svg className="w-4 h-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5">
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M11 5.882V19.24a1.76 1.76 0 01-3.417.592l-2.147-6.15M18 13a3 3 0 100-6M5.436 13.683A4.001 4.001 0 017 6h1.832c4.1 0 7.625-1.234 9.168-3v14c-1.543-1.766-5.067-3-9.168-3H7a3.988 3.988 0 01-1.564-.317z" />
-                </svg>
-                <span className="text-[9px] font-black uppercase tracking-wider">
-                  ACTIVE STAFF ADVISORY ({advisories.length})
-                </span>
-              </div>
-              <div className="space-y-1.5">
-                <h4 className="text-xs font-black text-[#001e66]">
-                  {advisories[0].title}
-                </h4>
-                <p className="text-[11px] text-slate-500 leading-relaxed">
-                  {advisories[0].text}
-                </p>
-              </div>
-            </div>
-          ) : (
-            <div className="bg-[#EEF4FC]/50 border border-slate-200 border-dashed rounded-[13px] p-4 text-center text-slate-400">
-              <p className="text-xs font-bold uppercase tracking-wider">No Active Staff Advisories</p>
-              <p className="text-[11px] text-slate-500 mt-1">Global maintenance broadcasts will list here.</p>
-            </div>
-          )}
-        </div>
-      </div>
+        );
+      })()}
     </div>
   );
 }

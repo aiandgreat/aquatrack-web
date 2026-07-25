@@ -28,7 +28,7 @@ A production-ready municipal water district command center for real-time IoT tel
 
 ### AI & Communications
 - **AI Integration Core**: Google Gemini API integrated via the Vercel AI SDK using Structured JSON Schema mode for multi-lingual complaint triaging.
-- **Transactional Email Layer**: Resend API + React Email for immediate structural breakdown routing and engineer dispatches.
+- **Transactional Email Layer**: Brevo (Sendinblue) API + React Email for immediate structural breakdown routing and engineer dispatches.
 
 ## Setup Instructions
 
@@ -69,8 +69,9 @@ GEMINI_API_KEY="AIza..."
 # Vercel AI SDK (optional; falls back to GEMINI_API_KEY if omitted)
 GOOGLE_GENERATIVE_AI_API_KEY="AIza..."
 
-# Resend Email
-RESEND_API_KEY="re_..."
+# Brevo (Sendinblue) Email Service
+BREVO_API_KEY="xkeysib-..."
+BREVO_SENDER_EMAIL="your_registered_sender_email@gmail.com"
 
 # Mapbox (public — safe to expose)
 NEXT_PUBLIC_MAPBOX_TOKEN="pk.eyJ1..."
@@ -294,3 +295,42 @@ The platform automatically sends push notifications to the mobile client in thre
 2.  **Ticket Status Updates**: Automatically dispatched to the resident consumer when an admin or technician changes their complaint status (e.g., `PENDING` → `RESOLVED`) in the Web Console.
 3.  **Work Order Assignment**: Sent immediately to a field technician when an admin assigns them to investigate or repair a reported leak/anomaly.
 
+---
+
+## Session Changelog (July 25, 2026)
+
+### IoT Telemetry Node Dashboard (`TelemetrySection.tsx`)
+
+- **Card-Based Node Layout**: Replaced the flat HTML table layout for IoT nodes with a premium card-based list. Each node lives in its own bordered, hoverable card (`rounded-2xl`, `shadow-sm`, `hover:shadow-md`) with distinct sections for node identity and live sensor metrics.
+- **Node Type Labels**: Mapped raw database enums to user-facing labels — `PUMP_STATION` renders as **Pumping Station** (sky badge) and `HOUSEHOLD_EDGE` renders as **Household Pipeline** (indigo badge).
+- **Barangay Location**: Replaced raw GPS coordinates with a parsed Barangay name. Clicking the location opens a Mapbox satellite preview modal. Removed the `Location` suffix and dashed underline from the label.
+- **Glowing Status Dot**: Each node card header shows a color-coded pulsing dot — emerald for `ONLINE`, amber for `MAINTENANCE`, rose for `OFFLINE`.
+- **Status Dropdown Label**: Renamed the status selector label from `Override:` to `Status:`.
+- **Node ID Hidden**: Removed raw database UUID display from node cards and the satellite preview modal.
+- **AQ-NODE- Unique Identifier**: Introduced a formatted unique code (`AQ-NODE-XXXXXX`) derived from the last 8 characters of each node's UUID to guarantee uniqueness. Displayed in the card header and the map preview modal. The search bar matches against both node name and `AQ-NODE-` code.
+- **Water Quality Parameter Cards**: Integrated real-time `pH Level`, `Turbidity (NTU)`, `TDS (PPM)`, and `Pressure (PSI)` cards into each node card using a responsive `grid grid-cols-1 md:grid-cols-4` layout with `shadow-inner` metric slots. Status labels (`NORMAL`, `ANOMALY`, `HIGH`, `LOW`) animate with `animate-pulse` on threshold breaches.
+- **Font Consistency**: Applied `font-sans` (Plus Jakarta Sans) to the `TelemetrySection` root wrapper to align typography with the rest of AquaTrack.
+
+### IoT Node Registration Guide
+
+Documented the two-phase process for adding physical IoT hardware nodes in the future:
+1. **Phase A** — Register the node in the database via Prisma Studio to generate a UUID, then note the `AQ-NODE-` code from the dashboard.
+2. **Phase B** — Configure the microcontroller (ESP32 / Arduino / Raspberry Pi) to `POST` JSON payloads (`nodeId`, `ph`, `turbidity`, `tds`, `pressure`) to `/api/admin/telemetry-ingest`.
+
+### Sub-Admin / Technician Complaints Section (`sub-admin-sections/ComplaintsSection.tsx`)
+
+- **Aligned with Admin Layout**: Rewrote the technician complaints table to match the admin's `ReportsSection` design — 5-column grid (`ID`, `Location`, `Description`, `Category & Urgency`, `Ticket Status`) inside a `rounded-[20px]` card wrapper with `bg-[#EEF4FA]/40` header row.
+- **Ticket ID Format**: Complaint rows display formatted `AQ-XXXXXXXX` IDs in monospaced bold text, consistent with the admin panel.
+- **Clickable Location Badges**: Barangay pills styled with blue background and map pin SVG that fly the map preview on click.
+- **Urgency Badges**: Color-coded urgency pills (`CRITICAL` red, `HIGH/URGENT` orange, `MEDIUM` yellow, `LOW` slate) via a shared `getUrgencyBadgeClass` helper.
+- **Description Truncation**: Raw complaint text is capped at 80 characters with `...` overflow. GB translation indicator removed.
+- **Resolved Complaints History Section**: Added a second table below active complaints — **Resolved Complaints History**. Resolved rows render with muted text and strikethrough styling, a green `✓ Resolved` badge, and a reopen dropdown letting technicians push tickets back to active states. Both sections have independent pagination.
+- **Active / Resolved Split**: Complaints are split into `activeComplaints` and `resolvedComplaints` arrays, each with their own page state counters.
+
+### Sub-Admin Homepage (`sub-admin-sections/HomeSection.tsx`)
+
+- **Renamed Stat Card**: Changed stat card label from `My Assigned Incidents` to `My Assigned Complaints`.
+
+### Sub-Admin Navigation (`DashboardSubAdmin.tsx`)
+
+- **Renamed Nav Tab**: Updated the sidebar navigation label from `Complaints Triage` to `Complaints and Reports`.```

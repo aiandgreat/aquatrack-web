@@ -104,7 +104,7 @@ export default function HomeSection({
         <div className="bg-white rounded-[24px] border border-slate-100 p-6 shadow-[0_8px_30px_rgb(0,0,0,0.015)] transition-all duration-300 hover:-translate-y-1 hover:shadow-[0_20px_40px_rgba(24,155,255,0.04)] hover:border-blue-100/50 hover:scale-[1.01] relative overflow-hidden group">
           <div className="flex items-start justify-between relative z-10">
             <div className="space-y-1.5 text-left">
-              <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest block">My Assigned Incidents</span>
+              <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest block">My Assigned Complaints</span>
               <h3 className="text-3xl font-black text-[#0B2E7A] tracking-tight">
                 {assignedComplaints.length}
               </h3>

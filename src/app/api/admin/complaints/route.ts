@@ -91,7 +91,7 @@ export async function GET(req: Request) {
 
 export async function PUT(req: Request) {
   try {
-    const { id, status, assignedToId } = await req.json();
+    const { id, status, assignedToId, emailAlertsEnabled } = await req.json();
     if (!id) {
       return NextResponse.json({ error: "Missing parameters" }, { status: 400 });
     }
@@ -103,7 +103,8 @@ export async function PUT(req: Request) {
         category: true, 
         summary: true, 
         status: true, 
-        assignedToId: true 
+        assignedToId: true,
+        urgency: true
       }
     });
 
@@ -129,7 +130,7 @@ export async function PUT(req: Request) {
       },
     });
 
-    // Fire-and-forget push notifications (try/catch to avoid breaking API on connection errors)
+    // Fire-and-forget notifications (try/catch to avoid breaking API on connection errors)
     try {
       const { sendFcmNotification } = await import("../../../../lib/fcm-sender");
 
@@ -156,20 +157,41 @@ export async function PUT(req: Request) {
       if (assignedToId !== undefined && assignedToId !== current.assignedToId && assignedToId !== null) {
         const technician = await prisma.user.findUnique({
           where: { id: assignedToId },
-          select: { pushToken: true }
+          select: { pushToken: true, email: true, name: true }
         });
-        if (technician?.pushToken) {
+        
+        if (technician) {
           const ticketName = current.summary || current.category || "Reported Issue";
-          await sendFcmNotification(
-            [technician.pushToken],
-            "New Work Order Assigned",
-            `You have been assigned a new job: "${ticketName}".`,
-            { type: "new_assignment", complaintId: id }
-          );
+
+          // Send Push Notification
+          if (technician.pushToken) {
+            await sendFcmNotification(
+              [technician.pushToken],
+              "New Work Order Assigned",
+              `You have been assigned a new job: "${ticketName}".`,
+              { type: "new_assignment", complaintId: id }
+            );
+          }
+
+          // Send Resend Email Notification (if toggled enabled in UI)
+          if (emailAlertsEnabled !== false) {
+            const { sendReactEmailNotification } = await import("../../../../lib/resend");
+            await sendReactEmailNotification(
+              technician.email,
+              `New Incident Assignment - ${ticketName}`,
+              {
+                crewName: technician.name,
+                incidentId: id.substring(0, 8),
+                urgency: current.urgency || "MEDIUM",
+                description: current.summary || current.category || "Reported water district anomaly."
+              }
+            );
+            console.log(`[COMPLAINTS API] Dispatched React Email to ${technician.email}`);
+          }
         }
       }
-    } catch (pushErr) {
-      console.error("[COMPLAINTS API] Failed to send push notifications:", pushErr);
+    } catch (notificationErr) {
+      console.error("[COMPLAINTS API] Failed to send push/email notifications:", notificationErr);
     }
 
     return NextResponse.json({ success: true, complaint: updated });

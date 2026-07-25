@@ -148,8 +148,31 @@ export default function AnalyticsSection({
   handleDownloadReport,
   complaints = [],
 }: AnalyticsSectionProps) {
-  const [timelineData] = useState(generatePast30DaysData);
+  const [timelineData, setTimelineData] = useState<any[]>([]);
+  const [loadingCharts, setLoadingCharts] = useState(true);
   const [hoveredSlice, setHoveredSlice] = useState<{ name: string; count: number; percentage: number } | null>(null);
+
+  // Fetch dynamic timeline chart data from the database
+  useEffect(() => {
+    const fetchReadings = async () => {
+      try {
+        setLoadingCharts(true);
+        const res = await fetch("/api/admin/analytics-readings");
+        const json = await res.json();
+        if (json.success && json.data && json.data.length > 0) {
+          setTimelineData(json.data);
+        } else {
+          setTimelineData(generatePast30DaysData());
+        }
+      } catch (err) {
+        console.warn("Failed to fetch database readings, falling back to mock baseline:", err);
+        setTimelineData(generatePast30DaysData());
+      } finally {
+        setLoadingCharts(false);
+      }
+    };
+    fetchReadings();
+  }, []);
 
   // Gemini AI System Narrative Summary States
   const [aiSummary, setAiSummary] = useState<string>("");

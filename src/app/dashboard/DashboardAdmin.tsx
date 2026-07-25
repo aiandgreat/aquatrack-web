@@ -142,6 +142,7 @@ export default function DashboardAdmin({
   const [newAdvisoryText, setNewAdvisoryText] = useState("");
   const [newAdvisoryType, setNewAdvisoryType] = useState<"warning" | "info" | "news" | "event">("warning");
   const [newAdvisoryTargetRole, setNewAdvisoryTargetRole] = useState<"broadcast" | "consumers" | "technicians">("broadcast");
+  const [newAdvisoryEventDate, setNewAdvisoryEventDate] = useState("");
 
   // System Configuration Form State
   const [selectedSimNodeId, setSelectedSimNodeId] = useState("");
@@ -158,6 +159,9 @@ export default function DashboardAdmin({
   const [emailAlertsEnabled, setEmailAlertsEnabled] = useState(true);
   const [hotCacheTTL, setHotCacheTTL] = useState(60);
   const [isDark, setIsDark] = useState(false);
+
+  // Diagnostic Alerts
+  const [diagnosticAlerts, setDiagnosticAlerts] = useState<any[]>([]);
 
   // Account settings states
   const [userProfile, setUserProfile] = useState<{
@@ -265,7 +269,7 @@ export default function DashboardAdmin({
           setProfilePhone(profile.phone || "");
           setProfileAddress(profile.address || "");
           // Re-fetch current database values
-          await Promise.all([fetchUsers(), fetchNodes(), fetchComplaints(), fetchStats(), fetchAdvisories()]);
+          await Promise.all([fetchUsers(), fetchNodes(), fetchComplaints(), fetchStats(), fetchAdvisories(), fetchDiagnosticAlerts()]);
         }
       } catch (err) {
         console.error("Auth verification failed:", err);
@@ -278,7 +282,7 @@ export default function DashboardAdmin({
     checkAccess();
   }, []);
 
-  // Enable Supabase Realtime subscriptions for complaint changes
+  // Enable Supabase Realtime subscriptions for complaint and telemetry changes
   useEffect(() => {
     if (currentUserRole !== "ADMIN") return;
 
@@ -293,15 +297,30 @@ export default function DashboardAdmin({
             console.log("Realtime complaint update received:", payload);
             fetchComplaints(); // Refresh the list dynamically!
             fetchStats(); // Update dashboard metric counters!
+            fetchDiagnosticAlerts(); // Refresh diagnostic alerts
+          }
+        )
+        .subscribe();
+
+      const readingsChannel = client
+        .channel("admin-readings-realtime")
+        .on(
+          "postgres_changes",
+          { event: "INSERT", schema: "public", table: "TelemetryReading" },
+          (payload) => {
+            console.log("Realtime telemetry reading received:", payload);
+            fetchNodes(); // Re-fetch nodes to update live readings immediately!
+            fetchStats(); // Update dashboard metric averages!
           }
         )
         .subscribe();
 
       return () => {
         client.removeChannel(channel);
+        client.removeChannel(readingsChannel);
       };
     } catch (err) {
-      console.error("Failed to setup realtime complaints subscription:", err);
+      console.error("Failed to setup realtime subscriptions:", err);
     }
   }, [currentUserRole]);
 
@@ -364,6 +383,37 @@ export default function DashboardAdmin({
       }
     } catch (err) {
       console.error("Failed to fetch advisories", err);
+    }
+  };
+
+  const fetchDiagnosticAlerts = async () => {
+    try {
+      const res = await fetch("/api/admin/diagnostic-alerts");
+      const data = await res.json();
+      if (data.success) {
+        setDiagnosticAlerts(data.alerts);
+      }
+    } catch (err) {
+      console.error("Failed to fetch diagnostic alerts", err);
+    }
+  };
+
+  const handleDispatchAlert = async (alertId: string, crewId: string) => {
+    try {
+      const res = await fetch("/api/admin/diagnostic-alerts", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id: alertId, status: "RESOLVED" }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        showFeedback("success", "Technician dispatched to sensor node!");
+        fetchDiagnosticAlerts();
+      } else {
+        showFeedback("error", data.error || "Failed to dispatch technician");
+      }
+    } catch (err) {
+      showFeedback("error", "Network error dispatching technician");
     }
   };
 
@@ -541,7 +591,7 @@ export default function DashboardAdmin({
       const res = await fetch("/api/admin/complaints", {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ id: complaintId, status: newStatus }),
+        body: JSON.stringify({ id: complaintId, status: newStatus, emailAlertsEnabled }),
       });
       const data = await res.json();
       if (data.success) {
@@ -564,7 +614,7 @@ export default function DashboardAdmin({
       const res = await fetch("/api/admin/complaints", {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ id: complaintId, assignedToId: assignedToId || null }),
+        body: JSON.stringify({ id: complaintId, assignedToId: assignedToId || null, emailAlertsEnabled }),
       });
       const data = await res.json();
       if (data.success) {
@@ -588,8 +638,7 @@ export default function DashboardAdmin({
     }
 
     try {
-      const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-      const res = await fetch(`${supabaseUrl}/functions/v1/telemetry-ingest`, {
+      const res = await fetch("/api/admin/telemetry-ingest", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -670,6 +719,7 @@ export default function DashboardAdmin({
           text: newAdvisoryText,
           type: newAdvisoryType,
           targetRole: newAdvisoryTargetRole,
+          eventDate: newAdvisoryType === "event" ? newAdvisoryEventDate : undefined,
         }),
       });
       const data = await res.json();
@@ -678,6 +728,7 @@ export default function DashboardAdmin({
         setNewAdvisoryTitle("");
         setNewAdvisoryText("");
         setNewAdvisoryTargetRole("broadcast");
+        setNewAdvisoryEventDate("");
         showFeedback("success", "Community advisory published successfully!");
       } else {
         showFeedback("error", data.error || "Failed to publish advisory.");
@@ -1219,6 +1270,10 @@ export default function DashboardAdmin({
                   setActiveDetailEvent={setActiveDetailEvent}
                   complaints={complaints}
                   nodes={nodes}
+                  diagnosticAlerts={diagnosticAlerts}
+                  crews={users.filter(u => u.role === "FIELD_ENGINEER_TECHNICIAN" && u.latitude !== null && u.longitude !== null)}
+                  handleDispatchAlert={handleDispatchAlert}
+                  setActiveTab={setActiveTab}
                 />
               )}
 
@@ -1288,6 +1343,8 @@ export default function DashboardAdmin({
                   setNewAdvisoryType={setNewAdvisoryType}
                   newAdvisoryTargetRole={newAdvisoryTargetRole}
                   setNewAdvisoryTargetRole={setNewAdvisoryTargetRole}
+                  newAdvisoryEventDate={newAdvisoryEventDate}
+                  setNewAdvisoryEventDate={setNewAdvisoryEventDate}
                   handleCreateAdvisory={handleCreateAdvisory}
                   handleDeleteAdvisory={handleDeleteAdvisory}
                 />
@@ -1429,6 +1486,9 @@ export default function DashboardAdmin({
         isOpen={previewComplaint !== null}
         onClose={() => setPreviewComplaint(null)}
         complaint={previewComplaint}
+        diagnosticAlerts={diagnosticAlerts}
+        crews={users.filter(u => u.role === "FIELD_ENGINEER_TECHNICIAN" && u.latitude !== null && u.longitude !== null)}
+        onDispatch={handleDispatchAlert}
       />
 
       {/* Account Details Modal */}

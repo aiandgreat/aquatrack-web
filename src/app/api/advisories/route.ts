@@ -15,16 +15,27 @@ export async function GET() {
 
 export async function POST(req: Request) {
   try {
-    const { title, text, type, targetRole } = await req.json();
+    const { title, text, type, targetRole, eventDate } = await req.json();
     if (!title || !text || !type || !targetRole) {
       return NextResponse.json({ error: "Missing parameters" }, { status: 400 });
     }
 
-    const dateStr = new Date().toLocaleDateString("en-US", {
+    let dateStr = new Date().toLocaleDateString("en-US", {
       month: "long",
       day: "numeric",
       year: "numeric",
     });
+
+    if (type === "event" && eventDate) {
+      const parsedDate = new Date(eventDate);
+      if (!isNaN(parsedDate.getTime())) {
+        dateStr = parsedDate.toLocaleDateString("en-US", {
+          month: "long",
+          day: "numeric",
+          year: "numeric",
+        });
+      }
+    }
 
     const newAd = await prisma.advisory.create({
       data: {
