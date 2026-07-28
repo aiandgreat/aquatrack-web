@@ -183,6 +183,31 @@ html.dark .bg-\[\#00aeef\]\/10, .dark .bg-\[\#00aeef\]\/10 {
   background-color: rgba(0, 174, 239, 0.15) !important;
 }
 
+
 html.dark .text-slate-700, .dark .text-slate-700 {
   color: #cbd5e1 !important;
+}
+
+@keyframes waterflow {
+  0% { background-position: 0% center; }
+  100% { background-position: 200% center; }
+}
+
+/* Hyper-Realistic 3D Water Droplets with Dark Mode compatibility */
+.realistic-droplet {
+  background: transparent;
+  box-shadow: 
+    inset -6px -6px 12px rgba(255, 255, 255, 0.75),
+    inset 3px 3px 8px rgba(0, 0, 0, 0.05),
+    8px 14px 18px rgba(0, 30, 102, 0.08),
+    3px 6px 6px rgba(0, 30, 102, 0.06);
+}
+
+html.dark .realistic-droplet, .dark .realistic-droplet {
+  background: rgba(255, 255, 255, 0.04) !important;
+  box-shadow: 
+    inset -6px -6px 15px rgba(255, 255, 255, 0.7),
+    inset 3px 3px 6px rgba(0, 0, 0, 0.12),
+    6px 12px 16px rgba(0, 0, 0, 0.2),
+    3px 6px 6px rgba(0, 0, 0, 0.15) !important;
 }

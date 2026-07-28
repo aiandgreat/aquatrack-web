@@ -110,6 +110,7 @@ export default function Homepage() {
   }, []);
 
   const [scrolled, setScrolled] = useState(false);
+  const [privacyOpen, setPrivacyOpen] = useState(false);
 
   useEffect(() => {
     const handleScroll = () => {
@@ -413,22 +414,20 @@ export default function Homepage() {
       {/* 2. Hero Header Section with Premium Multi-Layer Overlay */}
       <section
         id="home"
-        className="relative py-24 md:py-36 px-4 flex items-center min-h-[550px] bg-slate-50 overflow-hidden"
+        className="relative py-24 md:py-36 px-4 flex items-center min-h-[550px] bg-slate-50 dark:bg-[#090d16] overflow-hidden"
       >
         {/* 4. Underlying Blended Image */}
         <div 
-          className="absolute inset-0 bg-cover bg-center bg-no-repeat opacity-45 mix-blend-multiply pointer-events-none"
+          className="absolute inset-0 bg-cover bg-center bg-no-repeat opacity-45 mix-blend-multiply dark:mix-blend-overlay pointer-events-none"
           style={{ backgroundImage: "url('https://greenempowerment.org/wp-content/uploads/2020/09/kids-water.jpg')" }}
         ></div>
 
         {/* 1. Horizontal Linear Gradient Overlay (Fades left-to-right, invisible on right side) */}
-        <div className="absolute inset-0 bg-gradient-to-r from-white via-white/5 to-transparent pointer-events-none"></div>
+        <div className="absolute inset-0 bg-gradient-to-r from-white via-white/30 to-white/0 dark:from-[#090d16] dark:via-[#090d16]/30 dark:to-[#090d16]/0 pointer-events-none"></div>
 
-        {/* 2. Subtle Dotted Water Grid Wave Overlay */}
-        <div className="absolute inset-0 opacity-[0.08] bg-[radial-gradient(#00aeef_1.5px,transparent_1.5px)] [background-size:24px_24px] pointer-events-none"></div>
 
         {/* 3. Bottom Fade-to-Slate Overlay */}
-        <div className="absolute bottom-0 left-0 right-0 h-24 bg-gradient-to-t from-slate-50/60 to-transparent pointer-events-none"></div>
+        <div className="absolute bottom-0 left-0 right-0 h-24 bg-gradient-to-t from-slate-50/60 to-transparent dark:from-[#090d16] dark:to-transparent pointer-events-none"></div>
 
         <div className="relative max-w-5xl mx-auto w-full z-10">
           
@@ -440,7 +439,7 @@ export default function Homepage() {
             className="flex flex-col items-center text-center space-y-6 max-w-3xl mx-auto"
           >
             {/* Tagline */}
-            <h1 className="text-4xl sm:text-5xl md:text-6xl lg:text-7xl font-black tracking-tighter leading-none pb-2 select-none text-[#001e66]">
+            <h1 className="text-4xl sm:text-5xl md:text-6xl lg:text-7xl font-black tracking-tighter leading-none pb-2 select-none bg-gradient-to-r from-[#001e66] via-[#00aeef] to-[#001e66] dark:from-white dark:via-[#00aeef] dark:to-white bg-[length:200%_auto] animate-[waterflow_4s_linear_infinite] bg-clip-text text-transparent">
               Clean Water, One Smart{" "}
               <span className="relative inline-block px-1">
                 Drop
@@ -571,7 +570,7 @@ export default function Homepage() {
             <div className="flex flex-col sm:flex-row gap-4 pt-4 w-full sm:w-auto justify-center">
               <Link
                 href="/login"
-                className="bg-[#001e66] hover:bg-[#00aeef] text-white font-extrabold text-center py-3.5 px-8 rounded-xl transition-all duration-200 shadow-md hover:scale-105 min-w-[200px]"
+                className="bg-[#001e66] dark:bg-[#00aeef] hover:bg-[#00aeef] dark:hover:bg-[#00aeef]/90 text-white dark:text-[#001e66] font-extrabold text-center py-3.5 px-8 rounded-xl transition-all duration-200 shadow-md dark:shadow-[0_0_25px_rgba(0,174,239,0.45)] dark:hover:shadow-[0_0_35px_rgba(0,174,239,0.65)] hover:scale-105 min-w-[200px]"
               >
                 Sign In to Portal
               </Link>
@@ -584,7 +583,7 @@ export default function Homepage() {
             </div>
 
             {/* Minimized Core Features Glass Card */}
-            <div className="mt-8 px-6 py-4 rounded-2xl bg-white/40 backdrop-blur-md border border-white/60 shadow-sm flex flex-wrap justify-center gap-x-8 gap-y-3 text-xs font-bold text-slate-500 uppercase tracking-wider w-full max-w-2xl">
+            <div className="mt-8 px-6 py-4 rounded-2xl bg-white/40 dark:bg-white/5 backdrop-blur-md dark:backdrop-blur-xl border border-white/60 dark:border-white/10 shadow-sm dark:shadow-[0_15px_35px_rgba(0,0,0,0.4)] flex flex-wrap justify-center gap-x-8 gap-y-3 text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider w-full max-w-2xl">
               <FeatureItem 
                 label="Real-Time Tracking" 
                 color="bg-[#00aeef]" 
@@ -606,11 +605,99 @@ export default function Homepage() {
         </div>
       </section>
 
-      {/* 3. Mission & Vision Section */}
-      <section id="about" className="py-24 bg-slate-50 relative">
+      <section id="about" className="py-24 bg-[#f1f5f9] dark:bg-[#07142F] relative">
+        {/* Realistic CSS Water Droplets */}
+        <div className="absolute inset-0 pointer-events-none overflow-hidden select-none z-0">
+          {/* Drop 1 - Top Left */}
+          <div 
+            className="absolute realistic-droplet"
+            style={{
+              width: "48px",
+              height: "48px",
+              top: "15%",
+              left: "8%",
+              borderRadius: "45% 55% 50% 50% / 45% 45% 55% 55%",
+            }}
+          >
+            <div className="absolute rounded-full bg-[#ffffff] opacity-90" style={{ width: "9px", height: "9px", top: "18%", left: "18%" }} />
+            <div className="absolute rounded-full bg-[#ffffff] opacity-40" style={{ width: "4px", height: "4px", bottom: "18%", right: "22%" }} />
+          </div>
+
+          {/* Drop 2 - Top Right */}
+          <div 
+            className="absolute realistic-droplet"
+            style={{
+              width: "36px",
+              height: "36px",
+              top: "22%",
+              right: "12%",
+              borderRadius: "50% 50% 45% 55% / 55% 45% 55% 45%",
+            }}
+          >
+            <div className="absolute rounded-full bg-[#ffffff] opacity-90" style={{ width: "7px", height: "7px", top: "18%", left: "18%" }} />
+            <div className="absolute rounded-full bg-[#ffffff] opacity-40" style={{ width: "3px", height: "3px", bottom: "18%", right: "22%" }} />
+          </div>
+
+          {/* Drop 3 - Mid Right */}
+          <div 
+            className="absolute realistic-droplet"
+            style={{
+              width: "56px",
+              height: "56px",
+              top: "55%",
+              right: "6%",
+              borderRadius: "42% 58% 54% 46% / 48% 42% 58% 52%",
+            }}
+          >
+            <div className="absolute rounded-full bg-[#ffffff] opacity-90" style={{ width: "11px", height: "11px", top: "18%", left: "18%" }} />
+            <div className="absolute rounded-full bg-[#ffffff] opacity-40" style={{ width: "5px", height: "5px", bottom: "18%", right: "22%" }} />
+          </div>
+
+          {/* Drop 4 - Bottom Left */}
+          <div 
+            className="absolute realistic-droplet"
+            style={{
+              width: "28px",
+              height: "28px",
+              bottom: "20%",
+              left: "14%",
+              borderRadius: "48% 52% 52% 48% / 46% 47% 53% 54%",
+            }}
+          >
+            <div className="absolute rounded-full bg-[#ffffff] opacity-90" style={{ width: "5px", height: "5px", top: "18%", left: "18%" }} />
+          </div>
+
+          {/* Drop 5 - Tiny droplet close to Drop 1 */}
+          <div 
+            className="absolute realistic-droplet"
+            style={{
+              width: "16px",
+              height: "16px",
+              top: "25%",
+              left: "7%",
+              borderRadius: "50%",
+            }}
+          >
+            <div className="absolute rounded-full bg-[#ffffff] opacity-90" style={{ width: "3px", height: "3px", top: "18%", left: "18%" }} />
+          </div>
+
+          {/* Drop 6 - Tiny droplet close to Drop 3 */}
+          <div 
+            className="absolute realistic-droplet"
+            style={{
+              width: "20px",
+              height: "20px",
+              top: "48%",
+              right: "10%",
+              borderRadius: "50%",
+            }}
+          >
+            <div className="absolute rounded-full bg-[#ffffff] opacity-90" style={{ width: "4px", height: "4px", top: "18%", left: "18%" }} />
+          </div>
+        </div>
         {/* Floating Metrics Box (Seamlessly Overlapping Home and About Us) */}
         <div className="absolute left-1/2 -translate-x-1/2 top-0 -translate-y-1/2 w-full max-w-5xl px-4 z-20">
-          <div className="bg-white/60 backdrop-blur-md border border-white/60 rounded-3xl shadow-xl p-6 md:p-8 grid grid-cols-1 md:grid-cols-3 gap-8 md:divide-x md:divide-slate-200/40">
+          <div className="bg-white/60 dark:bg-white/5 backdrop-blur-md dark:backdrop-blur-xl border border-white/60 dark:border-white/10 rounded-3xl shadow-xl dark:shadow-[0_15px_35px_rgba(0,0,0,0.4)] p-6 md:p-8 grid grid-cols-1 md:grid-cols-3 gap-8 md:divide-x md:divide-slate-200/40 dark:divide-white/10">
             
             {/* Metric 1 */}
             <div className="flex items-center space-x-5 md:px-4 group cursor-pointer transition-transform duration-300 hover:-translate-y-1">
@@ -674,7 +761,7 @@ export default function Homepage() {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-8 max-w-5xl mx-auto">
             
             {/* Mission Card */}
-            <div className="bg-white/50 backdrop-blur-md p-8 rounded-3xl border border-white/40 shadow-sm hover:border-[#00aeef]/60 hover:bg-white/70 transition-all duration-300">
+            <div className="bg-white/50 dark:bg-white/5 backdrop-blur-md dark:backdrop-blur-xl p-8 rounded-3xl border border-white/40 dark:border-white/10 shadow-sm dark:shadow-md hover:border-[#00aeef]/60 dark:hover:border-[#00aeef]/40 hover:bg-white/70 dark:hover:bg-white/10 transition-all duration-300">
               <div className="w-12 h-12 bg-[#00aeef]/10 rounded-xl flex items-center justify-center text-[#00aeef] mb-6">
                 <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5">
                   <path strokeLinecap="round" strokeLinejoin="round" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z" />
@@ -688,7 +775,7 @@ export default function Homepage() {
             </div>
 
             {/* Vision Card */}
-            <div className="bg-white/50 backdrop-blur-md p-8 rounded-3xl border border-white/40 shadow-sm hover:border-[#00aeef]/60 hover:bg-white/70 transition-all duration-300">
+            <div className="bg-white/50 dark:bg-white/5 backdrop-blur-md dark:backdrop-blur-xl p-8 rounded-3xl border border-white/40 dark:border-white/10 shadow-sm dark:shadow-md hover:border-[#00aeef]/60 dark:hover:border-[#00aeef]/40 hover:bg-white/70 dark:hover:bg-white/10 transition-all duration-300">
               <div className="w-12 h-12 bg-[#ffd800]/10 rounded-xl flex items-center justify-center text-[#ffd800] mb-6 border border-[#ffd800]/20">
                 <svg className="w-6 h-6 text-[#001e66]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5">
                   <path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
@@ -703,11 +790,23 @@ export default function Homepage() {
 
           </div>
         </div>
+        {/* Bottom fade transition overlay to the Offices section */}
+        <div className="absolute bottom-0 left-0 right-0 h-24 bg-gradient-to-t from-[#f8fafc] dark:from-[#07142F] to-[#f1f5f9]/0 dark:to-[#07142F]/0 pointer-events-none z-10" />
       </section>
 
-      {/* 4. District Offices Section */}
-      <section id="offices" className="py-24 bg-white">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      {/* Combined Offices & Announcements Container with continuous BG.jpg background */}
+      <div className="relative overflow-hidden bg-white dark:bg-[#07142F]">
+        {/* Underlying BG Image */}
+        <div 
+          className="absolute inset-0 bg-cover bg-center bg-no-repeat opacity-25 dark:opacity-10 pointer-events-none"
+          style={{ backgroundImage: "url('/BG.jpg')" }}
+        />
+        {/* Top Fade-in transition for the BG.jpg image to blend with the section above */}
+        <div className="absolute top-0 left-0 right-0 h-32 bg-gradient-to-b from-[#f1f5f9] dark:from-[#07142F] to-[#f8fafc]/0 dark:to-[#07142F]/0 pointer-events-none z-10" />
+
+        {/* 4. District Offices Section */}
+        <section id="offices" className="py-24 relative z-10 bg-transparent">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           
           <div className="text-center max-w-3xl mx-auto mb-16">
             <span className="text-xs font-bold uppercase tracking-widest text-[#00aeef]">Customer Care</span>
@@ -717,7 +816,8 @@ export default function Homepage() {
             </p>
           </div>
 
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-stretch">
+          <div className="bg-white/70 dark:bg-slate-900/60 backdrop-blur-md border border-slate-200/60 dark:border-white/10 rounded-[32px] p-6 md:p-8 shadow-xl max-w-6xl mx-auto">
+            <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-stretch">
             
             {/* Left Column: Office Selector List (lg:col-span-5) */}
             <div className="lg:col-span-5 flex flex-col space-y-4">
@@ -729,8 +829,8 @@ export default function Homepage() {
                     onClick={() => setActiveOffice(office)}
                     className={`w-full text-left p-5 rounded-2xl border transition-all duration-200 flex flex-col space-y-2 cursor-pointer ${
                       isActive 
-                        ? "bg-[#001e66] border-[#001e66] text-white shadow-lg scale-[1.02]" 
-                        : "bg-white/40 backdrop-blur-sm border border-white/50 text-[#001e66] hover:bg-white/70 hover:border-slate-200"
+                        ? "bg-[#001e66] dark:bg-[#00aeef] border-[#001e66] dark:border-[#00aeef] text-white dark:text-[#001e66] shadow-lg dark:shadow-[0_0_15px_rgba(0,174,239,0.3)] scale-[1.02]" 
+                        : "bg-white/40 dark:bg-white/5 backdrop-blur-sm dark:backdrop-blur-md border border-white/50 dark:border-white/10 text-[#001e66] dark:text-slate-300 hover:bg-white/70 dark:hover:bg-white/10 hover:border-slate-200 dark:hover:border-[#00aeef]/40"
                     }`}
                   >
                     <div className="flex justify-between items-start w-full">
@@ -746,17 +846,17 @@ export default function Homepage() {
                         </span>
                       )}
                     </div>
-                    <p className={`text-xs ${isActive ? "text-slate-200" : "text-slate-600"} leading-relaxed`}>
+                    <p className={`text-xs ${isActive ? "text-slate-200 dark:text-[#001e66]/90" : "text-slate-600 dark:text-slate-400"} leading-relaxed`}>
                       {office.address}
                     </p>
                     <div className="flex items-center space-x-4 pt-1 text-[11px] font-semibold">
                       <span className="flex items-center space-x-1">
                         <span>📞</span>
-                        <span className={isActive ? "text-slate-300" : "text-slate-500"}>{office.phone}</span>
+                        <span className={isActive ? "text-slate-300 dark:text-[#001e66]/80" : "text-slate-500 dark:text-slate-400"}>{office.phone}</span>
                       </span>
                       <span className="flex items-center space-x-1">
                         <span>🕒</span>
-                        <span className={isActive ? "text-slate-300" : "text-slate-500"}>{office.hours}</span>
+                        <span className={isActive ? "text-slate-300 dark:text-[#001e66]/80" : "text-slate-500 dark:text-slate-400"}>{office.hours}</span>
                       </span>
                     </div>
                   </button>
@@ -765,15 +865,15 @@ export default function Homepage() {
             </div>
 
             {/* Right Column: Google Maps API Integration Map View (lg:col-span-7) */}
-            <div className="lg:col-span-7 bg-white/50 backdrop-blur-md border border-white/50 rounded-3xl overflow-hidden shadow-sm min-h-[380px] lg:min-h-full flex flex-col">
-              <div className="bg-white/30 px-5 py-3.5 border-b border-white/30 flex items-center justify-between text-xs font-bold text-[#001e66]">
+            <div className="lg:col-span-7 bg-white/50 dark:bg-white/5 backdrop-blur-md dark:backdrop-blur-xl border border-white/50 dark:border-white/10 rounded-3xl overflow-hidden shadow-sm min-h-[380px] lg:min-h-full flex flex-col">
+              <div className="bg-white/30 dark:bg-white/5 px-5 py-3.5 border-b border-white/30 dark:border-white/10 flex items-center justify-between text-xs font-bold text-[#001e66] dark:text-slate-300">
                 <span className="flex items-center space-x-2">
                   <span className="animate-pulse w-2.5 h-2.5 rounded-full bg-[#00aeef]"></span>
                   <span>Google Maps Live API View</span>
                 </span>
                 <span className="text-[#00aeef]">{activeOffice.name}</span>
               </div>
-              <div className="flex-1 relative">
+              <div className="flex-1 relative dark:invert-[90%] dark:hue-rotate-[180deg] dark:brightness-[90%] dark:contrast-[110%]">
                 <iframe
                   title="CSFWD Office Google Map Location"
                   width="100%"
@@ -785,23 +885,24 @@ export default function Homepage() {
                 ></iframe>
               </div>
             </div>
-
+          </div>
           </div>
 
         </div>
       </section>
 
-      {/* 5. Advisories and Announcements Section */}
-      <section id="announcements" className="py-20 bg-slate-50 border-t border-b border-slate-200">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        {/* 5. Advisories and Announcements Section */}
+        <section id="announcements" className="py-20 relative z-10 bg-transparent border-t border-slate-200/40 dark:border-white/10">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center max-w-3xl mx-auto mb-12">
             <span className="text-xs font-bold uppercase tracking-widest text-[#970006]">Stay Safe &amp; Alert</span>
             <h2 className="text-3xl font-extrabold mt-2 text-[#001e66]">Community Advisories</h2>
             <p className="mt-2 text-slate-500 text-sm">Active notifications dispatched from our operational console</p>
           </div>
 
-          {advisories.length > 0 ? (
-            <div className="relative max-w-4xl mx-auto px-1 md:px-12 flex flex-col items-center">
+          <div className="bg-white/70 dark:bg-slate-900/60 backdrop-blur-md border border-slate-200/60 dark:border-white/10 rounded-[32px] p-6 md:p-8 shadow-xl max-w-6xl mx-auto">
+            {advisories.length > 0 ? (
+            <div className="relative w-full px-1 md:px-6 flex flex-col items-center">
               
               {/* Carousel Controls & Active Card */}
               <div className="w-full flex items-center justify-between gap-4">
@@ -818,7 +919,7 @@ export default function Homepage() {
                 )}
 
                 {/* Center Transition Card */}
-                <div className="w-full max-w-2xl min-h-[280px] flex items-center justify-center">
+                <div className="flex-1 min-h-[320px] flex items-center justify-center">
                   <AnimatePresence mode="wait">
                     <motion.div
                       key={advisoryIndex}
@@ -826,7 +927,7 @@ export default function Homepage() {
                       animate={{ opacity: 1, scale: 1, y: 0 }}
                       exit={{ opacity: 0, scale: 0.98, y: -4 }}
                       transition={{ duration: 0.2, ease: "easeOut" }}
-                      className="bg-white dark:bg-slate-900/60 backdrop-blur-md border border-slate-200/80 dark:border-slate-800/80 shadow-[0_8px_30px_rgba(0,0,0,0.02)] rounded-2xl p-7 md:p-9 relative overflow-hidden w-full text-left h-[280px] flex flex-col justify-between"
+                      className="bg-white dark:bg-slate-900/60 backdrop-blur-md border border-slate-200/80 dark:border-slate-800/80 shadow-[0_8px_30px_rgba(0,0,0,0.02)] rounded-2xl p-8 md:p-10 relative overflow-hidden w-full text-left h-[320px] flex flex-col justify-between"
                     >
                       {/* Top Accent Border Strip */}
                       <div className={`absolute top-0 left-0 right-0 h-[4px] ${
@@ -906,25 +1007,171 @@ export default function Homepage() {
               <p className="text-slate-500 italic text-xs font-semibold">No active notices broadcasted.</p>
             </div>
           )}
+          </div>
         </div>
-      </section>
+        </section>
+      </div>
 
       {/* Footer */}
-      <footer className="bg-[#001e66] text-white py-12 px-4 mt-auto">
-        <div className="max-w-7xl mx-auto flex flex-col md:flex-row justify-between items-center gap-6">
-          <div className="flex items-center space-x-2">
-            <span className="text-xl font-bold tracking-tight">Aqua<span className="text-[#00aeef]">Track</span></span>
-            <span className="text-[10px] text-slate-400 font-mono">v1.2.0</span>
+      <footer className="bg-[#eef4fa] dark:bg-[#07142F] border-t border-slate-300/80 dark:border-white/10 text-slate-700 dark:text-slate-300 py-16 px-6 mt-auto transition-colors duration-300">
+        <div className="max-w-7xl mx-auto grid grid-cols-1 md:grid-cols-12 gap-10">
+          
+          {/* About (col-span-12 md:col-span-4) */}
+          <div className="md:col-span-4 flex flex-col space-y-4">
+            <h4 className="text-[10px] font-black uppercase tracking-widest text-slate-400 dark:text-slate-500">
+              About
+            </h4>
+            <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed font-medium">
+              Municipal Water District Command Center and Resident Service Portal. Providing real-time telemetry, automated triage, and crew dispatching for the City of San Fernando, Pampanga.
+            </p>
           </div>
-          <p className="text-xs text-slate-400 text-center">
-            &copy; 2026 Municipal Water District of the City of San Fernando, Pampanga. All rights reserved.
-          </p>
-          <div className="flex space-x-6 text-xs text-slate-400 font-bold">
-            <a href="#" className="hover:text-white">Privacy Policy</a>
-            <a href="#" className="hover:text-white">Terms of Service</a>
+
+          {/* Quick Links (col-span-12 md:col-span-3) */}
+          <div className="md:col-span-3 flex flex-col space-y-4">
+            <h4 className="text-[10px] font-black uppercase tracking-widest text-slate-400 dark:text-slate-500">
+              Quick Links
+            </h4>
+            <ul className="flex flex-col space-y-2 text-xs font-bold">
+              <li>
+                <a href="#home" className="text-slate-600 dark:text-slate-400 hover:text-[#00aeef] dark:hover:text-white transition-colors">
+                  Home
+                </a>
+              </li>
+              <li>
+                <a href="#about" className="text-slate-600 dark:text-slate-400 hover:text-[#00aeef] dark:hover:text-white transition-colors">
+                  About Us
+                </a>
+              </li>
+              <li>
+                <a href="#offices" className="text-slate-600 dark:text-slate-400 hover:text-[#00aeef] dark:hover:text-white transition-colors">
+                  District Offices
+                </a>
+              </li>
+              <li>
+                <a href="#announcements" className="text-slate-600 dark:text-slate-400 hover:text-[#00aeef] dark:hover:text-white transition-colors">
+                  Announcements
+                </a>
+              </li>
+            </ul>
+          </div>
+
+          {/* Connect (col-span-12 md:col-span-3) */}
+          <div className="md:col-span-3 flex flex-col space-y-4">
+            <h4 className="text-[10px] font-black uppercase tracking-widest text-slate-400 dark:text-slate-500">
+              Connect
+            </h4>
+            <ul className="flex flex-col space-y-3 text-xs font-bold">
+              <li className="flex items-center space-x-2">
+                <span className="text-sm">📧</span>
+                <a href="mailto:info@csfwd.gov.ph" className="text-slate-600 dark:text-slate-400 hover:text-[#00aeef] dark:hover:text-white transition-colors">
+                  info@csfwd.gov.ph
+                </a>
+              </li>
+              <li className="flex items-center space-x-2">
+                <span className="text-sm">🌐</span>
+                <a href="https://facebook.com/csfwaterdistrict" target="_blank" rel="noopener noreferrer" className="text-slate-600 dark:text-slate-400 hover:text-[#00aeef] dark:hover:text-white transition-colors">
+                  facebook.com/csfwaterdistrict
+                </a>
+              </li>
+              <li className="pt-1">
+                <button
+                  onClick={() => setPrivacyOpen(true)}
+                  className="text-slate-500 dark:text-slate-400 hover:text-[#970006] dark:hover:text-red-400 transition-colors text-[10px] uppercase font-black tracking-widest border-b border-transparent hover:border-current cursor-pointer focus:outline-none"
+                >
+                  Privacy Policy
+                </button>
+              </li>
+            </ul>
+          </div>
+
+          {/* Developed By (col-span-12 md:col-span-2) */}
+          <div className="md:col-span-2 flex flex-col items-start md:items-end space-y-3 text-left md:text-right">
+            <h4 className="text-[10px] font-black uppercase tracking-widest text-slate-400 dark:text-slate-500">
+              Developed By
+            </h4>
+            <div className="h-14 flex items-center justify-start md:justify-end">
+              <img src="/GALARA-LIGHT.png" alt="GALARA Logo" className="h-14 w-auto block dark:hidden" />
+              <img src="/GALARA-DARK.png" alt="GALARA Logo" className="h-14 w-auto hidden dark:block" />
+            </div>
+            <div className="text-[9px] font-black uppercase tracking-widest text-slate-500 dark:text-slate-400 leading-tight">
+              GARCIA · LAXAMANA · GUEVARRA
+            </div>
           </div>
         </div>
+
+        {/* Bottom copyright line bar */}
+        <div className="max-w-7xl mx-auto mt-12 pt-8 border-t border-slate-300/40 dark:border-white/5 text-center text-[10px] tracking-wider text-slate-400 dark:text-slate-500 font-bold uppercase">
+          &copy; 2026 CSFWD. All Rights Reserved for AquaTrack.
+        </div>
       </footer>
+
+      {/* Privacy Policy Modal */}
+      <AnimatePresence>
+        {privacyOpen && (
+          <>
+            {/* Backdrop */}
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setPrivacyOpen(false)}
+              className="fixed inset-0 bg-slate-900/60 dark:bg-black/80 backdrop-blur-sm z-[100] flex items-center justify-center p-4"
+            />
+            {/* Modal Panel */}
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95, y: 16 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 16 }}
+              transition={{ type: "spring", damping: 25, stiffness: 220 }}
+              className="fixed inset-0 m-auto max-w-lg h-fit max-h-[85vh] bg-[#f8fafc] dark:bg-[#07142F] border border-slate-200 dark:border-white/10 rounded-[32px] shadow-2xl p-6 md:p-8 flex flex-col z-[101] overflow-hidden text-left"
+            >
+              <div className="flex items-center space-x-3 pb-4 border-b border-slate-100 dark:border-white/10">
+                <svg className="w-6 h-6 text-[#00aeef]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
+                </svg>
+                <h3 className="font-extrabold text-xl text-[#001e66] dark:text-white tracking-tight">
+                  Data Privacy Policy
+                </h3>
+              </div>
+
+              <div className="flex-1 overflow-y-auto my-5 space-y-4 pr-1 text-slate-600 dark:text-slate-300 text-xs md:text-sm leading-relaxed font-medium scrollbar-thin">
+                <p>
+                  Municipal Water District of the City of San Fernando (CSFWD) is committed to protecting your personal information in compliance with the <strong>Data Privacy Act of 2012 (Republic Act No. 10173)</strong> of the Philippines.
+                </p>
+                
+                <div>
+                  <h4 className="font-bold text-slate-800 dark:text-slate-100 mb-1">1. Information We Collect</h4>
+                  <p>When you report disruptions, leaks, or water quality issues, we collect your name, contact details (email/phone), and geolocation coordinates to locate the incident.</p>
+                </div>
+
+                <div>
+                  <h4 className="font-bold text-slate-800 dark:text-slate-100 mb-1">2. Purpose of Processing</h4>
+                  <p>Your coordinates and complaint info are analyzed using our PostGIS dispatch database to route service requests to the nearest CSFWD engineering crew.</p>
+                </div>
+
+                <div>
+                  <h4 className="font-bold text-slate-800 dark:text-slate-100 mb-1">3. Data Protection Measures</h4>
+                  <p>All personal details are encrypted and securely stored. Only authorized CSFWD administrative staff and dispatchers have access to the dashboard.</p>
+                </div>
+
+                <div>
+                  <h4 className="font-bold text-slate-800 dark:text-slate-100 mb-1">4. Your Rights</h4>
+                  <p>You have the right to request access, correction, or permanent deletion of your submitted logs and credentials from the system database by emailing us.</p>
+                </div>
+              </div>
+
+              <div className="flex justify-end pt-4 border-t border-slate-100 dark:border-white/10 flex-shrink-0">
+                <button
+                  onClick={() => setPrivacyOpen(false)}
+                  className="bg-[#001e66] dark:bg-[#00aeef] hover:bg-[#00aeef] dark:hover:bg-[#00aeef]/90 text-white dark:text-[#001e66] px-6 py-2.5 rounded-full font-black uppercase tracking-wider text-[10px] hover:scale-105 transition-all cursor-pointer shadow-sm focus:outline-none"
+                >
+                  Accept &amp; Close
+                </button>
+              </div>
+            </motion.div>
+          </>
+        )}
+      </AnimatePresence>
     </div>
   );
 }
