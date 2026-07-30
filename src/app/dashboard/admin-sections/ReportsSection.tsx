@@ -272,8 +272,8 @@ export default function ReportsSection({
                   <th className="py-3.5 px-5">Location</th>
                   <th className="py-3.5 px-5">Description</th>
                   <th className="py-3.5 px-5">Category &amp; Urgency</th>
-                  <th className="py-3.5 px-5">Complaint Status</th>
-                  <th className="py-3.5 px-5">Dispatch Action</th>
+                  <th className="py-3.5 px-5 text-center">Complaint Status</th>
+                  <th className="py-3.5 px-5 text-center">Dispatch Action</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-150/70">
@@ -324,12 +324,12 @@ export default function ReportsSection({
                     </td>
 
                     {/* 5. Complaint Status (Dropdown select) */}
-                    <td className="py-4.5 px-5">
+                    <td className="py-4.5 px-5 text-center">
                       <select
                         value={c.status}
                         disabled={updatingComplaintId === c.id}
                         onChange={(e) => handleUpdateComplaintStatus(c.id, e.target.value)}
-                        className="bg-white border border-slate-200 hover:border-[#00aeef] disabled:opacity-50 text-[#001e66] font-bold text-xs py-2 px-3 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#00aeef]/40 transition-all cursor-pointer shadow-sm"
+                        className="bg-white border border-slate-200 hover:border-[#00aeef] disabled:opacity-50 text-[#001e66] font-bold text-xs py-2 px-3 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#00aeef]/40 transition-all cursor-pointer shadow-sm w-[160px] text-center"
                       >
                         <option value="PENDING">PENDING</option>
                         <option value="EVALUATING">EVALUATING</option>
@@ -341,12 +341,12 @@ export default function ReportsSection({
                     </td>
 
                     {/* 6. Dispatch Action (Technician Assignment Dropdown) */}
-                    <td className="py-4.5 px-5">
+                    <td className="py-4.5 px-5 text-center">
                       <select
                         value={c.assignedToId || ""}
                         disabled={updatingComplaintId === c.id}
                         onChange={(e) => handleUpdateComplaintAssignment(c.id, e.target.value)}
-                        className="bg-white border border-slate-200 hover:border-[#00aeef] disabled:opacity-50 text-[#001e66] font-bold text-xs py-2 px-3 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#00aeef]/40 transition-all cursor-pointer shadow-sm"
+                        className="bg-white border border-slate-200 hover:border-[#00aeef] disabled:opacity-50 text-[#001e66] font-bold text-xs py-2 px-3 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#00aeef]/40 transition-all cursor-pointer shadow-sm w-[160px] text-center"
                       >
                         <option value="">Unassigned</option>
                         {users
@@ -416,8 +416,8 @@ export default function ReportsSection({
                   <th className="py-3 px-5">Location</th>
                   <th className="py-3 px-5">Description</th>
                   <th className="py-3 px-5">Category &amp; Urgency</th>
-                  <th className="py-3 px-5">Complaint Status</th>
-                  <th className="py-3 px-5">Dispatch Action</th>
+                  <th className="py-3 px-5 text-center">Complaint Status</th>
+                  <th className="py-3 px-5 text-center">Dispatch Action</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-150/70 bg-slate-50/10">
@@ -470,8 +470,8 @@ export default function ReportsSection({
                       </td>
 
                       {/* 5. Complaint Status */}
-                      <td className="py-4.5 px-5">
-                        <div className="flex flex-col gap-1.5 items-start">
+                      <td className="py-4.5 px-5 text-center">
+                        <div className="flex flex-col gap-1.5 items-center">
                           <span className="bg-emerald-100 text-emerald-800 font-extrabold text-[9px] px-2 py-0.5 rounded-full uppercase tracking-wider flex items-center shadow-sm">
                             ✓ Resolved
                           </span>
@@ -479,7 +479,7 @@ export default function ReportsSection({
                             value={c.status}
                             disabled={updatingComplaintId === c.id}
                             onChange={(e) => handleUpdateComplaintStatus(c.id, e.target.value)}
-                            className="bg-white border border-slate-200 hover:border-[#00aeef] disabled:opacity-50 text-slate-500 font-bold text-[10px] py-1.5 px-2 rounded-lg focus:outline-none focus:ring-1 focus:ring-[#00aeef]/40 transition-all cursor-pointer"
+                            className="bg-white border border-slate-200 hover:border-[#00aeef] disabled:opacity-50 text-slate-500 font-bold text-[10px] py-1.5 px-2 rounded-lg focus:outline-none focus:ring-1 focus:ring-[#00aeef]/40 transition-all cursor-pointer w-[160px] text-center"
                           >
                             <option value="RESOLVED">RESOLVED</option>
                             <option value="PENDING">Reopen: PENDING</option>
@@ -493,7 +493,7 @@ export default function ReportsSection({
                       </td>
 
                       {/* 6. Dispatch Action */}
-                      <td className="py-4.5 px-5 font-mono text-slate-500">
+                      <td className="py-4.5 px-5 font-mono text-slate-500 text-center">
                         <div className="text-[10px] font-bold">
                           Assigned to: <span className="text-slate-600 font-extrabold">{assignedUser ? assignedUser.name : "Unassigned"}</span>
                         </div>

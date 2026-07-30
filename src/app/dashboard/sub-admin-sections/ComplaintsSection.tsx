@@ -121,7 +121,7 @@ export default function ComplaintsSection({
                   <th className="py-3.5 px-5">Location</th>
                   <th className="py-3.5 px-5">Description</th>
                   <th className="py-3.5 px-5">Category &amp; Urgency</th>
-                  <th className="py-3.5 px-5">Ticket Status</th>
+                  <th className="py-3.5 px-5 text-center">Ticket Status</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-150/70 bg-white/20">
@@ -171,12 +171,12 @@ export default function ComplaintsSection({
                     </td>
 
                     {/* 5. Ticket Status */}
-                    <td className="py-4.5 px-5">
+                    <td className="py-4.5 px-5 text-center">
                       <select
                         value={c.status}
                         disabled={updatingComplaintId === c.id}
                         onChange={(e) => handleUpdateComplaintStatus(c.id, e.target.value)}
-                        className="bg-white border border-slate-200 hover:border-[#00aeef] disabled:opacity-50 text-[#001e66] font-bold text-xs py-2 px-3 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#00aeef]/40 transition-all cursor-pointer shadow-sm"
+                        className="bg-white border border-slate-200 hover:border-[#00aeef] disabled:opacity-50 text-[#001e66] font-bold text-xs py-2 px-3 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#00aeef]/40 transition-all cursor-pointer shadow-sm w-[160px] text-center"
                       >
                         <option value="PENDING">PENDING</option>
                         <option value="EVALUATING">EVALUATING</option>
@@ -232,7 +232,7 @@ export default function ComplaintsSection({
                   <th className="py-3 px-5">Location</th>
                   <th className="py-3 px-5">Description</th>
                   <th className="py-3 px-5">Category &amp; Urgency</th>
-                  <th className="py-3 px-5">Status</th>
+                  <th className="py-3 px-5 text-center">Status</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-150/70 bg-slate-50/10">
@@ -280,9 +280,9 @@ export default function ComplaintsSection({
                       </span>
                     </td>
 
-                    {/* 5. Status (resolved badge + reopen option) */}
-                    <td className="py-4.5 px-5">
-                      <div className="flex flex-col gap-1.5 items-start">
+                    {/* 5. Complaint Status */}
+                    <td className="py-4.5 px-5 text-center">
+                      <div className="flex flex-col gap-1.5 items-center">
                         <span className="bg-emerald-100 text-emerald-800 font-extrabold text-[9px] px-2 py-0.5 rounded-full uppercase tracking-wider flex items-center shadow-sm">
                           ✓ Resolved
                         </span>
@@ -290,7 +290,7 @@ export default function ComplaintsSection({
                           value={c.status}
                           disabled={updatingComplaintId === c.id}
                           onChange={(e) => handleUpdateComplaintStatus(c.id, e.target.value)}
-                          className="bg-white border border-slate-200 hover:border-[#00aeef] disabled:opacity-50 text-slate-500 font-bold text-[10px] py-1.5 px-2 rounded-lg focus:outline-none focus:ring-1 focus:ring-[#00aeef]/40 transition-all cursor-pointer"
+                          className="bg-white border border-slate-200 hover:border-[#00aeef] disabled:opacity-50 text-slate-500 font-bold text-[10px] py-1.5 px-2 rounded-lg focus:outline-none focus:ring-1 focus:ring-[#00aeef]/40 transition-all cursor-pointer w-[160px] text-center"
                         >
                           <option value="RESOLVED">RESOLVED</option>
                           <option value="PENDING">Reopen: PENDING</option>
