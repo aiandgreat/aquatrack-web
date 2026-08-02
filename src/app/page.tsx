@@ -441,119 +441,34 @@ export default function Homepage() {
             {/* Tagline */}
             <h1 className="text-4xl sm:text-5xl md:text-6xl lg:text-7xl font-black tracking-tighter leading-none pb-2 select-none bg-gradient-to-r from-[#001e66] via-[#00aeef] to-[#001e66] dark:from-white dark:via-[#00aeef] dark:to-white bg-[length:200%_auto] animate-[waterflow_4s_linear_infinite] bg-clip-text text-transparent">
               Clean Water, One Smart{" "}
-              <span className="relative inline-block px-1">
+              <span className="relative inline-block px-2.5 py-0.5">
                 Drop
-                {/* 1. Permanent realistic water puddle backdrop (with bubbles & splash ripples) left behind on scroll */}
-                {scrolled && (
-                  <motion.span
-                    initial={{ scale: 0.8, opacity: 0 }}
-                    animate={{ scale: 1.15, opacity: 1 }}
-                    transition={{ duration: 0.6, ease: "easeOut" }}
-                    className="absolute inset-0 z-[-1] pointer-events-none flex items-center justify-center"
-                  >
-                    <svg viewBox="0 0 120 60" className="absolute w-36 h-18 drop-shadow-[0_0_6px_rgba(0,174,239,0.4)]">
-                      {/* Organic wavy puddle base */}
-                      <path 
-                        d="M 15,30 C 25,14 42,6 60,6 C 78,6 95,14 105,30 C 110,38 100,50 82,53 C 65,55 45,55 28,53 C 12,50 8,38 15,30 Z" 
-                        fill="#00aeef" 
-                        opacity="0.25" 
-                      />
-                      
-                      {/* Splash concentric water ripples / rings */}
-                      <ellipse cx="60" cy="30" rx="42" ry="19" fill="none" stroke="#00aeef" strokeWidth="1.25" opacity="0.3" />
-                      <ellipse cx="63" cy="32" rx="22" ry="10" fill="none" stroke="#00aeef" strokeWidth="0.8" opacity="0.4" />
-                      <ellipse cx="40" cy="24" rx="6" ry="3" fill="none" stroke="#00aeef" strokeWidth="0.5" opacity="0.45" />
+                {/* 3D Glassy/Water Droplet Lens Envelope on the word Drop itself */}
+                <motion.span 
+                  className="absolute inset-x-[3px] inset-y-[4px] pointer-events-none z-10 border border-[#00aeef]/40 dark:border-[#00aeef]/50 flex items-center justify-center"
+                  style={{
+                    borderRadius: "35% 65% 65% 35% / 40% 40% 60% 60%",
+                    background: "radial-gradient(circle at 20% 20%, rgba(255, 255, 255, 0.45) 0%, rgba(0, 174, 239, 0.12) 55%, rgba(0, 30, 102, 0.18) 100%)",
+                    boxShadow: "inset -3px -3px 6px rgba(255, 255, 255, 0.95), inset 2px 2px 5px rgba(0, 30, 102, 0.25), 0 4px 12px rgba(0, 174, 239, 0.35), 0 1px 3px rgba(0, 0, 0, 0.15)",
+                  }}
+                  animate={{
+                    borderRadius: [
+                      "35% 65% 65% 35% / 40% 40% 60% 60%",
+                      "42% 58% 55% 45% / 45% 38% 62% 55%",
+                      "35% 65% 65% 35% / 40% 40% 60% 60%"
+                    ]
+                  }}
+                  transition={{
+                    duration: 5,
+                    repeat: Infinity,
+                    ease: "easeInOut"
+                  }}
+                >
+                  {/* Specular Highlight reflections inside the text envelope */}
+                  <span className="absolute w-1.5 h-1.5 rounded-full bg-[#ffffff] opacity-95" style={{ top: "12%", left: "15%" }} />
+                  <span className="absolute w-1 h-1 rounded-full bg-[#ffffff] opacity-50" style={{ bottom: "16%", right: "20%" }} />
+                </motion.span>
 
-                      {/* Liquid Droplets / Bubbles with specular highlights */}
-                      {/* Bubble 1 (left) */}
-                      <circle cx="28" cy="20" r="3.5" fill="#00aeef" opacity="0.45" />
-                      <circle cx="27" cy="19" r="1" fill="#ffffff" opacity="0.75" />
-                      
-                      {/* Bubble 2 (bottom-center) */}
-                      <circle cx="55" cy="46" r="3" fill="#00aeef" opacity="0.45" />
-                      <circle cx="54" cy="45" r="0.75" fill="#ffffff" opacity="0.75" />
-                      
-                      {/* Bubble 3 (right) */}
-                      <circle cx="92" cy="40" r="4" fill="#00aeef" opacity="0.4" />
-                      <circle cx="90.5" cy="38.5" r="1.2" fill="#ffffff" opacity="0.8" />
-                      
-                      {/* Bubble 4 (top-right) */}
-                      <circle cx="82" cy="18" r="2.5" fill="#00aeef" opacity="0.45" />
-                      <circle cx="81.2" cy="17.2" r="0.75" fill="#ffffff" opacity="0.75" />
-
-                      {/* Bubble 5 (far-left splash out) */}
-                      <circle cx="10" cy="32" r="2" fill="#00aeef" opacity="0.4" />
-                      <circle cx="9.4" cy="31.4" r="0.6" fill="#ffffff" opacity="0.75" />
-
-                      {/* Bubble 6 (far-right splash out) */}
-                      <circle cx="110" cy="34" r="3" fill="#00aeef" opacity="0.4" />
-                      <circle cx="109" cy="33" r="0.85" fill="#ffffff" opacity="0.75" />
-
-                      {/* Bubble 7 (top-left splash out) */}
-                      <circle cx="42" cy="10" r="2.5" fill="#00aeef" opacity="0.4" />
-                      <circle cx="41.2" cy="9.2" r="0.75" fill="#ffffff" opacity="0.75" />
-
-                      {/* Bubble 8 (bottom-left splash out) */}
-                      <circle cx="20" cy="44" r="2" fill="#00aeef" opacity="0.4" />
-                      <circle cx="19.4" cy="43.4" r="0.6" fill="#ffffff" opacity="0.75" />
-                    </svg>
-                  </motion.span>
-                )}
-
-                {/* 2. Realistic Water Splash Spray Overlay on Scroll */}
-                {scrolled && (
-                  <motion.div
-                    initial={{ scale: 0.3, y: 15, opacity: 0 }}
-                    animate={{ 
-                      scale: [0.3, 1.25, 1], 
-                      y: [15, -20, -5], 
-                      opacity: [0, 1, 0] 
-                    }}
-                    transition={{ 
-                      duration: 0.9, 
-                      ease: [0.25, 0.46, 0.45, 0.94],
-                      times: [0, 0.3, 1]
-                    }}
-                    className="absolute -top-14 left-1/2 -translate-x-1/2 w-28 h-28 pointer-events-none z-10"
-                  >
-                    <svg viewBox="0 0 100 100" className="w-full h-full fill-[#00aeef] drop-shadow-[0_0_10px_rgba(0,174,239,0.6)]">
-                      {/* Central dynamic water arcs */}
-                      <path d="M 50,85 C 46,65 32,50 25,40 C 22,35 28,33 30,37 C 35,45 46,60 50,72 C 54,60 65,45 70,37 C 72,33 78,35 75,40 C 68,50 54,65 50,85 Z" />
-                      
-                      {/* Secondary lateral splashes */}
-                      <path d="M 50,80 C 44,70 24,65 14,60 C 11,58 15,53 18,55 C 25,58 43,65 50,72 Z" />
-                      <path d="M 50,80 C 56,70 76,65 86,60 C 89,58 85,53 82,55 C 75,58 57,65 50,72 Z" />
-
-                      {/* Realistic flying water droplets of varying sizes */}
-                      {/* Center top spray */}
-                      <circle cx="50" cy="14" r="4" />
-                      <circle cx="50" cy="26" r="2.5" />
-                      
-                      {/* Left angle spray */}
-                      <circle cx="20" cy="25" r="3.5" />
-                      <circle cx="10" cy="38" r="2.5" />
-                      
-                      {/* Right angle spray */}
-                      <circle cx="80" cy="25" r="3.5" />
-                      <circle cx="90" cy="38" r="2.5" />
-
-                      {/* Fine mist particles */}
-                      <circle cx="33" cy="22" r="1.5" />
-                      <circle cx="67" cy="22" r="1.5" />
-                      <circle cx="50" cy="40" r="1.5" />
-                    </svg>
-                  </motion.div>
-                )}
-
-                {/* 3. Concentric Expanding Ripple Ring */}
-                {scrolled && (
-                  <motion.span 
-                    initial={{ scale: 0.8, opacity: 0.9 }}
-                    animate={{ scale: 1.8, opacity: 0 }}
-                    transition={{ duration: 0.85, ease: "easeOut" }}
-                    className="absolute inset-0 rounded-full bg-[#00aeef]/60 pointer-events-none"
-                  />
-                )}
               </span>{" "}
               at a{" "}
               <span className="bg-clip-text text-transparent bg-gradient-to-r from-[#ffd800] via-[#ef4444] to-[#ef4444] via-[40%] inline-block align-baseline font-black">
@@ -889,11 +804,19 @@ export default function Homepage() {
           </div>
 
         </div>
+        {/* Bottom fade-out: blends District Offices into the community.jpg section below */}
+        <div className="absolute bottom-0 left-0 right-0 h-32 bg-gradient-to-b from-transparent via-[#f8fafc]/60 to-[#f8fafc] dark:via-[#07142F]/60 dark:to-[#07142F] pointer-events-none z-20" />
       </section>
 
         {/* 5. Advisories and Announcements Section */}
-        <section id="announcements" className="py-20 relative z-10 bg-transparent border-t border-slate-200/40 dark:border-white/10">
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <section
+          id="announcements"
+          className="py-20 relative z-10 overflow-hidden"
+          style={{ backgroundImage: "url('/community.jpg')", backgroundSize: "cover", backgroundPosition: "center" }}
+        >
+          {/* Gradient overlay — light: white fade, dark: deep navy fade — top is fully opaque for seamless section blend */}
+          <div className="absolute inset-0 bg-gradient-to-b from-[#f8fafc] via-white/85 to-white/95 dark:from-[#07142F] dark:via-[#010f2e]/85 dark:to-[#010f2e]/95 pointer-events-none" />
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
           <div className="text-center max-w-3xl mx-auto mb-12">
             <span className="text-xs font-bold uppercase tracking-widest text-[#970006]">Stay Safe &amp; Alert</span>
             <h2 className="text-3xl font-extrabold mt-2 text-[#001e66]">Community Advisories</h2>
