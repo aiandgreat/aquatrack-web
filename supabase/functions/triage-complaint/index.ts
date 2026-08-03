@@ -53,7 +53,17 @@ serve(async (req) => {
 
     // 3. Prepare AI triage request
     const contextNode = nearbyNodes?.[0];
-    const systemPrompt = `You are a municipal water district engineer. Parse the following citizen report. Note that the report may be written in English, Tagalog, Taglish, or Kapampangan dialect (e.g., 'kule dilo' refers to yellow color, 'ala danum' refers to no water/low pressure). Translate the report to English, capturing all details including water discoloration, flow, and duration. Classify category (PIPELINE_BREACH_PRESSURE_DROP, HIGH_TURBIDITY, HIGH_MINERAL_CONTENT_TDS, CHEMICAL_DISCOLORATION_CONTAMINATION, UNCLASSIFIED_INFRASTRUCTURE_ANOMALY) and urgency (LOW, MEDIUM, HIGH, CRITICAL). Summarize in one sentence.`;
+    const systemPrompt = `You are a municipal water district engineer. Parse the following citizen report. Note that the report may be written in English, Tagalog, Taglish, or Kapampangan dialect. Use this Kapampangan translation guide to translate accurately to English:
+    - "matuling" / "kule matuling" = black / dark water (highly critical, maps to CHEMICAL_DISCOLORATION_CONTAMINATION or HIGH_TURBIDITY)
+    - "dilo" / "kule dilo" / "kulasisi" = yellow / yellowish water (maps to HIGH_MINERAL_CONTENT_TDS or HIGH_TURBIDITY)
+    - "malutu" / "kule malutu" = red / reddish / rusty water
+    - "taya" / "kule taya" = brown / muddy water
+    - "malino" = clear water
+    - "ala danum" / "alang danum" = no water / dry faucet (maps to PIPELINE_BREACH_PRESSURE_DROP, high urgency)
+    - "malati agus" / "mababa agus" = low water pressure / weak flow
+    - "mabau" = smelly / bad odor
+    
+    Translate the report to English, capturing all details including water discoloration, flow, and duration. Classify category (PIPELINE_BREACH_PRESSURE_DROP, HIGH_TURBIDITY, HIGH_MINERAL_CONTENT_TDS, CHEMICAL_DISCOLORATION_CONTAMINATION, UNCLASSIFIED_INFRASTRUCTURE_ANOMALY) and urgency (LOW, MEDIUM, HIGH, CRITICAL). Summarize in one sentence.`;
     
     // Call Gemini API (Structured JSON output)
     const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.1-flash-lite:generateContent?key=${GEMINI_API_KEY}`;

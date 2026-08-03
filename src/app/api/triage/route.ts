@@ -29,7 +29,17 @@ export async function POST(req: Request) {
       temperature: 0.1,
       prompt: `You are an AI engineer for a municipal water district. Analyze this citizen complaint: "${text}".
       
-      Instruction: The report may be written in English, Tagalog, Taglish, or Kapampangan dialect (e.g., "kule dilo" refers to yellow color, "ala danum" refers to no water/low pressure). Translate it accurately to English, capturing all details including water discoloration, flow, and duration.
+      Instruction: The report may be written in English, Tagalog, Taglish, or Kapampangan dialect. Use this Kapampangan translation guide to translate accurately to English:
+      - "matuling" / "kule matuling" = black / dark water (highly critical, maps to CHEMICAL_DISCOLORATION_CONTAMINATION or HIGH_TURBIDITY)
+      - "dilo" / "kule dilo" / "kulasisi" = yellow / yellowish water (maps to HIGH_MINERAL_CONTENT_TDS or HIGH_TURBIDITY)
+      - "malutu" / "kule malutu" = red / reddish / rusty water
+      - "taya" / "kule taya" = brown / muddy water
+      - "malino" = clear water
+      - "ala danum" / "alang danum" = no water / dry faucet (maps to PIPELINE_BREACH_PRESSURE_DROP, high urgency)
+      - "malati agus" / "mababa agus" = low water pressure / weak flow
+      - "mabau" = smelly / bad odor
+      
+      Translate it accurately to English, capturing all details including water discoloration, flow, and duration.
       
       Return ONLY a raw JSON object matching this schema:
       {
