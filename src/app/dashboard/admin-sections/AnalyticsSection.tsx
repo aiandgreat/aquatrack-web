@@ -4,6 +4,21 @@ import React, { useState, useEffect } from "react";
 import { ResponsiveContainer, LineChart, Line, XAxis, YAxis, Tooltip, CartesianGrid } from "recharts";
 import { Card, Title, Text } from "@tremor/react";
 import { motion } from "framer-motion";
+import { 
+  BarChart3, 
+  Download, 
+  TrendingUp, 
+  MapPin, 
+  ShieldCheck, 
+  FileSpreadsheet, 
+  Bot, 
+  PieChart, 
+  Brain, 
+  AlertTriangle, 
+  Activity, 
+  Sparkles,
+  LayoutGrid
+} from "lucide-react";
 
 interface Complaint {
   id: string;
@@ -206,8 +221,16 @@ export default function AnalyticsSection({
   const activeComplaints = complaints.filter(c => c.status !== "RESOLVED");
   const totalActiveCount = activeComplaints.length;
 
-  // List of target Barangays in CSFWD jurisdiction
-  const targetBarangays = ["Calulut", "Dolores", "San Agustin", "Sindalan", "Bulaon", "Quebiawan", "Telabastagan", "Maimpis", "Lara"];
+  // List of target Barangays in CSFWD jurisdiction (all 35 barangays of San Fernando)
+  const targetBarangays = [
+    "Alasas", "Baliti", "Bulaon", "Calulut", "Del Carmen", "Del Pilar",
+    "Del Rosario", "Dela Paz Norte", "Dela Paz Sur", "Dolores", "Juliana",
+    "Lara", "Lourdes", "Magliman", "Maimpis", "Malino", "Malpitic",
+    "Pandaras", "Panipuan", "Pulung Bulu", "Quebiawan", "Saguin",
+    "San Agustin", "San Felipe", "San Isidro", "San Jose", "San Juan",
+    "San Nicolas", "San Pedro Cutud", "Santa Lucia", "Santa Teresita",
+    "Santo Niño", "Santo Rosario", "Sindalan", "Telabastagan"
+  ];
 
   // Compute live complaint counts grouped per Barangay and Category
   const barangayCounts = targetBarangays.map((barangay) => {
@@ -296,24 +319,33 @@ export default function AnalyticsSection({
     <div className="space-y-8 text-left">
       {/* Section Header */}
       <div className="flex justify-between items-center pb-4 border-b border-slate-200">
-        <div>
-          <h2 className="text-lg font-black text-[#001e66] tracking-tight">Water Quality Analytics Panel</h2>
-          <p className="text-xs text-slate-500 font-medium">Verify overall district water telemetry analytics and compliance limits</p>
+        <div className="flex items-center gap-2.5">
+          <div className="p-2 bg-blue-50 text-[#001e66] rounded-xl shadow-inner">
+            <BarChart3 className="w-5 h-5 text-[#00aeef]" />
+          </div>
+          <div>
+            <h2 className="text-lg font-black text-[#001e66] tracking-tight">Water Quality Analytics Panel</h2>
+            <p className="text-xs text-slate-500 font-medium">Verify overall district water telemetry analytics and compliance limits</p>
+          </div>
         </div>
         <button
           onClick={handleDownloadReport}
-          className="bg-[#001e66] hover:bg-[#00aeef] text-white font-extrabold text-xs px-4 py-2.5 rounded-xl uppercase tracking-wider shadow-md hover:scale-105 active:scale-98 transition-all cursor-pointer"
+          className="flex items-center gap-1.5 bg-[#001e66] hover:bg-[#00aeef] text-white font-extrabold text-xs px-4 py-2.5 rounded-xl uppercase tracking-wider shadow-md hover:scale-105 active:scale-98 transition-all cursor-pointer border-none focus:outline-none"
         >
-          Download Analytics PDF
+          <Download className="w-3.5 h-3.5" />
+          <span>Download Analytics PDF</span>
         </button>
       </div>
 
       {/* ── 1. Water Quality Timeline Recharts Line Chart with Dual Axis ─── */}
-      <Card className="bg-white/40 border border-slate-200/80 rounded-[24px] p-6 shadow-sm">
+      <Card className="bg-white/40 border border-slate-200/85 rounded-[24px] p-6 shadow-sm">
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
-          <div>
-            <Title className="text-sm font-black text-[#001e66] uppercase tracking-wider">Water Quality Timelines (Past 30 Days)</Title>
-            <Text className="text-xs text-slate-400 font-medium mt-0.5">Rolling averages of chemical and mineral parameters across CSFWD nodes</Text>
+          <div className="flex items-center gap-2">
+            <TrendingUp className="w-4.5 h-4.5 text-[#00aeef] shrink-0" />
+            <div>
+              <Title className="text-sm font-black text-[#001e66] uppercase tracking-wider">Water Quality Timelines (Past 30 Days)</Title>
+              <Text className="text-xs text-slate-400 font-medium mt-0.5">Rolling averages of chemical and mineral parameters across CSFWD nodes</Text>
+            </div>
           </div>
           <div className="flex flex-wrap items-center gap-4 text-[10px] font-black uppercase tracking-wider text-slate-500">
             <span className="flex items-center gap-1.5"><span className="w-3 h-3 rounded-full bg-[#00aeef]" /> Avg pH</span>
@@ -355,17 +387,23 @@ export default function AnalyticsSection({
         <div className="lg:col-span-7 flex flex-col justify-between space-y-6">
           
           {/* Absolute Counts Progress Cards */}
-          <div className="bg-white/40 border border-slate-200/80 rounded-[24px] p-6 shadow-sm flex-1 flex flex-col justify-between">
-            <div className="mb-4">
-              <h3 className="text-sm font-black text-[#001e66] uppercase tracking-wider">Barangay Classification Matrix</h3>
-              <p className="text-xs text-slate-400 font-medium">Stacked segments showing active complaint types per Barangay</p>
+          <div className="bg-white/40 border border-slate-200/85 rounded-[24px] p-6 shadow-sm flex-1 flex flex-col justify-between">
+            <div className="mb-4 flex items-center gap-2">
+              <LayoutGrid className="w-4.5 h-4.5 text-[#00aeef] shrink-0" />
+              <div>
+                <h3 className="text-sm font-black text-[#001e66] uppercase tracking-wider">Barangay Classification Matrix</h3>
+                <p className="text-xs text-slate-400 font-medium">Stacked segments showing active complaint types per Barangay</p>
+              </div>
             </div>
 
-            <div className="space-y-4">
-              {barangayCounts.slice(0, 5).map((bar) => (
+            <div className="space-y-4 max-h-[340px] overflow-y-auto pr-1">
+              {barangayCounts.map((bar) => (
                 <div key={bar.barangay} className="space-y-1">
                   <div className="flex justify-between text-xs font-bold text-[#001e66]">
-                    <span>📍 Barangay {bar.barangay}</span>
+                    <span className="flex items-center gap-1">
+                      <MapPin className="w-3.5 h-3.5 text-[#00aeef] shrink-0" />
+                      <span>Barangay {bar.barangay}</span>
+                    </span>
                     <span className="text-[10px] text-slate-400">{bar.total} Active Cases</span>
                   </div>
                   {/* Multi-segment stacked progress bar */}
@@ -389,8 +427,9 @@ export default function AnalyticsSection({
                         );
                       })
                     ) : (
-                      <div className="w-full h-full flex items-center justify-center text-[9px] text-slate-400 font-bold uppercase tracking-wider">
-                        Clear Sector ✓
+                      <div className="w-full h-full flex items-center justify-center gap-1 text-[9px] text-emerald-600 bg-emerald-50/50 font-bold uppercase tracking-wider">
+                        <ShieldCheck className="w-3.5 h-3.5 text-emerald-500 shrink-0" />
+                        <span>Clear Sector</span>
                       </div>
                     )}
                   </div>
@@ -413,18 +452,21 @@ export default function AnalyticsSection({
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             
             {/* Scrollable Barangay Feed */}
-            <div className="bg-white/40 border border-slate-200/80 rounded-[24px] p-5 shadow-sm">
-              <h4 className="text-xs font-black text-[#001e66] uppercase tracking-wider mb-3">Barangay Ledger</h4>
+            <div className="bg-white/40 border border-slate-200/85 rounded-[24px] p-5 shadow-sm">
+              <div className="flex items-center gap-2 mb-3.5">
+                <FileSpreadsheet className="w-4.5 h-4.5 text-[#00aeef] shrink-0" />
+                <h4 className="text-xs font-black text-[#001e66] uppercase tracking-wider">Barangay Ledger</h4>
+              </div>
               <div className="max-h-[220px] overflow-y-auto space-y-2.5 pr-1">
                 {barangayCounts.map((bar) => {
                   const isClear = bar.total === 0;
                   return (
                     <div key={bar.barangay} className="flex justify-between items-center text-xs pb-1.5 border-b border-slate-100/50">
                       <span className="font-extrabold text-[#001e66]">Brgy. {bar.barangay}</span>
-                      <span className={`px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-wider ${
+                      <span className={`px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-wider border ${
                         isClear 
-                          ? "bg-emerald-50 text-emerald-700 border border-emerald-100" 
-                          : "bg-amber-50 text-amber-700 border border-amber-100"
+                          ? "bg-emerald-50 text-emerald-700 border-emerald-100" 
+                          : "bg-amber-50 text-amber-700 border-amber-100"
                       }`}>
                         {isClear ? "CLEAR" : `${bar.total} CASES`}
                       </span>
@@ -435,9 +477,12 @@ export default function AnalyticsSection({
             </div>
 
             {/* AI Classification Summary Box */}
-            <div className="bg-slate-50 border border-slate-200 rounded-[24px] p-5 shadow-sm flex flex-col justify-between">
+            <div className="bg-slate-50 border border-slate-250 rounded-[24px] p-5 shadow-sm flex flex-col justify-between">
               <div>
-                <h4 className="text-xs font-black text-[#001e66] uppercase tracking-wider mb-3">AI Classification Summary</h4>
+                <div className="flex items-center gap-2 mb-3.5">
+                  <Bot className="w-4.5 h-4.5 text-[#00aeef] shrink-0" />
+                  <h4 className="text-xs font-black text-[#001e66] uppercase tracking-wider">AI Classification Summary</h4>
+                </div>
                 <p className="text-xs text-slate-700 font-semibold leading-relaxed">
                   {insights.text}
                 </p>
@@ -459,10 +504,13 @@ export default function AnalyticsSection({
         </div>
 
         {/* Right Column: Proportions calculated Donut Chart */}
-        <div className="lg:col-span-5 bg-white/40 border border-slate-200/80 rounded-[24px] p-6 shadow-sm flex flex-col justify-between items-center text-center">
-          <div className="w-full">
-            <h3 className="text-sm font-black text-[#001e66] uppercase tracking-wider text-left">Grievance Proportions</h3>
-            <p className="text-xs text-slate-400 font-medium text-left">District-wide category weight distributions</p>
+        <div className="lg:col-span-5 bg-white/40 border border-slate-200/85 rounded-[24px] p-6 shadow-sm flex flex-col justify-between items-center text-center">
+          <div className="w-full flex items-center gap-2">
+            <PieChart className="w-4.5 h-4.5 text-[#00aeef] shrink-0" />
+            <div className="text-left">
+              <h3 className="text-sm font-black text-[#001e66] uppercase tracking-wider">Grievance Proportions</h3>
+              <p className="text-xs text-slate-400 font-medium">District-wide category weight distributions</p>
+            </div>
           </div>
 
           <div className="relative w-72 h-72 flex items-center justify-center my-4 shrink-0">
@@ -486,8 +534,8 @@ export default function AnalyticsSection({
                 ))}
               </svg>
             ) : (
-              <div className="w-48 h-48 rounded-full border-4 border-dashed border-slate-200 flex flex-col items-center justify-center text-slate-350 p-4">
-                <span className="text-[10px] font-black uppercase tracking-wider">Zero Grievances</span>
+              <div className="w-48 h-48 rounded-full border-4 border-dashed border-slate-200 flex flex-col items-center justify-center text-slate-300 p-4">
+                <span className="text-[10px] font-black uppercase tracking-wider text-slate-400">Zero Grievances</span>
                 <span className="text-[9px] mt-1 text-slate-400 leading-normal text-center">All pipelines reporting standard compliance limits.</span>
               </div>
             )}
@@ -529,14 +577,17 @@ export default function AnalyticsSection({
       </div>
 
       {/* ── 3. System Summary Engine (Gemini AI Powered) ──────────────── */}
-      <div className="bg-[#001e66] text-white border border-[#001e66] rounded-[24px] p-6 shadow-md relative overflow-hidden">
+      <div className="bg-gradient-to-br from-[#001e66] to-[#00123e] border border-blue-950/60 shadow-xl text-white rounded-[24px] p-6 relative overflow-hidden">
         {/* Subtle grid pattern overlay */}
         <div className="absolute inset-0 opacity-[0.04] bg-[radial-gradient(#00aeef_1.5px,transparent_1.5px)] [background-size:16px_16px] pointer-events-none"></div>
 
         <div className="relative space-y-3 z-10">
           <div className="flex items-center space-x-2">
-            <span className="w-2 h-2 rounded-full bg-[#00aeef] animate-pulse"></span>
-            <h3 className="text-xs font-black uppercase tracking-widest text-[#00aeef]">System Summary Engine</h3>
+            <span className="w-2.5 h-2.5 rounded-full bg-[#00aeef] animate-pulse"></span>
+            <div className="flex items-center gap-1.5">
+              <Brain className="w-4.5 h-4.5 text-[#00aeef] animate-pulse shrink-0" />
+              <h3 className="text-xs font-black uppercase tracking-widest text-[#00aeef]">System Summary Engine</h3>
+            </div>
           </div>
 
           {loadingAiSummary ? (

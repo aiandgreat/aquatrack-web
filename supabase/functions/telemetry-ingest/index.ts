@@ -38,15 +38,113 @@ serve(async (req) => {
     const hasAnomaly = pressure < 30 || ph < 6.5 || ph > 8.5 || turbidity > 5 || tds > 500;
     
     if (hasAnomaly) {
-      const status = pressure <= 5 ? "OFFLINE" : "MAINTENANCE";
-      
-      // Update Node Status
+      // Save anomalous reading to history
+      await supabase
+        .from("TelemetryReading")
+        .insert({ nodeId, ph, turbidity, tds, pressure });
+
+      // Dynamic AI Spatial Diagnostics Correlation for existing unresolved complaints
+      try {
+        const { data: node } = await supabase
+          .from("TelemetryNode")
+          .select("name, latitude, longitude")
+          .eq("id", nodeId)
+          .single();
+
+        if (node) {
+          const { data: activeComplaints } = await supabase
+            .from("Complaint")
+            .select("id, category, summary, rawText, latitude, longitude")
+            .neq("status", "RESOLVED");
+
+          if (activeComplaints) {
+            const calculateDistance = (lat1: number, lon1: number, lat2: number, lon2: number) => {
+              const R = 6371e3; // meters
+              const phi1 = (lat1 * Math.PI) / 180;
+              const phi2 = (lat2 * Math.PI) / 180;
+              const deltaPhi = ((lat2 - lat1) * Math.PI) / 180;
+              const deltaLambda = ((lon2 - lon1) * Math.PI) / 180;
+              const a = Math.sin(deltaPhi / 2) * Math.sin(deltaPhi / 2) +
+                Math.cos(phi1) * Math.cos(phi2) * Math.sin(deltaLambda / 2) * Math.sin(deltaLambda / 2);
+              const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+              return R * c;
+            };
+
+            const nearby = activeComplaints.filter((c: any) => {
+              const dist = calculateDistance(c.latitude, c.longitude, node.latitude, node.longitude);
+              return dist <= 500;
+            });
+
+            for (const comp of nearby) {
+              let isMatch = false;
+              let rootCause = "";
+              let action = "";
+
+              if (pressure < 30 && comp.category === "PIPELINE_BREACH_PRESSURE_DROP") {
+                isMatch = true;
+                rootCause = "Low water pressure breach (Leak or Pipe Breach)";
+                action = "Inspect main supply pressure valves and scan for pipeline leaks.";
+              } else if (turbidity > 5 && comp.category === "HIGH_TURBIDITY") {
+                isMatch = true;
+                rootCause = "Elevated turbidity / muddy water quality anomaly";
+                action = "Flush supply lines and check sedimentation tanks.";
+              } else if (tds > 500 && comp.category === "HIGH_MINERAL_CONTENT_TDS") {
+                isMatch = true;
+                rootCause = "High mineral content / TDS levels exceeded";
+                action = "Inspect filtration system and run chemical analysis.";
+              } else if ((ph < 6.5 || ph > 8.5) && comp.category === "CHEMICAL_DISCOLORATION_CONTAMINATION") {
+                isMatch = true;
+                rootCause = "pH level deviation (possible contamination)";
+                action = "Isolate pipeline segment and treat water source.";
+              }
+
+              if (isMatch) {
+                // Check if active alert already exists
+                const { data: existingAlert } = await supabase
+                  .from("DiagnosticAlert")
+                  .select("id")
+                  .eq("nodeId", nodeId)
+                  .in("status", ["PENDING", "ONGOING"])
+                  .maybeSingle();
+
+                const geminiAnalysis = {
+                  rootCauseAnalysis: `Citizen reported: "${comp.summary || comp.rawText}". Nearest sensor node ${node.name} shows threshold breaches.`,
+                  probableRootCause: rootCause,
+                  confidenceScore: 95,
+                  recommendedAction: action
+                };
+
+                if (existingAlert) {
+                  await supabase
+                    .from("DiagnosticAlert")
+                    .update({ geminiAnalysis })
+                    .eq("id", existingAlert.id);
+                  console.log(`[Edge Function] Updated existing DiagnosticAlert ${existingAlert.id} for node ${node.name} correlated with complaint ${comp.id}`);
+                } else {
+                  await supabase
+                    .from("DiagnosticAlert")
+                    .insert({
+                      nodeId,
+                      complaintCount: 1,
+                      geminiAnalysis,
+                      status: "PENDING"
+                    });
+                  console.log(`[Edge Function] Created DiagnosticAlert for node ${node.name} correlated with complaint ${comp.id}`);
+                }
+              }
+            }
+          }
+        }
+      } catch (err) {
+        console.error("Error during edge function spatial correlation:", err);
+      }
+    } else {
+      // Normal readings: revert status to ONLINE and record normal readings to history
       await supabase
         .from("TelemetryNode")
-        .update({ status })
+        .update({ status: "ONLINE" })
         .eq("id", nodeId);
 
-      // Save Reading History
       await supabase
         .from("TelemetryReading")
         .insert({ nodeId, ph, turbidity, tds, pressure });

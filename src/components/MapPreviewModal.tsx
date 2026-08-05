@@ -22,7 +22,9 @@ interface MapPreviewModalProps {
     urgency: string | null;
   } | null;
   diagnosticAlerts?: any[];
+  nodes?: any[];
   crews?: any[];
+  aiTriageStrictness?: number;
   onDispatch?: (alertId: string, crewId: string) => void;
 }
 
@@ -31,7 +33,9 @@ export default function MapPreviewModal({
   onClose, 
   complaint,
   diagnosticAlerts = [],
+  nodes = [],
   crews = [],
+  aiTriageStrictness = 75,
   onDispatch
 }: MapPreviewModalProps) {
   const mapContainerRef = useRef<HTMLDivElement>(null);
@@ -47,8 +51,25 @@ export default function MapPreviewModal({
           { latitude: complaint.latitude, longitude: complaint.longitude },
           { latitude: alert.node.latitude, longitude: alert.node.longitude }
         );
-        console.log(`[MapPreviewModal] Checking alert node '${alert.node.name}', distance: ${dist.toFixed(1)} meters (limit: 500m)`);
-        return dist <= 500; // 500 meters spatial threshold
+        if (dist > 500) return false;
+
+        // Check strictness threshold
+        const confidence = alert.geminiAnalysis?.confidenceScore || 0;
+        if (confidence < aiTriageStrictness) return false;
+
+        // Check if the complaint's classification matches the node's anomaly telemetry parameters
+        const nodeObj = nodes.find(n => n.id === alert.nodeId);
+        if (!nodeObj || !nodeObj.reading) return false;
+
+        const { category } = complaint;
+        const { ph, turbidity, tds, pressure } = nodeObj.reading;
+
+        if (category === "PIPELINE_BREACH_PRESSURE_DROP" && pressure < 30) return true;
+        if (category === "HIGH_TURBIDITY" && turbidity > 5) return true;
+        if (category === "HIGH_MINERAL_CONTENT_TDS" && tds > 500) return true;
+        if (category === "CHEMICAL_DISCOLORATION_CONTAMINATION" && (ph < 6.5 || ph > 8.5)) return true;
+
+        return false;
       })
     : null;
 

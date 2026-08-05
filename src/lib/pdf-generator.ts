@@ -102,7 +102,15 @@ export function generateComplianceReport(data: ReportData) {
   doc.text("2. AI Trend Analytics & Regional Hotspots", 14, nextY);
 
   // Compute hotspot stats from active complaints
-  const targetBarangays = ["Calulut", "Dolores", "San Agustin", "Sindalan", "Bulaon", "Quebiawan", "Telabastagan", "Maimpis", "Lara"];
+  const targetBarangays = [
+    "Alasas", "Baliti", "Bulaon", "Calulut", "Del Carmen", "Del Pilar",
+    "Del Rosario", "Dela Paz Norte", "Dela Paz Sur", "Dolores", "Juliana",
+    "Lara", "Lourdes", "Magliman", "Maimpis", "Malino", "Malpitic",
+    "Pandaras", "Panipuan", "Pulung Bulu", "Quebiawan", "Saguin",
+    "San Agustin", "San Felipe", "San Isidro", "San Jose", "San Juan",
+    "San Nicolas", "San Pedro Cutud", "Santa Lucia", "Santa Teresita",
+    "Santo Niño", "Santo Rosario", "Sindalan", "Telabastagan"
+  ];
   const barangayCounts = targetBarangays.map((barangay) => {
     const total = activeComplaints.filter((c) => c.barangay?.toLowerCase() === barangay.toLowerCase()).length;
     return { barangay, total };

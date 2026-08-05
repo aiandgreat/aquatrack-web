@@ -109,7 +109,7 @@ async function mockTriageLogic(
     return { status: 404, message: "Complaint not found" };
   }
 
-  // 2. Spatial Query: Find nodes in MAINTENANCE/OFFLINE status within 500m of the report coordinates
+  // 2. Spatial Query: Find nodes with recent anomalous readings OR dead/offline nodes within 500m
   const { data: nearbyNodes, error: spatialError } = await supabase.rpc("find_nearby_anomalies", {
     report_lat: latitude,
     report_lng: longitude,
@@ -262,7 +262,7 @@ test("mockTriageLogic processes complaint and inserts DiagnosticAlert when spati
   const mockUpdate = vi.fn().mockResolvedValue({ error: null });
   const mockInsert = vi.fn().mockResolvedValue({ error: null });
   const mockRpc = vi.fn().mockResolvedValue({
-    data: [{ id: "node-123", name: "Valve Station B", status: "MAINTENANCE" }],
+    data: [{ id: "node-123", name: "Valve Station B", status: "ONLINE", signal: "ANOMALOUS_READING" }],
     error: null
   });
 

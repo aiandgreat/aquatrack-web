@@ -14,7 +14,7 @@ export async function GET() {
 
 export async function PUT(req: Request) {
   try {
-    const { id, role, serviceAccountNo, phone } = await req.json();
+    const { id, role, serviceAccountNo, phone, address } = await req.json();
     if (!id) {
       return NextResponse.json({ error: "Missing user ID" }, { status: 400 });
     }
@@ -25,6 +25,7 @@ export async function PUT(req: Request) {
         ...(role !== undefined ? { role } : {}),
         ...(serviceAccountNo !== undefined ? { serviceAccountNo: serviceAccountNo || null } : {}),
         ...(phone !== undefined ? { phone: phone || null } : {}),
+        ...(address !== undefined ? { address: address || null } : {}),
       },
     });
 

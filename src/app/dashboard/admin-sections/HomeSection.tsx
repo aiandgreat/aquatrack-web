@@ -1,5 +1,6 @@
 import React, { useState } from "react";
 import DiagnosticAlertDrawer from "../../../components/DiagnosticAlertDrawer";
+import { BarChart3, Newspaper, Megaphone, Zap, Calendar } from "lucide-react";
 
 interface DashboardStats {
   totalUsers: number;
@@ -429,9 +430,7 @@ export default function HomeSection({
               <div className="space-y-4">
                 <div className="flex items-center space-x-3 pb-2 border-b border-slate-200">
                   <div className="w-8 h-8 rounded-lg bg-[#001e66]/5 dark:bg-[#00aeef]/10 flex items-center justify-center text-[#001e66] dark:text-[#00aeef] shrink-0">
-                    <svg className="w-4.5 h-4.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5">
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 002 2h2a2 2 0 002-2z" />
-                    </svg>
+                    <BarChart3 className="w-4.5 h-4.5 transition-all duration-300 hover:scale-115 hover:drop-shadow-[0_0_4px_rgba(0,174,239,0.4)]" />
                   </div>
                   <h3 className="text-sm font-black uppercase text-[#001e66] dark:text-slate-200 tracking-wider">
                     Quick District Analytics
@@ -521,9 +520,7 @@ export default function HomeSection({
               <div className="space-y-4 pt-2">
                 <div className="flex items-center space-x-3 pb-2 border-b border-slate-200">
                   <div className="w-8 h-8 rounded-lg bg-[#001e66]/5 dark:bg-[#00aeef]/10 flex items-center justify-center text-[#001e66] dark:text-[#00aeef] shrink-0">
-                    <svg className="w-4.5 h-4.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5">
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M19 20H5a2 2 0 01-2-2V6a2 2 0 012-2h10a2 2 0 012 2v1m2 4h-2m2 0a2 2 0 00-2-2m2 2v5a2 2 0 01-2 2h-2" />
-                    </svg>
+                    <Newspaper className="w-4.5 h-4.5 transition-all duration-300 hover:scale-115 hover:drop-shadow-[0_0_4px_rgba(0,174,239,0.4)]" />
                   </div>
                   <h3 className="text-sm font-black uppercase text-[#001e66] dark:text-slate-200 tracking-wider">
                     Latest District News
@@ -594,9 +591,7 @@ export default function HomeSection({
                   <div className="space-y-3 mt-2">
                     <div className="flex items-center space-x-2 pb-1 border-b border-slate-200">
                       <div className="w-8 h-8 rounded-lg bg-[#001e66]/5 dark:bg-[#00aeef]/10 flex items-center justify-center text-[#001e66] dark:text-[#00aeef] shrink-0">
-                        <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5">
-                          <path strokeLinecap="round" strokeLinejoin="round" d="M11 5.882V19.24a1.76 1.76 0 01-3.417.592l-2.147-6.15M18 13a3 3 0 100-6M5.436 13.683A4.001 4.001 0 017 6h1.832c4.1 0 7.625-1.234 9.168-3v14c-1.543-1.766-5.067-3-9.168-3H7a3.988 3.988 0 01-1.564-.317z" />
-                        </svg>
+                        <Megaphone className="w-4 h-4 transition-all duration-300 hover:scale-115 hover:rotate-3 hover:drop-shadow-[0_0_4px_rgba(0,174,239,0.4)]" />
                       </div>
                       <span className="text-[10px] font-black text-[#001e66] dark:text-[#00aeef] uppercase tracking-wider">
                         Active Staff Advisories ({staffAdvisories.length})
@@ -672,9 +667,7 @@ export default function HomeSection({
               <div className="space-y-4">
                 <div className="flex items-center space-x-3 pb-2 border-b border-slate-200">
                   <div className="w-8 h-8 rounded-lg bg-[#001e66]/5 dark:bg-[#00aeef]/10 flex items-center justify-center text-[#001e66] dark:text-[#00aeef] shrink-0">
-                    <svg className="w-4.5 h-4.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5">
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z" />
-                    </svg>
+                    <Zap className="w-4.5 h-4.5 transition-all duration-300 hover:scale-115 hover:drop-shadow-[0_0_4px_rgba(0,174,239,0.4)] text-amber-500 animate-pulse" />
                   </div>
                   <h3 className="text-sm font-black uppercase text-[#001e66] dark:text-slate-200 tracking-wider">
                     Live Activity Feed
@@ -705,9 +698,7 @@ export default function HomeSection({
               <div className="space-y-4">
                 <div className="flex items-center space-x-3 pb-2 border-b border-slate-200">
                   <div className="w-8 h-8 rounded-lg bg-[#001e66]/5 dark:bg-[#00aeef]/10 flex items-center justify-center text-[#001e66] dark:text-[#00aeef] shrink-0">
-                    <svg className="w-4.5 h-4.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5">
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                    </svg>
+                    <Calendar className="w-4.5 h-4.5 transition-all duration-300 hover:scale-115 hover:drop-shadow-[0_0_4px_rgba(0,174,239,0.4)]" />
                   </div>
                   <h3 className="text-sm font-black uppercase text-[#001e66] dark:text-slate-200 tracking-wider">
                     Upcoming District Events

@@ -4,7 +4,13 @@ import React, { useState, useEffect } from "react";
 import Link from "next/link";
 import { getSupabaseClient } from "../../lib/supabase";
 import { generateComplianceReport } from "../../lib/pdf-generator";
+import { calculateDistance } from "../../lib/spatial-sorting";
 import { motion, AnimatePresence } from "framer-motion";
+import { 
+  Home, Map, AlertTriangle, Flame, Cpu, BarChart3, Users, 
+  Megaphone, Settings, Bell, HelpCircle, Sun, Moon, ChevronDown, 
+  Menu, X, User, LogOut, CheckCircle2, Wrench, WifiOff
+} from "lucide-react";
 
 // Import Modular Sections
 import HomeSection from "./admin-sections/HomeSection";
@@ -25,6 +31,9 @@ interface User {
   role: string;
   phone: string | null;
   serviceAccountNo: string | null;
+  address?: string | null;
+  latitude?: number | null;
+  longitude?: number | null;
 }
 
 interface TelemetryNode {
@@ -34,6 +43,13 @@ interface TelemetryNode {
   latitude: number;
   longitude: number;
   status: string;
+  reading?: {
+    ph: number;
+    turbidity: number;
+    tds: number;
+    pressure: number;
+    timestamp: string;
+  } | null;
 }
 
 interface Complaint {
@@ -109,6 +125,10 @@ export default function DashboardAdmin({
   const [complaints, setComplaints] = useState<Complaint[]>(initialComplaints);
   const [advisories, setAdvisories] = useState<Advisory[]>([]);
   
+  // State for dismissed notifications and badge indicator
+  const [dismissedNotificationIds, setDismissedNotificationIds] = useState<string[]>([]);
+  const [hasOpenedNotifications, setHasOpenedNotifications] = useState(false);
+
   const [stats, setStats] = useState<DashboardStats>({
     ...initialStats,
     complianceIndex: 0,
@@ -154,11 +174,11 @@ export default function DashboardAdmin({
     pressure: 45.0,
   });
 
-  // AI & Server Configuration Overrides
   const [aiTriageStrictness, setAiTriageStrictness] = useState(75);
   const [emailAlertsEnabled, setEmailAlertsEnabled] = useState(true);
   const [hotCacheTTL, setHotCacheTTL] = useState(60);
   const [isDark, setIsDark] = useState(false);
+  const [maintenanceMode, setMaintenanceMode] = useState(false);
 
   // Diagnostic Alerts
   const [diagnosticAlerts, setDiagnosticAlerts] = useState<any[]>([]);
@@ -174,6 +194,7 @@ export default function DashboardAdmin({
     serviceAccountNo: string | null;
   } | null>(null);
   const [isAccountDetailsOpen, setIsAccountDetailsOpen] = useState(false);
+  const [previewNode, setPreviewNode] = useState<TelemetryNode | null>(null);
   const [accountModalTab, setAccountModalTab] = useState<"profile" | "security">("profile");
   const [profileName, setProfileName] = useState("");
   const [profileEmail, setProfileEmail] = useState("");
@@ -189,6 +210,156 @@ export default function DashboardAdmin({
   const [securitySuccess, setSecuritySuccess] = useState<string | null>(null);
   const [updatingPassword, setUpdatingPassword] = useState(false);
   const [isDeleteConfirmOpen, setIsDeleteConfirmOpen] = useState(false);
+
+  // Load from localStorage on client-side mount
+  useEffect(() => {
+    const stored = localStorage.getItem("dismissed_notifications");
+    if (stored) {
+      try {
+        setDismissedNotificationIds(JSON.parse(stored));
+      } catch (e) {
+        console.error("Failed to parse dismissed notifications", e);
+      }
+    }
+    setMaintenanceMode(localStorage.getItem("maintenance_mode") === "true");
+  }, []);
+
+  const handleToggleMaintenanceMode = (enabled: boolean) => {
+    setMaintenanceMode(enabled);
+    localStorage.setItem("maintenance_mode", enabled ? "true" : "false");
+    window.dispatchEvent(new Event("maintenance-mode-change"));
+  };
+
+  // Sync to localStorage
+  const dismissNotification = (id: string) => {
+    const updated = [...dismissedNotificationIds, id];
+    setDismissedNotificationIds(updated);
+    localStorage.setItem("dismissed_notifications", JSON.stringify(updated));
+  };
+
+  const clearAllNotifications = (idsToDismiss: string[]) => {
+    const updated = Array.from(new Set([...dismissedNotificationIds, ...idsToDismiss]));
+    setDismissedNotificationIds(updated);
+    localStorage.setItem("dismissed_notifications", JSON.stringify(updated));
+  };
+
+  const getDynamicNotifications = () => {
+    const list: any[] = [];
+
+    // 1. System Advisories (warnings)
+    advisories
+      .filter((ad) => ad.type === "warning")
+      .forEach((ad) => {
+        list.push({
+          id: `advisory-${ad.id}`,
+          type: "advisory",
+          title: ad.title,
+          text: ad.text,
+          date: ad.date,
+          original: ad,
+        });
+      });
+
+    // 2. Newly Submitted Complaints or Complaints with Suggested Action (status !== RESOLVED)
+    complaints
+      .filter((c) => c.status !== "RESOLVED")
+      .forEach((c) => {
+        const formattedDate = new Date(c.createdAt).toLocaleDateString("en-US", {
+          month: "short",
+          day: "numeric",
+        });
+
+        // Check if flagged with suggested action (within 500m of an active diagnostic alert node)
+        let isSuggested = false;
+        let matchedAlertNodeName = "";
+        
+        if (diagnosticAlerts.length > 0) {
+          const matchedAlert = diagnosticAlerts.find((alert) => {
+            const dist = calculateDistance(
+              { latitude: c.latitude, longitude: c.longitude },
+              { latitude: alert.node.latitude, longitude: alert.node.longitude }
+            );
+            if (dist > 500) return false;
+
+            // Enforce AI Triage strictness threshold check
+            const confidence = alert.geminiAnalysis?.confidenceScore || 0;
+            if (confidence < aiTriageStrictness) return false;
+
+            const nodeObj = nodes.find((n) => n.id === alert.nodeId);
+            if (!nodeObj || !nodeObj.reading) return false;
+
+            const { ph, turbidity, tds, pressure } = nodeObj.reading;
+            if (c.category === "PIPELINE_BREACH_PRESSURE_DROP" && pressure < 30) return true;
+            if (c.category === "HIGH_TURBIDITY" && turbidity > 5) return true;
+            if (c.category === "HIGH_MINERAL_CONTENT_TDS" && tds > 500) return true;
+            if (c.category === "CHEMICAL_DISCOLORATION_CONTAMINATION" && (ph < 6.5 || ph > 8.5)) return true;
+
+            return false;
+          });
+          if (matchedAlert) {
+            isSuggested = true;
+            matchedAlertNodeName = matchedAlert.node.name;
+          }
+        }
+
+        if (isSuggested) {
+          list.push({
+            id: `complaint-suggested-${c.id}`,
+            type: "suggested_action",
+            title: "Suggested AI Action Alert",
+            text: `Anomaly detected near node ${matchedAlertNodeName}: ${c.summary || c.rawText}`,
+            date: formattedDate,
+            original: c,
+          });
+        } else if (c.status === "PENDING") {
+          list.push({
+            id: `complaint-new-${c.id}`,
+            type: "new_complaint",
+            title: "New Complaint Submitted",
+            text: `[${c.barangay || "Unknown Barangay"}] ${c.summary || c.rawText}`,
+            date: formattedDate,
+            original: c,
+          });
+        }
+      });
+
+    // 3. Offline/Maintenance Nodes
+    nodes
+      .filter((n) => n.status === "OFFLINE" || n.status === "MAINTENANCE")
+      .forEach((n) => {
+        const statusLabel = n.status === "OFFLINE" ? "OFFLINE" : "MAINTENANCE";
+        list.push({
+          id: `node-${n.id}-${n.status}`,
+          type: "node_status",
+          title: `Node ${statusLabel}`,
+          text: `Node ${n.name} status is now ${statusLabel}`,
+          date: "Now",
+          original: n,
+        });
+      });
+
+    return list.filter((item) => !dismissedNotificationIds.includes(item.id));
+  };
+
+  const activeNotifications = getDynamicNotifications();
+
+  const handleNotificationClick = (item: any) => {
+    dismissNotification(item.id);
+    
+    if (item.type === "advisory") {
+      setActiveTab("announcements");
+    } else if (item.type === "new_complaint") {
+      setActiveTab("reports");
+      setComplaintSearchQuery(item.original.id);
+    } else if (item.type === "node_status") {
+      setActiveTab("telemetry");
+      setNodeSearchQuery(item.original.name);
+    } else if (item.type === "suggested_action") {
+      setPreviewComplaint(item.original);
+    }
+    
+    setShowNotificationMenu(false);
+  };
 
   useEffect(() => {
     const root = window.document.documentElement;
@@ -311,6 +482,7 @@ export default function DashboardAdmin({
             console.log("Realtime telemetry reading received:", payload);
             fetchNodes(); // Re-fetch nodes to update live readings immediately!
             fetchStats(); // Update dashboard metric averages!
+            fetchDiagnosticAlerts(); // Re-fetch diagnostic alerts to update Suggested Actions immediately!
           }
         )
         .subscribe();
@@ -509,7 +681,7 @@ export default function DashboardAdmin({
 
   const handleUpdateUserProfile = async (
     userId: string,
-    updates: { role?: string; serviceAccountNo?: string; phone?: string }
+    updates: { role?: string; serviceAccountNo?: string; phone?: string; address?: string }
   ) => {
     setUpdatingUserId(userId);
     try {
@@ -656,6 +828,8 @@ export default function DashboardAdmin({
         }
         fetchNodes();
         fetchStats();
+        fetchComplaints();
+        fetchDiagnosticAlerts();
       } else {
         const errorText = await res.text();
         showFeedback("error", `Ingest function error: ${errorText}`);
@@ -834,51 +1008,15 @@ export default function DashboardAdmin({
 
   // Navigation Items
   const navItems = [
-    { 
-      key: "home", 
-      label: "Dashboard Home", 
-      icon: "M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" 
-    },
-    { 
-      key: "map", 
-      label: "Live Monitoring Map", 
-      icon: "M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7" 
-    },
-    { 
-      key: "reports", 
-      label: "Complaints & Reports", 
-      icon: "M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" 
-    },
-    { 
-      key: "heatmaps", 
-      label: "Spatial Heatmaps", 
-      icon: "M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0zM15 11a3 3 0 11-6 0 3 3 0 016 0z" 
-    },
-    { 
-      key: "telemetry", 
-      label: "IoT Telemetry", 
-      icon: "M9 3v2m6-2v2M9 19v2m6-2v2M5 9H3m2 6H3m18-6h-2m2 6h-2M7 19h10a2 2 0 002-2V7a2 2 0 00-2-2H7a2 2 0 00-2 2v10a2 2 0 002 2zM9 9h6v6H9V9z" 
-    },
-    { 
-      key: "analytics", 
-      label: "Water Analytics", 
-      icon: "M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" 
-    },
-    { 
-      key: "users", 
-      label: "User Profiles", 
-      icon: "M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" 
-    },
-    { 
-      key: "announcements", 
-      label: "Community Broadcasts", 
-      icon: "M11 5.882V19.24a1.76 1.76 0 01-3.417.592l-2.147-6.15M18 13a3 3 0 100-6M5.436 13.683A4.001 4.001 0 017 6h1.832c4.1 0 7.625-1.234 9.168-3v14c-1.543-1.766-5.067-3-9.168-3H7a3.988 3.988 0 01-1.564-.317z" 
-    },
-    { 
-      key: "config", 
-      label: "System Configuration", 
-      icon: "M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" 
-    }
+    { key: "home", label: "Dashboard Home", icon: Home },
+    { key: "map", label: "Live Monitoring Map", icon: Map },
+    { key: "reports", label: "Complaints & Reports", icon: AlertTriangle },
+    { key: "heatmaps", label: "Spatial Heatmaps", icon: Flame },
+    { key: "telemetry", label: "IoT Telemetry", icon: Cpu },
+    { key: "analytics", label: "Water Analytics", icon: BarChart3 },
+    { key: "users", label: "User Profiles", icon: Users },
+    { key: "announcements", label: "Community Broadcasts", icon: Megaphone },
+    { key: "config", label: "System Configuration", icon: Settings },
   ] as const;
 
   return (
@@ -898,9 +1036,7 @@ export default function DashboardAdmin({
             className="lg:hidden p-1.5 text-slate-500 hover:text-[#001e66] dark:hover:text-[#00aeef] hover:bg-slate-50 dark:hover:bg-slate-800 rounded-xl transition-all focus:outline-none cursor-pointer"
             aria-label="Open navigation sidebar"
           >
-            <svg xmlns="http://www.w3.org/2000/svg" className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M4 6h16M4 12h16M4 18h16" />
-            </svg>
+            <Menu className="w-5 h-5 transition-transform hover:scale-110 duration-200" />
           </button>
           <img 
             src="/LOGO2.png" 
@@ -924,19 +1060,18 @@ export default function DashboardAdmin({
             <button
               onClick={() => {
                 setShowNotificationMenu(!showNotificationMenu);
+                setHasOpenedNotifications(true);
                 setShowHelpModal(false);
                 setShowProfileMenu(false);
               }}
               className="w-9 h-9 rounded-xl border border-slate-100 dark:border-slate-800 bg-slate-50 dark:bg-slate-900 hover:bg-slate-100 dark:hover:bg-slate-800/60 flex items-center justify-center text-slate-500 hover:text-[#970006] dark:hover:text-red-400 transition-all focus:outline-none relative cursor-pointer"
             >
-              <svg xmlns="http://www.w3.org/2000/svg" className="w-4.5 h-4.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
-              </svg>
-              {warningAdvisories.length > 0 && (
+              <Bell className="w-4.5 h-4.5 transition-all duration-300 hover:scale-110 hover:rotate-6 hover:text-[#970006] dark:hover:text-red-400" />
+              {activeNotifications.length > 0 && !hasOpenedNotifications && (
                 <span className="absolute -top-0.5 -right-0.5 flex h-4 w-4">
                   <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
                   <span className="relative inline-flex rounded-full h-4 w-4 bg-red-500 text-white font-black text-[8px] items-center justify-center border-2 border-white dark:border-slate-900 shadow-sm">
-                    {warningAdvisories.length}
+                    {activeNotifications.length}
                   </span>
                 </span>
               )}
@@ -955,27 +1090,67 @@ export default function DashboardAdmin({
                     className="absolute right-0 mt-2 w-80 bg-white dark:bg-slate-900 rounded-2xl border border-slate-150 dark:border-slate-800 shadow-[0_10px_35px_rgba(0,30,102,0.12)] z-50 overflow-hidden text-left"
                   >
                     <div className="p-4 border-b border-slate-100 dark:border-slate-800 flex justify-between items-center bg-slate-50/50 dark:bg-slate-900/50">
-                      <span className="font-black text-[#001e66] dark:text-slate-200 uppercase tracking-wider text-[10px]">Active System Alarms</span>
-                      <span className="text-[9px] text-[#00aeef] font-black uppercase tracking-wider">
-                        {warningAdvisories.length} Alerts
-                      </span>
+                      <span className="font-black text-[#001e66] dark:text-slate-200 uppercase tracking-wider text-[10px]">Active Notifications</span>
+                      {activeNotifications.length > 0 && (
+                        <button
+                          onClick={() => clearAllNotifications(activeNotifications.map((n) => n.id))}
+                          className="text-[9px] text-[#970006] hover:text-red-750 dark:text-red-400 dark:hover:text-red-300 font-black uppercase tracking-wider cursor-pointer"
+                        >
+                          Clear All
+                        </button>
+                      )}
                     </div>
                     
-                    <div className="divide-y divide-slate-50 dark:divide-slate-800/40 max-h-60 overflow-y-auto">
-                      {warningAdvisories.map((ad) => (
-                        <div key={ad.id} className="p-3.5 hover:bg-slate-50 dark:hover:bg-slate-800/40 transition-colors">
-                          <div className="flex justify-between items-start gap-2">
-                            <span className="font-bold text-[#970006] dark:text-red-400 text-xs">{ad.title}</span>
-                            <span className="text-[8px] text-slate-400 dark:text-slate-500 font-mono shrink-0 mt-0.5">{ad.date}</span>
+                    <div className="divide-y divide-slate-100 dark:divide-slate-800 max-h-72 overflow-y-auto">
+                      {activeNotifications.map((item) => {
+                        let headerColor = "text-[#970006] dark:text-red-400";
+                        let bgColor = "hover:bg-slate-50 dark:hover:bg-slate-800/40";
+                        
+                        if (item.type === "new_complaint") {
+                          headerColor = "text-[#00aeef] dark:text-[#00aeef]";
+                        } else if (item.type === "node_status") {
+                          headerColor = item.title.includes("OFFLINE")
+                            ? "text-red-500 dark:text-red-400"
+                            : "text-amber-500 dark:text-amber-400";
+                        } else if (item.type === "suggested_action") {
+                          headerColor = "text-purple-600 dark:text-purple-400";
+                        }
+
+                        return (
+                          <div
+                            key={item.id}
+                            onClick={() => handleNotificationClick(item)}
+                            className={`p-3.5 ${bgColor} transition-colors cursor-pointer relative group flex justify-between items-start gap-2`}
+                          >
+                            <div className="flex-1 min-w-0">
+                              <div className="flex justify-between items-start gap-2">
+                                <span className={`font-bold text-xs ${headerColor} truncate`}>
+                                  {item.title}
+                                </span>
+                                <span className="text-[8px] text-slate-400 dark:text-slate-500 font-mono shrink-0 mt-0.5">
+                                  {item.date}
+                                </span>
+                              </div>
+                              <p className="text-slate-500 dark:text-slate-400 mt-1 text-[10px] leading-relaxed line-clamp-2">
+                                {item.text}
+                              </p>
+                            </div>
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                dismissNotification(item.id);
+                              }}
+                              className="opacity-0 group-hover:opacity-100 text-slate-400 hover:text-slate-650 dark:hover:text-slate-200 transition-opacity p-1 ml-1 -mt-1 rounded hover:bg-slate-100 dark:hover:bg-slate-700/50 cursor-pointer flex items-center justify-center"
+                              title="Dismiss Alert"
+                            >
+                              <X className="w-3 h-3" />
+                            </button>
                           </div>
-                          <p className="text-slate-500 dark:text-slate-400 mt-1 text-[10px] leading-relaxed">
-                            {ad.text}
-                          </p>
-                        </div>
-                      ))}
-                      {warningAdvisories.length === 0 && (
+                        );
+                      })}
+                      {activeNotifications.length === 0 && (
                         <div className="p-6 text-center text-slate-450 dark:text-slate-500 italic text-[11px]">
-                          No active system alarms.
+                          No active system alarms or notifications.
                         </div>
                       )}
                     </div>
@@ -995,9 +1170,7 @@ export default function DashboardAdmin({
             className="w-9 h-9 rounded-xl border border-slate-100 dark:border-slate-800 bg-slate-50 dark:bg-slate-900 hover:bg-slate-100 dark:hover:bg-slate-800/60 flex items-center justify-center text-slate-500 hover:text-[#001e66] dark:hover:text-[#00aeef] transition-all focus:outline-none cursor-pointer"
             title="Help Center"
           >
-            <svg xmlns="http://www.w3.org/2000/svg" className="w-4.5 h-4.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-            </svg>
+            <HelpCircle className="w-4.5 h-4.5 transition-all duration-300 hover:scale-110 hover:rotate-[6deg]" />
           </button>
 
           {/* Dark Mode Toggle */}
@@ -1007,13 +1180,9 @@ export default function DashboardAdmin({
             className="w-9 h-9 rounded-xl border border-slate-100 dark:border-slate-800 bg-slate-50 dark:bg-slate-900 hover:bg-slate-100 dark:hover:bg-slate-800/60 flex items-center justify-center text-slate-500 hover:text-[#001e66] dark:hover:text-[#00aeef] transition-all focus:outline-none cursor-pointer"
           >
             {isDark ? (
-              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M12 3v1m0 16v1m8.66-9h-1M4.34 12h-1m15.07-6.07-.71.71M6.34 17.66l-.71.71m12.73 0-.71-.71M6.34 6.34l-.71-.71M12 5a7 7 0 100 14A7 7 0 0012 5z" />
-              </svg>
+              <Sun className="w-4 h-4 transition-all duration-300 hover:scale-110 hover:rotate-45" />
             ) : (
-              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M21 12.79A9 9 0 1111.21 3 7 7 0 0021 12.79z" />
-              </svg>
+              <Moon className="w-4 h-4 transition-all duration-300 hover:scale-110 hover:-rotate-12" />
             )}
           </button>
 
@@ -1037,9 +1206,7 @@ export default function DashboardAdmin({
                   Super Admin
                 </span>
               </div>
-              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="2.5" stroke="currentColor" className="w-3.5 h-3.5 text-slate-400 ml-1">
-                <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 8.25l-7.5 7.5-7.5-7.5" />
-              </svg>
+              <ChevronDown className={`w-3.5 h-3.5 text-slate-400 ml-1 transition-transform duration-300 ${showProfileMenu ? "rotate-180" : ""}`} />
             </div>
 
             {/* Dropdown Menu */}
@@ -1064,11 +1231,9 @@ export default function DashboardAdmin({
                         setIsAccountDetailsOpen(true);
                         setShowProfileMenu(false);
                       }}
-                      className="w-full text-left px-4 py-2.5 text-xs font-bold text-[#001e66] dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800/40 transition-colors flex items-center gap-2 cursor-pointer"
+                      className="w-full text-left px-4 py-2.5 text-xs font-bold text-[#001e66] dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800/40 transition-colors flex items-center gap-2 cursor-pointer group"
                     >
-                      <svg className="w-4 h-4 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                        <path strokeLinecap="round" strokeLinejoin="round" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-                      </svg>
+                      <User className="w-4 h-4 text-slate-400 group-hover:scale-110 transition-transform" />
                       Manage Account
                     </button>
 
@@ -1077,11 +1242,9 @@ export default function DashboardAdmin({
                         setShowProfileMenu(false);
                         handleLogout();
                       }}
-                      className="w-full text-left px-4 py-2.5 text-xs font-bold text-red-600 dark:text-red-400 hover:bg-red-50/50 dark:hover:bg-red-950/20 transition-colors flex items-center gap-2 cursor-pointer border-t border-slate-50 dark:border-slate-800/50"
+                      className="w-full text-left px-4 py-2.5 text-xs font-bold text-red-600 dark:text-red-400 hover:bg-red-50/50 dark:hover:bg-red-950/20 transition-colors flex items-center gap-2 cursor-pointer border-t border-slate-50 dark:border-slate-800/50 group"
                     >
-                      <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                        <path strokeLinecap="round" strokeLinejoin="round" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
-                      </svg>
+                      <LogOut className="w-4 h-4 text-red-500 dark:text-red-400 group-hover:scale-110 group-hover:translate-x-0.5 transition-transform" />
                       Logout
                     </button>
                   </motion.div>
@@ -1117,16 +1280,14 @@ export default function DashboardAdmin({
                     {isActive && (
                       <span className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-5 bg-[#00aeef] rounded-full animate-pulse" />
                     )}
-                    <svg
-                      xmlns="http://www.w3.org/2000/svg"
-                      className={`w-4 h-4 shrink-0 transition-transform ${isActive ? "text-[#001e66] scale-110" : "text-slate-400 group-hover:scale-105"}`}
-                      fill="none"
-                      viewBox="0 0 24 24"
-                      stroke="currentColor"
-                      strokeWidth={isActive ? 2.5 : 1.75}
-                    >
-                      <path strokeLinecap="round" strokeLinejoin="round" d={item.icon} />
-                    </svg>
+                    <item.icon
+                      strokeWidth={isActive ? 2.5 : 1.8}
+                      className={`w-4.5 h-4.5 shrink-0 transition-all duration-300 ${
+                        isActive
+                          ? "text-[#001e66] dark:text-[#00aeef] scale-110 drop-shadow-[0_0_8px_rgba(0,174,239,0.55)]"
+                          : "text-slate-400 group-hover:scale-110 group-hover:rotate-[2deg] group-hover:text-[#001e66] dark:group-hover:text-[#00aeef] group-hover:drop-shadow-[0_0_5px_rgba(0,174,239,0.3)]"
+                      }`}
+                    />
                     <span className="truncate">{item.label}</span>
                   </button>
                 );
@@ -1177,9 +1338,7 @@ export default function DashboardAdmin({
                     onClick={() => setIsMobileSidebarOpen(false)}
                     className="p-1.5 text-slate-400 hover:text-slate-600 rounded-xl hover:bg-slate-50 cursor-pointer"
                   >
-                    <svg xmlns="http://www.w3.org/2000/svg" className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
-                    </svg>
+                    <X className="w-5 h-5 hover:rotate-90 transition-transform duration-300" />
                   </button>
                 </div>
 
@@ -1207,16 +1366,14 @@ export default function DashboardAdmin({
                           {isActive && (
                             <span className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-5 bg-[#00aeef] rounded-full animate-pulse" />
                           )}
-                          <svg
-                            xmlns="http://www.w3.org/2000/svg"
-                            className={`w-4 h-4 shrink-0 transition-transform ${isActive ? "text-[#001e66] scale-110" : "text-slate-400 group-hover:scale-105"}`}
-                            fill="none"
-                            viewBox="0 0 24 24"
-                            stroke="currentColor"
-                            strokeWidth={isActive ? 2.5 : 1.75}
-                          >
-                            <path strokeLinecap="round" strokeLinejoin="round" d={item.icon} />
-                          </svg>
+                          <item.icon
+                            strokeWidth={isActive ? 2.5 : 1.8}
+                            className={`w-4.5 h-4.5 shrink-0 transition-all duration-300 ${
+                              isActive
+                                ? "text-[#001e66] dark:text-[#00aeef] scale-110 drop-shadow-[0_0_8px_rgba(0,174,239,0.55)]"
+                                : "text-slate-400 group-hover:scale-110 group-hover:rotate-[2deg] group-hover:text-[#001e66] dark:group-hover:text-[#00aeef] group-hover:drop-shadow-[0_0_5px_rgba(0,174,239,0.3)]"
+                            }`}
+                          />
                           <span className="truncate">{item.label}</span>
                         </button>
                       );
@@ -1273,7 +1430,7 @@ export default function DashboardAdmin({
                   diagnosticAlerts={diagnosticAlerts}
                   crews={users.filter(u => u.role === "FIELD_ENGINEER_TECHNICIAN" && u.latitude !== null && u.longitude !== null)}
                   handleDispatchAlert={handleDispatchAlert}
-                  setActiveTab={setActiveTab}
+                  setActiveTab={(tab) => setActiveTab(tab as any)}
                 />
               )}
 
@@ -1310,6 +1467,8 @@ export default function DashboardAdmin({
                   setNodeSearchQuery={setNodeSearchQuery}
                   updatingNodeId={updatingNodeId}
                   handleUpdateNodeStatus={handleUpdateNodeStatus}
+                  previewNode={previewNode}
+                  setPreviewNode={setPreviewNode}
                 />
               )}
 
@@ -1365,6 +1524,8 @@ export default function DashboardAdmin({
                   setEmailAlertsEnabled={setEmailAlertsEnabled}
                   hotCacheTTL={hotCacheTTL}
                   setHotCacheTTL={setHotCacheTTL}
+                  maintenanceMode={maintenanceMode}
+                  setMaintenanceMode={handleToggleMaintenanceMode}
                   handleTriggerSimulation={handleTriggerSimulation}
                 />
               )}
@@ -1487,9 +1648,197 @@ export default function DashboardAdmin({
         onClose={() => setPreviewComplaint(null)}
         complaint={previewComplaint}
         diagnosticAlerts={diagnosticAlerts}
+        nodes={nodes}
+        aiTriageStrictness={aiTriageStrictness}
         crews={users.filter(u => u.role === "FIELD_ENGINEER_TECHNICIAN" && u.latitude !== null && u.longitude !== null)}
         onDispatch={handleDispatchAlert}
       />
+
+      {/* Telemetry Node Satellite Preview Modal */}
+      {previewNode && (
+        <div className="fixed inset-0 bg-slate-950/60 backdrop-blur-sm z-[150] flex items-center justify-center p-4 overflow-y-auto">
+          <div className="bg-white border border-slate-200 rounded-3xl max-w-3xl w-full overflow-hidden shadow-2xl relative text-left flex flex-col md:flex-row min-h-[420px]">
+            
+            {/* Close Button (Absolute overlay on the entire modal) */}
+            <button
+              type="button"
+              onClick={() => setPreviewNode(null)}
+              className="absolute top-4 right-4 w-7 h-7 rounded-full bg-white/95 hover:bg-slate-100 text-slate-700 flex items-center justify-center transition-all cursor-pointer border border-slate-200 focus:outline-none shadow-md z-20"
+            >
+              <X className="w-3.5 h-3.5" />
+            </button>
+
+            {/* Left Pane: Map Preview Image */}
+            <div className="w-full md:w-5/12 bg-slate-100 relative min-h-[220px] md:min-h-full">
+              {process.env.NEXT_PUBLIC_MAPBOX_TOKEN ? (
+                <img
+                  src={`https://api.mapbox.com/styles/v1/mapbox/satellite-streets-v12/static/pin-s+970006(${previewNode.longitude},${previewNode.latitude})/${previewNode.longitude},${previewNode.latitude},16.5,0/450x450?access_token=${process.env.NEXT_PUBLIC_MAPBOX_TOKEN}`}
+                  alt="Satellite Preview"
+                  className="absolute inset-0 w-full h-full object-cover"
+                />
+              ) : (
+                <div className="absolute inset-0 flex flex-col items-center justify-center text-slate-400 text-xxs font-bold uppercase tracking-wider space-y-1">
+                  <AlertTriangle className="w-5 h-5 text-amber-500 animate-bounce" />
+                  <span>No Mapbox Token Configured</span>
+                </div>
+              )}
+            </div>
+
+            {/* Right Pane: Content Details */}
+            <div className="w-full md:w-7/12 p-6 flex flex-col justify-between space-y-5 relative">
+              <div className="space-y-4">
+                <div>
+                  <span className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full border text-[8px] font-black uppercase tracking-wider ${
+                    previewNode.type === "PUMP_STATION" || previewNode.name.toLowerCase().includes("station") || previewNode.name.toLowerCase().includes("reservoir")
+                      ? "bg-sky-50 text-sky-700 border-sky-150"
+                      : "bg-indigo-50 text-indigo-700 border-indigo-150"
+                  }`}>
+                    {previewNode.type === "PUMP_STATION" || previewNode.name.toLowerCase().includes("station") || previewNode.name.toLowerCase().includes("reservoir")
+                      ? "Pumping Station"
+                      : "Household Pipeline"}
+                  </span>
+                  <h3 className="text-[#001e66] text-base font-black mt-2 leading-tight pr-6">
+                    {previewNode.name}
+                  </h3>
+                  <p className="text-[10px] text-slate-400 font-mono mt-1 select-all tracking-wider">
+                    NODE ID: {`AQ-NODE-${previewNode.id.slice(-8).toUpperCase()}`}
+                  </p>
+                </div>
+
+                {/* Location Details Grid */}
+                <div className="grid grid-cols-2 gap-4 border-t border-slate-100 pt-3 text-xs font-semibold">
+                  <div>
+                    <span className="text-slate-400 text-[9px] uppercase tracking-wider block">Barangay Area</span>
+                    <span className="text-[#001e66] font-black text-sm block mt-0.5">
+                      {(() => {
+                        const nameLower = previewNode.name.toLowerCase();
+                        if (nameLower.includes("dolores")) return "Brgy. Dolores";
+                        if (nameLower.includes("pilar")) return "Brgy. Del Pilar";
+                        if (nameLower.includes("calulut")) return "Brgy. Calulut";
+                        if (nameLower.includes("sindalan")) return "Brgy. Sindalan";
+                        if (nameLower.includes("agustin")) return "Brgy. San Agustin";
+                        return "San Fernando District";
+                      })()}
+                    </span>
+                  </div>
+                  <div>
+                    <span className="text-slate-400 text-[9px] uppercase tracking-wider block">GPS Coordinates</span>
+                    <span className="text-[#001e66] font-mono font-bold block mt-0.5">
+                      {previewNode.latitude.toFixed(5)}, {previewNode.longitude.toFixed(5)}
+                    </span>
+                  </div>
+                </div>
+
+                {/* Detailed Live Readings Table */}
+                <div className="border-t border-slate-100 pt-3 space-y-2.5">
+                  <span className="text-slate-400 font-bold text-[9px] uppercase tracking-wider block">Live Diagnostic Readings</span>
+                  {previewNode.reading ? (
+                    <div className="grid grid-cols-2 gap-2 text-xs font-bold">
+                      {/* pH */}
+                      {(() => {
+                        const isAnomaly = previewNode.reading.ph < 6.5 || previewNode.reading.ph > 8.5;
+                        return (
+                          <div className="bg-slate-50 p-2.5 rounded-xl border border-slate-100 flex flex-col justify-between">
+                            <span className="text-[8px] font-bold text-slate-400 block uppercase">pH level</span>
+                            <div className="flex justify-between items-end mt-1">
+                              <span className="text-xs font-black text-[#001e66] font-mono">{previewNode.reading.ph.toFixed(2)}</span>
+                              <span className={`text-[8px] font-black px-1.5 py-0.5 rounded flex items-center gap-0.5 uppercase tracking-wide ${
+                                isAnomaly ? "bg-rose-50 text-rose-600 animate-pulse" : "bg-emerald-50 text-emerald-600"
+                              }`}>
+                                {isAnomaly ? <AlertTriangle className="w-2 h-2 shrink-0" /> : <CheckCircle2 className="w-2 h-2 shrink-0" />}
+                                {isAnomaly ? "WARN" : "OK"}
+                              </span>
+                            </div>
+                          </div>
+                        );
+                      })()}
+                      {/* Turbidity */}
+                      {(() => {
+                        const isAnomaly = previewNode.reading.turbidity > 5.0;
+                        return (
+                          <div className="bg-slate-50 p-2.5 rounded-xl border border-slate-100 flex flex-col justify-between">
+                            <span className="text-[8px] font-bold text-slate-400 block uppercase">Turbidity</span>
+                            <div className="flex justify-between items-end mt-1">
+                              <span className="text-xs font-black text-[#001e66] font-mono">{previewNode.reading.turbidity.toFixed(1)} <span className="text-[8px] font-normal">NTU</span></span>
+                              <span className={`text-[8px] font-black px-1.5 py-0.5 rounded flex items-center gap-0.5 uppercase tracking-wide ${
+                                isAnomaly ? "bg-amber-50 text-amber-600 animate-pulse" : "bg-emerald-50 text-emerald-600"
+                              }`}>
+                                {isAnomaly ? <AlertTriangle className="w-2 h-2 shrink-0" /> : <CheckCircle2 className="w-2 h-2 shrink-0" />}
+                                {isAnomaly ? "WARN" : "OK"}
+                              </span>
+                            </div>
+                          </div>
+                        );
+                      })()}
+                      {/* TDS */}
+                      {(() => {
+                        const isAnomaly = previewNode.reading.tds > 500;
+                        return (
+                          <div className="bg-slate-50 p-2.5 rounded-xl border border-slate-100 flex flex-col justify-between">
+                            <span className="text-[8px] font-bold text-slate-400 block uppercase">TDS (Minerals)</span>
+                            <div className="flex justify-between items-end mt-1">
+                              <span className="text-xs font-black text-[#001e66] font-mono">{previewNode.reading.tds.toFixed(0)} <span className="text-[8px] font-normal">ppm</span></span>
+                              <span className={`text-[8px] font-black px-1.5 py-0.5 rounded flex items-center gap-0.5 uppercase tracking-wide ${
+                                isAnomaly ? "bg-amber-50 text-amber-600 animate-pulse" : "bg-emerald-50 text-emerald-600"
+                              }`}>
+                                {isAnomaly ? <AlertTriangle className="w-2 h-2 shrink-0" /> : <CheckCircle2 className="w-2 h-2 shrink-0" />}
+                                {isAnomaly ? "WARN" : "OK"}
+                              </span>
+                            </div>
+                          </div>
+                        );
+                      })()}
+                      {/* Pressure */}
+                      {(() => {
+                        const isAnomaly = previewNode.reading.pressure < 30;
+                        return (
+                          <div className="bg-slate-50 p-2.5 rounded-xl border border-slate-100 flex flex-col justify-between">
+                            <span className="text-[8px] font-bold text-slate-400 block uppercase">Pressure</span>
+                            <div className="flex justify-between items-end mt-1">
+                              <span className="text-xs font-black text-[#001e66] font-mono">{previewNode.reading.pressure.toFixed(1)} <span className="text-[8px] font-normal">PSI</span></span>
+                              <span className={`text-[8px] font-black px-1.5 py-0.5 rounded flex items-center gap-0.5 uppercase tracking-wide ${
+                                isAnomaly ? "bg-rose-50 text-rose-600 animate-pulse" : "bg-emerald-50 text-emerald-600"
+                              }`}>
+                                {isAnomaly ? <AlertTriangle className="w-2 h-2 shrink-0" /> : <CheckCircle2 className="w-2 h-2 shrink-0" />}
+                                {isAnomaly ? "WARN" : "OK"}
+                              </span>
+                            </div>
+                          </div>
+                        );
+                      })()}
+                    </div>
+                  ) : (
+                    <div className="p-3 text-center text-slate-400 text-xs italic bg-slate-50 rounded-xl">No telemetry logs found for this node.</div>
+                  )}
+                </div>
+
+                {/* Status footer */}
+                <div className="border-t border-slate-100 pt-3.5 flex items-center justify-between">
+                  <span className="text-slate-400 font-bold text-[9px] uppercase tracking-wider">Operational Status</span>
+                  <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-wider border ${
+                    previewNode.status === "ONLINE" ? "bg-emerald-50 text-emerald-700 border-emerald-200" :
+                    previewNode.status === "MAINTENANCE" ? "bg-amber-50 text-amber-700 border-amber-200" :
+                    "bg-rose-50 text-rose-700 border-rose-200"
+                  }`}>
+                    {previewNode.status === "ONLINE" && <CheckCircle2 className="w-3 h-3 text-emerald-500 shrink-0" />}
+                    {previewNode.status === "MAINTENANCE" && <Wrench className="w-3 h-3 text-amber-500 animate-pulse shrink-0" />}
+                    {previewNode.status === "OFFLINE" && <WifiOff className="w-3 h-3 text-rose-500 animate-pulse shrink-0" />}
+                    {previewNode.status}
+                  </span>
+                </div>
+              </div>
+
+              <button
+                type="button"
+                onClick={() => setPreviewNode(null)}
+                className="w-full bg-[#001e66] hover:bg-[#00aeef] text-white font-extrabold py-2.5 rounded-xl transition-all shadow-md text-xxs uppercase tracking-widest cursor-pointer border-none focus:outline-none"
+              >
+                Close Map Preview
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Account Details Modal */}
       <AnimatePresence>

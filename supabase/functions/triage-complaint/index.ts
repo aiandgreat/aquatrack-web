@@ -37,7 +37,7 @@ serve(async (req) => {
       report_lat: latitude,
       report_lng: longitude,
       max_distance_meters: 500
-    }) as Promise<{ data: Array<{ id: string; name: string; status: string }> | null; error: { message: string } | null }>;
+    }) as Promise<{ data: Array<{ id: string; name: string; status: string; signal: string }> | null; error: { message: string } | null }>;
 
     const [complaintRes, spatialRes] = await Promise.all([complaintPromise, spatialPromise]);
 

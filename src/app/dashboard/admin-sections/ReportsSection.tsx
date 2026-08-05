@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from "react";
+import { FileText, Clock, RefreshCw, CheckCircle2, Search, MapPin } from "lucide-react";
 
 interface Complaint {
   id: string;
@@ -206,9 +207,7 @@ export default function ReportsSection({
         {/* Total Complaints */}
         <div className="bg-white/60 backdrop-blur-md border border-slate-200/60 rounded-2xl p-5 shadow-sm flex items-center gap-4 hover:shadow-md transition-all duration-200">
           <div className="w-12 h-12 rounded-xl bg-blue-50 flex items-center justify-center shrink-0">
-            <svg className="w-6 h-6 text-[#00aeef]" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-            </svg>
+            <FileText className="w-6 h-6 text-[#00aeef] transition-all duration-300 group-hover:scale-110" />
           </div>
           <div>
             <span className="text-[10px] font-extrabold text-slate-400 uppercase tracking-wider">Total Complaints</span>
@@ -219,9 +218,7 @@ export default function ReportsSection({
         {/* Awaiting Dispatch */}
         <div className="bg-white/60 backdrop-blur-md border border-slate-200/60 rounded-2xl p-5 shadow-sm flex items-center gap-4 hover:shadow-md transition-all duration-200">
           <div className="w-12 h-12 rounded-xl bg-amber-50 flex items-center justify-center shrink-0">
-            <svg className="w-6 h-6 text-[#ffd800]" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-            </svg>
+            <Clock className="w-6 h-6 text-[#ffd800] transition-all duration-300 group-hover:scale-110" />
           </div>
           <div>
             <span className="text-[10px] font-extrabold text-slate-400 uppercase tracking-wider">Awaiting Dispatch</span>
@@ -232,9 +229,7 @@ export default function ReportsSection({
         {/* In Progress */}
         <div className="bg-white/60 backdrop-blur-md border border-slate-200/60 rounded-2xl p-5 shadow-sm flex items-center gap-4 hover:shadow-md transition-all duration-200">
           <div className="w-12 h-12 rounded-xl bg-sky-50 flex items-center justify-center shrink-0">
-            <svg className="w-6 h-6 text-[#00aeef]" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0l3.181 3.183a8.25 8.25 0 0013.803-3.7M4.031 9.865a8.25 8.25 0 0113.803-3.7l3.181 3.182m0-4.991v4.99" />
-            </svg>
+            <RefreshCw className="w-6 h-6 text-[#00aeef] transition-all duration-500 hover:rotate-180 group-hover:scale-110" />
           </div>
           <div>
             <span className="text-[10px] font-extrabold text-slate-400 uppercase tracking-wider">In Progress</span>
@@ -245,9 +240,7 @@ export default function ReportsSection({
         {/* Resolved */}
         <div className="bg-white/60 backdrop-blur-md border border-slate-200/60 rounded-2xl p-5 shadow-sm flex items-center gap-4 hover:shadow-md transition-all duration-200">
           <div className="w-12 h-12 rounded-xl bg-red-50 flex items-center justify-center shrink-0">
-            <svg className="w-6 h-6 text-[#970006]" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12c0 1.268-.63 2.39-1.593 3.068a3.745 3.745 0 01-1.043 3.296 3.745 3.745 0 01-3.296 1.043A3.745 3.745 0 0112 21c-1.268 0-2.39-.63-3.068-1.593a3.746 3.746 0 01-3.296-1.043 3.745 3.745 0 01-1.043-3.296A3.745 3.745 0 013 12c0-1.268.63-2.39 1.593-3.068a3.745 3.745 0 011.043-3.296 3.746 3.746 0 013.296-1.043A3.746 3.746 0 0112 3c1.268 0 2.39.63 3.068 1.593a3.746 3.746 0 013.296 1.043 3.746 3.746 0 011.043 3.296A3.745 3.745 0 0121 12z" />
-            </svg>
+            <CheckCircle2 className="w-6 h-6 text-[#970006] transition-all duration-300 group-hover:scale-110" />
           </div>
           <div>
             <span className="text-[10px] font-extrabold text-slate-400 uppercase tracking-wider">Resolved</span>
@@ -292,10 +285,7 @@ export default function ReportsSection({
                           className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-black bg-blue-50 hover:bg-blue-100 text-[#001e66] border border-blue-100 hover:border-blue-200 uppercase tracking-wide cursor-pointer transition-colors shadow-sm active:scale-95"
                           title="Click to view on map"
                         >
-                          <svg className="w-3 h-3 text-[#00aeef] shrink-0" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" d="M15 10.5a3 3 0 11-6 0 3 3 0 016 0z" />
-                            <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 10.5c0 7.142-7.5 11.25-7.5 11.25S4.5 17.642 4.5 10.5a7.5 7.5 0 1115 0z" />
-                          </svg>
+                          <MapPin className="w-3 h-3 text-[#00aeef] shrink-0 transition-transform duration-200 group-hover:scale-110" />
                           <span>{c.barangay || "Outside Service Area"}</span>
                         </span>
                       </div>
@@ -348,7 +338,7 @@ export default function ReportsSection({
                         onChange={(e) => handleUpdateComplaintAssignment(c.id, e.target.value)}
                         className="bg-white border border-slate-200 hover:border-[#00aeef] disabled:opacity-50 text-[#001e66] font-bold text-xs py-2 px-3 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#00aeef]/40 transition-all cursor-pointer shadow-sm w-[160px] text-center"
                       >
-                        <option value="">Unassigned</option>
+                        <option value="">UNASSIGNED</option>
                         {users
                           .filter((u) => u.role === "FIELD_ENGINEER_TECHNICIAN")
                           .map((u) => (
@@ -438,10 +428,7 @@ export default function ReportsSection({
                             className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-black bg-slate-100 hover:bg-slate-200 text-slate-600 hover:text-slate-850 border border-slate-200 hover:border-slate-300 uppercase tracking-wide cursor-pointer transition-colors shadow-sm active:scale-95"
                             title="Click to view on map"
                           >
-                            <svg className="w-3 h-3 text-slate-400 shrink-0" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" d="M15 10.5a3 3 0 11-6 0 3 3 0 016 0z" />
-                              <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 10.5c0 7.142-7.5 11.25-7.5 11.25S4.5 17.642 4.5 10.5a7.5 7.5 0 1115 0z" />
-                            </svg>
+                            <MapPin className="w-3 h-3 text-slate-400 shrink-0 group-hover:scale-110 group-hover:text-[#00aeef] transition-colors duration-200" />
                             <span>{c.barangay || "Outside Service Area"}</span>
                           </span>
                         </div>
@@ -495,7 +482,7 @@ export default function ReportsSection({
                       {/* 6. Dispatch Action */}
                       <td className="py-4.5 px-5 font-mono text-slate-500 text-center">
                         <div className="text-[10px] font-bold">
-                          Assigned to: <span className="text-slate-600 font-extrabold">{assignedUser ? assignedUser.name : "Unassigned"}</span>
+                          Assigned to: <span className="text-slate-600 font-extrabold">{assignedUser ? assignedUser.name : "UNASSIGNED"}</span>
                         </div>
                         <div className="text-[9px] text-slate-400 font-mono mt-1">
                           Logged: {new Date(c.createdAt).toLocaleString()}

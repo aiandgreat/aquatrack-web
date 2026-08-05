@@ -3,6 +3,15 @@
 import React, { useState, useEffect, useRef } from "react";
 import mapboxgl from "mapbox-gl";
 import "mapbox-gl/dist/mapbox-gl.css";
+import { 
+  Sun, 
+  Moon, 
+  MapPin, 
+  BrainCircuit, 
+  AlertTriangle, 
+  ShieldCheck, 
+  Activity 
+} from "lucide-react";
 import { SAN_FERNANDO_POLYGON } from "../../../lib/san-fernando-boundary";
 
 mapboxgl.accessToken = process.env.NEXT_PUBLIC_MAPBOX_TOKEN || "";
@@ -95,6 +104,9 @@ export default function HeatmapsSection({ complaints = [] }: HeatmapsSectionProp
   const [aiSummary, setAiSummary] = useState<string | null>(null);
   const [aiStatus, setAiStatus] = useState<string | null>(null);
 
+  const [mapStyle, setMapStyle] = useState<"streets" | "dark">("dark");
+  const [isMapReady, setIsMapReady] = useState(false);
+
   // Mapbox refs
   const mapContainerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<mapboxgl.Map | null>(null);
@@ -122,13 +134,14 @@ export default function HeatmapsSection({ complaints = [] }: HeatmapsSectionProp
   // Initialize Mapbox map with a heatmap source & layer configuration
   useEffect(() => {
     if (!mapContainerRef.current) return;
+    setIsMapReady(false);
 
     // Center map around Sto. Rosario, San Fernando
     const sfCenter: [number, number] = [120.6936, 15.0278];
 
     const map = new mapboxgl.Map({
       container: mapContainerRef.current,
-      style: "mapbox://styles/mapbox/dark-v11",
+      style: mapStyle === "streets" ? "mapbox://styles/mapbox/streets-v12" : "mapbox://styles/mapbox/dark-v11",
       center: sfCenter,
       zoom: 12.2,
       pitch: 0,
@@ -138,6 +151,7 @@ export default function HeatmapsSection({ complaints = [] }: HeatmapsSectionProp
     map.addControl(new mapboxgl.NavigationControl(), "top-right");
 
     map.on("style.load", () => {
+      setIsMapReady(true);
       // Add empty source initially
       map.addSource("complaints-heatmap-source", {
         type: "geojson",
@@ -245,6 +259,7 @@ export default function HeatmapsSection({ complaints = [] }: HeatmapsSectionProp
           type: "line",
           source: "sf-boundary",
           paint: {
+            "fill-color": "#00aeef",
             "line-color": "#00aeef",
             "line-width": 14,
             "line-opacity": 0.10,
@@ -293,13 +308,14 @@ export default function HeatmapsSection({ complaints = [] }: HeatmapsSectionProp
       clearTimeout(resizeTimeout);
       map.remove();
       mapRef.current = null;
+      setIsMapReady(false);
     };
-  }, []);
+  }, [mapStyle]);
 
   // Plot pulsing complaints and barangays coordinates on the map
   useEffect(() => {
     const map = mapRef.current;
-    if (!map) return;
+    if (!map || !isMapReady) return;
 
     // Construct GeoJSON FeatureCollection from current complaints
     const geojsonData = {
@@ -451,7 +467,7 @@ export default function HeatmapsSection({ complaints = [] }: HeatmapsSectionProp
 
       markersRef.current.push(marker);
     });
-  }, [barangays, complaints]);
+  }, [barangays, complaints, isMapReady]);
 
   // Sync zoom transitions when a Barangay is selected
   useEffect(() => {
@@ -599,6 +615,35 @@ export default function HeatmapsSection({ complaints = [] }: HeatmapsSectionProp
       {/* Mapbox Live Heatmap Display */}
       <div className="relative w-full h-[580px] rounded-2xl overflow-hidden border border-slate-200 shadow-sm bg-slate-900">
         <div ref={mapContainerRef} className="absolute inset-0 w-full h-full" />
+        
+        {/* Style Toggle Button overlay */}
+        <div className="absolute top-3 left-3 z-10 flex gap-1 bg-white/95 backdrop-blur-sm p-1 rounded-xl border border-slate-200 shadow-lg">
+          <button
+            type="button"
+            onClick={() => setMapStyle("streets")}
+            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[9px] font-black uppercase tracking-wider transition-all border-none focus:outline-none cursor-pointer ${
+              mapStyle === "streets" 
+                ? "bg-[#001e66] text-white shadow-sm" 
+                : "text-slate-600 hover:text-[#001e66] hover:bg-slate-100"
+            }`}
+          >
+            <Sun className="w-3 h-3" />
+            <span>Street</span>
+          </button>
+          <button
+            type="button"
+            onClick={() => setMapStyle("dark")}
+            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[9px] font-black uppercase tracking-wider transition-all border-none focus:outline-none cursor-pointer ${
+              mapStyle === "dark" 
+                ? "bg-[#001e66] text-white shadow-sm" 
+                : "text-slate-600 hover:text-[#001e66] hover:bg-slate-100"
+            }`}
+          >
+            <Moon className="w-3 h-3" />
+            <span>Dark</span>
+          </button>
+        </div>
+
         <div className="absolute bottom-3 right-3 z-10 bg-slate-950/90 text-[9px] font-bold text-slate-400 px-2 py-1 rounded border border-slate-800 shadow-md">
           San Fernando Heatmap Map · GPU Density Clouds
         </div>
@@ -620,22 +665,26 @@ export default function HeatmapsSection({ complaints = [] }: HeatmapsSectionProp
 
       {/* Selected barangay detail card with Gemini AI Analysis */}
       {selectedBarangay && (
-        <div className="bg-[#001e66] text-white rounded-2xl p-6 flex flex-col md:flex-row md:items-center justify-between gap-4 animate-fade-in shadow-md">
-          <div className="space-y-2 flex-1">
-            <div className="text-[9px] font-black uppercase tracking-widest text-blue-300">
-              📍 Selected Sector Analysis
-            </div>
-            <div className="text-xl font-black flex items-center gap-2">
-              Brgy. {selectedBarangay.name}
-              <span className="text-xs font-bold text-blue-200 bg-blue-900/60 px-2.5 py-0.5 rounded-full">
-                {selectedBarangay.count} Complaint{selectedBarangay.count !== 1 ? "s" : ""}
-              </span>
+        <div className="bg-gradient-to-br from-[#001e66] to-[#00123e] border border-blue-950/60 shadow-xl text-white rounded-3xl p-6 flex flex-col md:flex-row md:items-stretch justify-between gap-6 animate-fade-in">
+          <div className="space-y-3 flex-1 flex flex-col justify-between">
+            <div className="space-y-1">
+              <div className="text-[9px] font-black uppercase tracking-widest text-blue-300 flex items-center gap-1.5">
+                <MapPin className="w-3.5 h-3.5 text-[#00aeef]" />
+                <span>Selected Sector Analysis</span>
+              </div>
+              <div className="text-xl font-black flex items-center gap-2.5">
+                Brgy. {selectedBarangay.name}
+                <span className="text-[10px] font-extrabold text-[#00aeef] bg-[#001e66] border border-blue-800/50 px-2.5 py-0.5 rounded-full shadow-inner">
+                  {selectedBarangay.count} Complaint{selectedBarangay.count !== 1 ? "s" : ""}
+                </span>
+              </div>
             </div>
 
             {/* AI Generated content */}
-            <div className="pt-2 border-t border-blue-900/60 min-h-[50px]">
-              <div className="text-[9px] font-black text-blue-300 uppercase tracking-wider mb-1 flex items-center gap-1">
-                🤖 Gemini AI Barangay Summary
+            <div className="pt-3 border-t border-blue-900/60 min-h-[60px] space-y-1.5">
+              <div className="text-[9px] font-black text-blue-300 uppercase tracking-wider flex items-center gap-1.5">
+                <BrainCircuit className="w-3.5 h-3.5 text-[#00aeef]" />
+                <span>Gemini AI Barangay Summary</span>
               </div>
               {summaryLoading ? (
                 <p className="text-xs text-blue-200 animate-pulse italic">Generative intelligence analyzing logs and compiling incident report...</p>
@@ -647,24 +696,42 @@ export default function HeatmapsSection({ complaints = [] }: HeatmapsSectionProp
             </div>
           </div>
 
-          <div className="text-right shrink-0 md:pl-4 flex flex-col items-end justify-center">
-            <div className="text-[9px] font-black uppercase tracking-widest text-blue-300 mb-1.5">
-              Operational Status
-            </div>
-            {summaryLoading ? (
-              <span className="w-20 h-5 bg-blue-900/40 rounded animate-pulse inline-block" />
-            ) : (
-              <span className={`px-3 py-1 rounded-lg text-[10px] font-black uppercase tracking-wider ${
-                aiStatus === "CRITICAL" ? "bg-red-500 text-white shadow-sm shadow-red-500/20" :
-                aiStatus === "MODERATE" ? "bg-orange-500 text-white shadow-sm shadow-orange-500/20" :
-                aiStatus === "LOW_RISK" ? "bg-emerald-500 text-white shadow-sm shadow-emerald-500/20" :
-                "bg-emerald-500 text-white shadow-sm shadow-emerald-500/20"
-              }`}>
-                {aiStatus === "LOW_RISK" ? "LOW RISK" : aiStatus || "NORMAL"}
+          <div className="shrink-0 md:pl-6 md:border-l md:border-blue-900/50 flex flex-col items-start md:items-end justify-center min-w-[150px] gap-3">
+            <div className="flex flex-col items-start md:items-end">
+              <span className="text-[9px] font-black uppercase tracking-widest text-blue-300 mb-1">
+                Operational Status
               </span>
-            )}
-            <div className="text-[9px] font-black text-blue-300 mt-2.5">
-              {maxCount > 0 ? ((selectedBarangay.count / maxCount) * 100).toFixed(0) : "0"}% of city peak load
+              {summaryLoading ? (
+                <span className="w-20 h-5 bg-blue-900/40 rounded animate-pulse inline-block" />
+              ) : (
+                <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-wider border shadow-sm ${
+                  aiStatus === "CRITICAL" ? "bg-rose-500/10 text-rose-200 border-rose-500/30" :
+                  aiStatus === "MODERATE" ? "bg-amber-500/10 text-amber-200 border-amber-500/30" :
+                  "bg-emerald-500/10 text-emerald-200 border-emerald-500/30"
+                }`}>
+                  {aiStatus === "CRITICAL" ? <AlertTriangle className="w-3 h-3 text-rose-400 shrink-0" /> :
+                   aiStatus === "MODERATE" ? <Activity className="w-3 h-3 text-amber-400 shrink-0 animate-pulse" /> :
+                   <ShieldCheck className="w-3 h-3 text-emerald-400 shrink-0" />}
+                  {aiStatus === "LOW_RISK" ? "LOW RISK" : aiStatus || "NORMAL"}
+                </span>
+              )}
+            </div>
+
+            <div className="flex flex-col items-start md:items-end w-full">
+              <span className="text-[9px] font-black uppercase tracking-widest text-blue-300">
+                Peak City Load
+              </span>
+              <div className="flex items-center gap-2 mt-1 w-full justify-start md:justify-end">
+                <span className="text-xs font-mono font-bold text-white">
+                  {maxCount > 0 ? ((selectedBarangay.count / maxCount) * 100).toFixed(0) : "0"}%
+                </span>
+                <div className="w-20 bg-blue-950/70 h-1.5 rounded-full overflow-hidden border border-blue-900/30 shadow-inner">
+                  <div 
+                    className="bg-[#00aeef] h-full rounded-full transition-all duration-500" 
+                    style={{ width: `${maxCount > 0 ? ((selectedBarangay.count / maxCount) * 100).toFixed(0) : 0}%` }}
+                  />
+                </div>
+              </div>
             </div>
           </div>
         </div>

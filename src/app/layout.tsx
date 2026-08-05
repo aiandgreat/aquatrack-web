@@ -1,5 +1,6 @@
 import React from "react";
 import { Plus_Jakarta_Sans, Geist_Mono } from "next/font/google";
+import MaintenanceGuard from "../components/MaintenanceGuard";
 import "./globals.css";
 
 const plusJakartaSans = Plus_Jakarta_Sans({
@@ -44,7 +45,9 @@ export default function RootLayout({
         `}} />
       </head>
       <body className="antialiased bg-[#EEF4FA]">
-        {children}
+        <MaintenanceGuard>
+          {children}
+        </MaintenanceGuard>
       </body>
     </html>
   );

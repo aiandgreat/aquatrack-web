@@ -6,7 +6,7 @@ A production-ready municipal water district command center for real-time IoT tel
 
 ### Frontend
 - **Framework**: Next.js 16 (App Router) using React Server Components (RSC) for pre-rendering administrative dashboards.
-- **Styling & UI**: Tailwind CSS + shadcn/ui custom styling utilities.
+- **Styling & UI**: Tailwind CSS + shadcn/ui custom styling utilities + Lucide React
 - **Data Visualization**: Tremor + Recharts for displaying historical and live telemetry metrics.
 - **Geospatial Rendering**: Mapbox GL JS for client-side rendering of coordinate arrays, pipeline network layers, and active 500m PostGIS scan rings.
 - **Reporting Utility**: jsPDF + jsPDF-AutoTable for compiling and generating client-side downloadable water quality compliance documentation.
@@ -318,13 +318,12 @@ Documented the two-phase process for adding physical IoT hardware nodes in the f
 2. **Phase B** — Configure the microcontroller (ESP32 / Arduino / Raspberry Pi) to `POST` JSON payloads (`nodeId`, `ph`, `turbidity`, `tds`, `pressure`) to `/api/admin/telemetry-ingest`.
 
 ### Sub-Admin / Technician Complaints Section (`sub-admin-sections/ComplaintsSection.tsx`)
-
 - **Aligned with Admin Layout**: Rewrote the technician complaints table to match the admin's `ReportsSection` design — 5-column grid (`ID`, `Location`, `Description`, `Category & Urgency`, `Ticket Status`) inside a `rounded-[20px]` card wrapper with `bg-[#EEF4FA]/40` header row.
 - **Ticket ID Format**: Complaint rows display formatted `AQ-XXXXXXXX` IDs in monospaced bold text, consistent with the admin panel.
 - **Clickable Location Badges**: Barangay pills styled with blue background and map pin SVG that fly the map preview on click.
 - **Urgency Badges**: Color-coded urgency pills (`CRITICAL` red, `HIGH/URGENT` orange, `MEDIUM` yellow, `LOW` slate) via a shared `getUrgencyBadgeClass` helper.
-- **Description Truncation**: Raw complaint text is capped at 80 characters with `...` overflow. GB translation indicator removed.
-- **Resolved Complaints History Section**: Added a second table below active complaints — **Resolved Complaints History**. Resolved rows render with muted text and strikethrough styling, a green `✓ Resolved` badge, and a reopen dropdown letting technicians push tickets back to active states. Both sections have independent pagination.
+- **Description Truncation**: Raw complaint text is capped at 80 characters.
+- **Resolved Complaints History Section**: Added a second table below active complaints — **Resolved Complaints History**. Resolved rows render with muted text and strikethrough styling, a green `✓ Resolved` badge, and a reopen dropdown letting technicians push tickets back to `IN_PROGRESS`.
 - **Active / Resolved Split**: Complaints are split into `activeComplaints` and `resolvedComplaints` arrays, each with their own page state counters.
 
 ### Sub-Admin Homepage (`sub-admin-sections/HomeSection.tsx`)
@@ -333,4 +332,181 @@ Documented the two-phase process for adding physical IoT hardware nodes in the f
 
 ### Sub-Admin Navigation (`DashboardSubAdmin.tsx`)
 
-- **Renamed Nav Tab**: Updated the sidebar navigation label from `Complaints Triage` to `Complaints and Reports`.```
+- **Renamed Nav Tab**: Updated the sidebar navigation label from `Complaints Triage` to `Complaints and Reports`.
+
+---
+
+## 🗄️ Supabase SQL & Edge Function Reference
+
+All SQL scripts and Edge Functions in the `supabase/` directory must be applied manually to the Supabase project. They are **not** handled by Prisma migrations.
+
+### SQL Scripts (`supabase/*.sql`)
+
+#### `supabase/sync_auth_users.sql`
+
+**Purpose**: Installs a PostgreSQL trigger that automatically syncs every new Supabase Auth sign-up into the `public."User"` table.
+
+**What it does**:
+1. Makes the `User.phone` column nullable (self-registered accounts have no phone at sign-up).
+2. Creates (or replaces) the function `public.handle_new_auth_user()` — a `SECURITY DEFINER` plpgsql function that `INSERT ... ON CONFLICT DO NOTHING` into `public."User"` using the new auth user's UUID, display name, email, and a default role of `CONSUMER_RESIDENT`.
+3. Attaches the function as an `AFTER INSERT` trigger named `on_auth_user_created` on `auth.users`.
+
+**When to run**: Once, in the Supabase SQL Editor, immediately after running `npx prisma migrate deploy`.
+
+**Re-run safe**: Yes — `CREATE OR REPLACE FUNCTION` and `DROP TRIGGER IF EXISTS` make it idempotent.
+
+---
+
+#### `supabase/find_nearby_anomalies.sql`
+
+**Purpose**: Registers a PostGIS RPC function `find_nearby_anomalies(report_lat, report_lng, max_distance_meters)` used by the AI triage engine to spatially correlate incoming citizen complaints with the nearest sensor nodes showing evidence of a water quality issue.
+
+**What it returns** (one row per matched node):
+
+| Column | Type | Description |
+|---|---|---|
+| `id` | TEXT | TelemetryNode UUID |
+| `name` | TEXT | Node display name |
+| `status` | TEXT | Node's current status |
+| `latitude` | DOUBLE PRECISION | Node latitude |
+| `longitude` | DOUBLE PRECISION | Node longitude |
+| `distance_meters` | DOUBLE PRECISION | Distance from complaint coordinates |
+| `signal` | TEXT | Evidence type — see branches below |
+
+**Evidence branches (UNION query)**:
+
+| Branch | `signal` value | Description |
+|---|---|---|
+| Branch 1 | `ANOMALOUS_READING` | Nodes that are `ONLINE` and have at least one anomalous `TelemetryReading` within the last hour (`pressure < 30`, `ph < 6.5/> 8.5`, `turbidity > 5`, `tds > 500`) within `max_distance_meters`. Healthy sensors actively detecting a water quality problem. |
+| Branch 2 | `NODE_OFFLINE` | Nodes currently `OFFLINE` with **no readings** in the last hour within `max_distance_meters`. Their silence near a reported complaint may indicate the same infrastructure failure the citizen is reporting. |
+
+Results are ordered by `distance_meters ASC`.
+
+**Design note — v2**: The previous version queried `status IN ('MAINTENANCE', 'OFFLINE')`, incorrectly conflating water quality anomalies with device connectivity failures. The new design separates these concerns: Branch 1 detects *bad water*, Branch 2 detects *dead hardware*.
+
+**When to run**: In the Supabase SQL Editor. The `DROP FUNCTION IF EXISTS` guard at the top makes it safe to re-apply whenever thresholds are adjusted.
+
+> **⚠️ Important**: This function only **queries** node status — it never updates it. There is currently **no automated cron job** that sets nodes to `OFFLINE` based on inactivity. `OFFLINE` and `MAINTENANCE` are manual-only states set through the admin dashboard. `ONLINE` is restored automatically by the `telemetry-ingest` Edge Function when a normal reading arrives.
+
+---
+
+### Edge Functions (`supabase/functions/`)
+
+#### `supabase/functions/telemetry-ingest/index.ts`
+
+**Deployed as**: `telemetry-ingest`
+**Runtime**: Deno (Supabase Edge Functions)
+**Trigger**: Called by `POST /api/admin/telemetry-ingest` (Next.js server-side proxy).
+
+**Payload**: `{ nodeId, ph, turbidity, tds, pressure }`
+
+**Processing flow**:
+
+1. **Redis hot-cache write** — Stores the latest reading in Upstash Redis at key `node:latest:{nodeId}`.
+2. **Anomaly threshold check**:
+   - `pressure < 30 PSI` → anomaly
+   - `ph < 6.5` or `ph > 8.5` → anomaly
+   - `turbidity > 5 NTU` → anomaly
+   - `tds > 500 PPM` → anomaly
+3. **If anomalous**: Inserts a `TelemetryReading` row. Fetches node coordinates. Finds all unresolved complaints within 500m using an inline Haversine function. For each category-matched nearby complaint, creates or updates a `DiagnosticAlert` with a `geminiAnalysis` JSON object. **Node `status` is NOT changed.**
+4. **If normal**: Sets node `status → ONLINE`. Inserts a `TelemetryReading` row.
+
+**Node status behavior**:
+
+| Event | Status Effect |
+|---|---|
+| Normal reading received | → **`ONLINE`** (automatic) |
+| Anomalous reading received | **No change** |
+| Admin sets status manually | → `ONLINE` / `OFFLINE` / `MAINTENANCE` |
+
+> **⚠️ Redeploy required after local edits**: `npx supabase functions deploy telemetry-ingest --project-ref <ref>`
+
+---
+
+#### `supabase/functions/triage-complaint/index.ts`
+
+**Deployed as**: `triage-complaint`
+**Runtime**: Deno (Supabase Edge Functions)
+**Trigger**: Called asynchronously from `/api/complaints` after `202 Accepted` is returned to the citizen.
+
+**Payload**: `{ complaintId, rawText, latitude, longitude }`
+
+**Processing flow**:
+
+1. **Parallel fetch**: Simultaneously fetches the complaint from `Complaint` and calls `find_nearby_anomalies()` RPC to get the closest sensor evidence node.
+2. **Gemini AI triage** (`gemini-3.1-flash-lite`, structured JSON schema):
+   - Translates the report from English / Tagalog / Taglish / **Kapampangan** to English
+   - Classifies `category` (5 `IssueCategory` enums) and `urgency` (LOW / MEDIUM / HIGH / CRITICAL)
+   - Generates a one-sentence `summary`, `probableRootCause`, `confidenceScore`, and `recommendedAction`
+
+   Kapampangan translation guide embedded in system prompt:
+
+   | Kapampangan | Meaning | Likely Category |
+   |---|---|---|
+   | `matuling` / `kule matuling` | Black / dark water | `CHEMICAL_DISCOLORATION_CONTAMINATION` |
+   | `dilo` / `kule dilo` / `kulasisi` | Yellow water | `HIGH_MINERAL_CONTENT_TDS` |
+   | `malutu` | Red / rusty water | — |
+   | `taya` / `kule taya` | Brown / muddy water | `HIGH_TURBIDITY` |
+   | `malino` | Clear water | — |
+   | `ala danum` / `alang danum` | No water / dry faucet | `PIPELINE_BREACH_PRESSURE_DROP` |
+   | `malati agus` / `mababa agus` | Low pressure / weak flow | `PIPELINE_BREACH_PRESSURE_DROP` |
+   | `mabau` | Smelly / bad odor | — |
+
+3. **DB update** — Writes `translatedText`, `summary`, `category`, `urgency`, `aiStatus = "SUCCESS"` back to the `Complaint` row.
+4. **DiagnosticAlert creation** — If a nearby anomalous node was found, inserts a `DiagnosticAlert` linking the node to the complaint with the Gemini analysis.
+
+**Returns**: `{ success: true }` or HTTP 500.
+
+> **⚠️ Redeploy required after local edits**: `npx supabase functions deploy triage-complaint --project-ref <ref>`
+
+---
+
+### Node Status Rules Summary
+
+| Status | How it gets set | How it gets cleared |
+|---|---|---|
+| `ONLINE` | `telemetry-ingest` on normal reading | Admin sets OFFLINE or MAINTENANCE |
+| `OFFLINE` | Admin via dashboard status dropdown | Admin sets ONLINE, or new normal reading arrives |
+| `MAINTENANCE` | Admin via dashboard status dropdown **only** | Admin sets ONLINE or OFFLINE |
+
+> **No cron job currently exists** to automatically set nodes to `OFFLINE` after inactivity. This can be added in the future via a Supabase `pg_cron` scheduled job or a scheduled Edge Function. The `find_nearby_anomalies.sql` Branch 2 is already designed to consume `OFFLINE` nodes when they exist — it just doesn't create them automatically.
+
+
+### Supabase — Telemetry Pipeline
+
+#### `find_nearby_anomalies.sql` (v2)
+
+- Rewrote the function from a simple `status IN ('MAINTENANCE', 'OFFLINE')` filter to a two-branch `UNION` query:
+  - **Branch 1 (`ANOMALOUS_READING`)**: Queries `ONLINE` nodes with recent out-of-threshold readings.
+  - **Branch 2 (`NODE_OFFLINE`)**: Queries `OFFLINE` nodes with no recent readings (silent/dead hardware).
+- Added a `signal TEXT` column to the return type to identify which evidence branch matched.
+- The function **never writes to any table** — read-only.
+
+#### Telemetry Ingest Behavior Confirmed
+
+- Confirmed that `telemetry-ingest` does **not** set nodes to `MAINTENANCE` on anomalous readings. Node status is only updated to `ONLINE` on normal readings.
+- Unexpected `MAINTENANCE` state on IoT nodes after a leak preset ingest was traced to an **older deployed version** of the edge function. Fix: redeploy with `npx supabase functions deploy telemetry-ingest`.
+
+---
+
+## 🗃️ Database Schema (Prisma Models)
+
+The full schema is defined in [`prisma/schema.prisma`](./prisma/schema.prisma). Below is a high-level summary of each model:
+
+| Model | Description |
+|---|---|
+| `User` | Platform accounts. Roles: `ADMIN`, `FIELD_TECHNICIAN`, `CONSUMER_RESIDENT`. Linked 1:1 with Supabase Auth via UUID. |
+| `TelemetryNode` | Physical IoT sensor nodes. Stores GPS coordinates as PostGIS `geom` point, `nodeType` (`PUMP_STATION` / `HOUSEHOLD_EDGE`), and current `status`. |
+| `TelemetryReading` | Time-series sensor snapshots (`ph`, `turbidity`, `tds`, `pressure`) produced by each node. |
+| `Complaint` | Citizen-submitted issue reports. Stores `rawText`, AI-translated `translatedText`, resolved `barangay`, PostGIS `geom`, `category`, `urgency`, `status`, and assigned `engineerId`. |
+| `DiagnosticAlert` | AI-generated cross-reference linking a `Complaint` to a nearby anomalous `TelemetryNode`, with a `geminiAnalysis` JSON payload. |
+| `Advisory` | Community bulletins published by admins. Types: `ADVISORY`, `WARNING`, `NEWS`, `EVENT`. Pushed to FCM on creation. |
+
+---
+
+## 📁 Related Repositories
+
+| Repository | Description |
+|---|---|
+| [`aquatrack-web`](https://github.com/aiandgreat/aquatrack-web) | This repository — Next.js web platform (Admin + Resident portals). |
+| [`aquatrack-mob`](https://github.com/AaronPublic/aquatrack-mob) | React Native / Expo mobile app — Field Technician sub-admin portal. |
