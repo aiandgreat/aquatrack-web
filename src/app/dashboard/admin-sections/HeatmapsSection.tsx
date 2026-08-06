@@ -94,6 +94,18 @@ export default function HeatmapsSection({ complaints = [] }: HeatmapsSectionProp
   const [loading, setLoading] = useState(true);
   const [selectedBarangay, setSelectedBarangay] = useState<BarangayData | null>(null);
 
+  const getValidComplaints = (list: typeof complaints) => {
+    return list.filter(c => 
+      c && 
+      typeof c.latitude === "number" && 
+      typeof c.longitude === "number" && 
+      !isNaN(c.latitude) && 
+      !isNaN(c.longitude) &&
+      c.latitude !== 0 &&
+      c.longitude !== 0
+    );
+  };
+
   // Search, Filter and Sort States for managing spatial heatmap data
   const [searchQuery, setSearchQuery] = useState("");
   const [severityFilter, setSeverityFilter] = useState<"all" | "critical" | "moderate" | "low" | "clean">("all");
@@ -317,10 +329,12 @@ export default function HeatmapsSection({ complaints = [] }: HeatmapsSectionProp
     const map = mapRef.current;
     if (!map || !isMapReady) return;
 
+    const validComplaints = getValidComplaints(complaints);
+
     // Construct GeoJSON FeatureCollection from current complaints
     const geojsonData = {
       type: "FeatureCollection",
-      features: complaints.map((c) => ({
+      features: validComplaints.map((c) => ({
         type: "Feature",
         geometry: {
           type: "Point",
@@ -416,7 +430,7 @@ export default function HeatmapsSection({ complaints = [] }: HeatmapsSectionProp
     });
 
     // 2. Plot individual complaints with pulsing classification colors
-    complaints.forEach((comp) => {
+    validComplaints.forEach((comp) => {
       const el = document.createElement("div");
       el.className = "w-5 h-5 rounded-full flex items-center justify-center relative";
 

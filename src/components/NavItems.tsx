@@ -25,7 +25,7 @@ export default function NavItems({ items, activeHash, onItemClick }: NavItemsPro
             onClick={onItemClick}
             className={`flex items-center justify-center rounded-full px-5 py-3 text-[10px] font-black uppercase tracking-widest transition-all ${
               isActive
-                ? "bg-[#001e66] dark:bg-[#00aeef] text-white dark:text-[#001e66] shadow-sm dark:shadow-[0_0_12px_rgba(0,174,239,0.35)]"
+                ? "bg-[#001e66] dark:bg-[#00aeef] text-white dark:text-[#001e66] shadow-sm dark:shadow-[0_2px_8px_rgba(0,174,239,0.15)]"
                 : "text-slate-600 dark:text-slate-300 hover:text-[#001e66] dark:hover:text-white hover:bg-slate-100/60 dark:hover:bg-white/10"
             }`}
           >

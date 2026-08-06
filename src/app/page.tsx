@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from "react";
 import Link from "next/link";
 import Navbar from "../components/Navbar";
+import Footer from "../components/Footer";
 import { motion, AnimatePresence } from "framer-motion";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase";
@@ -18,7 +19,10 @@ import {
   ShieldCheck,
   Sparkles,
   ArrowRight,
-  HelpCircle
+  HelpCircle,
+  Mail,
+  Globe,
+  FileText
 } from "lucide-react";
 
 function AnimatedCounter({ value, duration = 2000, suffix = "" }: { value: number; duration?: number; suffix?: string }) {
@@ -118,7 +122,6 @@ export default function Homepage() {
   }, []);
 
   const [scrolled, setScrolled] = useState(false);
-  const [privacyOpen, setPrivacyOpen] = useState(false);
 
   useEffect(() => {
     const handleScroll = () => {
@@ -428,27 +431,43 @@ export default function Homepage() {
               <span className="relative inline-block px-2.5 py-0.5">
                 Drop
                 <motion.span 
-                  className="absolute inset-x-[3px] inset-y-[4px] pointer-events-none z-10 border border-[#00aeef]/40 dark:border-[#00aeef]/50 flex items-center justify-center"
-                  style={{
-                    borderRadius: "35% 65% 65% 35% / 40% 40% 60% 60%",
-                    background: "radial-gradient(circle at 20% 20%, rgba(255, 255, 255, 0.45) 0%, rgba(0, 174, 239, 0.12) 55%, rgba(0, 30, 102, 0.18) 100%)",
-                    boxShadow: "inset -3px -3px 6px rgba(255, 255, 255, 0.95), inset 2px 2px 5px rgba(0, 30, 102, 0.25), 0 4px 12px rgba(0, 174, 239, 0.35), 0 1px 3px rgba(0, 0, 0, 0.15)",
+                  className="absolute inset-x-[3px] inset-y-[4px] pointer-events-none z-10 flex items-center justify-center origin-bottom"
+                  initial={{ y: -160, scaleY: 2.5, scaleX: 0.3, opacity: 0 }}
+                  animate={{ 
+                    y: 0, 
+                    scaleY: [2.5, 0.4, 1.25, 0.9, 1], 
+                    scaleX: [0.3, 1.6, 0.8, 1.15, 1], 
+                    opacity: 1 
                   }}
-                  animate={{
-                    borderRadius: [
-                      "35% 65% 65% 35% / 40% 40% 60% 60%",
-                      "42% 58% 55% 45% / 45% 38% 62% 55%",
-                      "35% 65% 65% 35% / 40% 40% 60% 60%"
-                    ]
-                  }}
-                  transition={{
-                    duration: 5,
-                    repeat: Infinity,
-                    ease: "easeInOut"
+                  transition={{ 
+                    duration: 1.1, 
+                    ease: [0.25, 1, 0.5, 1], 
+                    delay: 0.8 
                   }}
                 >
-                  <span className="absolute w-1.5 h-1.5 rounded-full bg-[#ffffff] opacity-95" style={{ top: "12%", left: "15%" }} />
-                  <span className="absolute w-1 h-1 rounded-full bg-[#ffffff] opacity-50" style={{ bottom: "16%", right: "20%" }} />
+                  <motion.span
+                    className="absolute inset-0 border border-[#00aeef]/40 dark:border-[#00aeef]/50"
+                    style={{
+                      borderRadius: "35% 65% 65% 35% / 40% 40% 60% 60%",
+                      background: "radial-gradient(circle at 20% 20%, rgba(255, 255, 255, 0.45) 0%, rgba(0, 174, 239, 0.12) 55%, rgba(0, 30, 102, 0.18) 100%)",
+                      boxShadow: "inset -3px -3px 6px rgba(255, 255, 255, 0.95), inset 2px 2px 5px rgba(0, 30, 102, 0.25), 0 4px 12px rgba(0, 174, 239, 0.35), 0 1px 3px rgba(0, 0, 0, 0.15)",
+                    }}
+                    animate={{
+                      borderRadius: [
+                        "35% 65% 65% 35% / 40% 40% 60% 60%",
+                        "42% 58% 55% 45% / 45% 38% 62% 55%",
+                        "35% 65% 65% 35% / 40% 40% 60% 60%"
+                      ]
+                    }}
+                    transition={{
+                      duration: 5,
+                      repeat: Infinity,
+                      ease: "easeInOut"
+                    }}
+                  >
+                    <span className="absolute w-1.5 h-1.5 rounded-full bg-[#ffffff] opacity-95" style={{ top: "12%", left: "15%" }} />
+                    <span className="absolute w-1 h-1 rounded-full bg-[#ffffff] opacity-50" style={{ bottom: "16%", right: "20%" }} />
+                  </motion.span>
                 </motion.span>
               </span>{" "}
               at a{" "}
@@ -464,7 +483,7 @@ export default function Homepage() {
             <div className="flex flex-col sm:flex-row gap-4 pt-4 w-full sm:w-auto justify-center">
               <Link
                 href="/login"
-                className="bg-[#001e66] dark:bg-[#00aeef] hover:bg-[#00aeef] dark:hover:bg-[#00aeef]/90 text-white dark:text-[#001e66] font-extrabold text-center py-3.5 px-8 rounded-xl transition-all duration-200 shadow-md dark:shadow-[0_0_25px_rgba(0,174,239,0.45)] dark:hover:shadow-[0_0_35px_rgba(0,174,239,0.65)] hover:scale-105 min-w-[200px]"
+                className="bg-[#001e66] dark:bg-[#00aeef] hover:bg-[#00aeef] dark:hover:bg-[#00aeef]/90 text-white dark:text-[#001e66] font-extrabold text-center py-3.5 px-8 rounded-xl transition-all duration-200 shadow-md dark:shadow-[0_4px_12px_rgba(0,174,239,0.15)] dark:hover:shadow-[0_4px_20px_rgba(0,174,239,0.25)] hover:scale-105 min-w-[200px]"
               >
                 Sign In to Portal
               </Link>
@@ -634,7 +653,7 @@ export default function Homepage() {
                         onClick={() => setActiveOffice(office)}
                         className={`w-full text-left p-5 rounded-2xl border transition-all duration-200 flex flex-col space-y-2 cursor-pointer ${
                           isActive 
-                            ? "bg-[#001e66] dark:bg-[#00aeef] border-[#001e66] dark:border-[#00aeef] text-white dark:text-[#001e66] shadow-lg dark:shadow-[0_0_15px_rgba(0,174,239,0.3)] scale-[1.02]" 
+                            ? "bg-[#001e66] dark:bg-[#00aeef] border-[#001e66] dark:border-[#00aeef] text-white dark:text-[#001e66] shadow-lg dark:shadow-[0_4px_12px_rgba(0,174,239,0.1)] scale-[1.02]" 
                             : "bg-white/40 dark:bg-white/5 backdrop-blur-sm dark:backdrop-blur-md border border-white/50 dark:border-white/10 text-[#001e66] dark:text-slate-350 hover:bg-white/70 dark:hover:bg-white/10 hover:border-slate-200 dark:hover:border-[#00aeef]/40"
                         }`}
                       >
@@ -697,7 +716,7 @@ export default function Homepage() {
         {/* Advisories Section */}
         <section
           id="announcements"
-          className="py-20 relative z-10 overflow-hidden"
+          className="pt-20 pb-8 relative z-10 overflow-hidden"
           style={{ backgroundImage: "url('/community.jpg')", backgroundSize: "cover", backgroundPosition: "center" }}
         >
           <div className="absolute inset-0 bg-gradient-to-b from-[#f8fafc] via-white/85 to-white/95 dark:from-[#07142F] dark:via-[#010f2e]/85 dark:to-[#010f2e]/95 pointer-events-none" />
@@ -809,156 +828,7 @@ export default function Homepage() {
       </div>
 
       {/* Footer */}
-      <footer className="bg-[#eef4fa] dark:bg-[#07142F] border-t border-slate-300/80 dark:border-white/10 text-slate-700 dark:text-slate-300 py-16 px-6 mt-auto transition-colors duration-300">
-        <div className="max-w-7xl mx-auto grid grid-cols-1 md:grid-cols-12 gap-10">
-          
-          <div className="md:col-span-4 flex flex-col space-y-4 text-left">
-            <h4 className="text-[10px] font-black uppercase tracking-widest text-slate-400 dark:text-slate-500">
-              About
-            </h4>
-            <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed font-medium">
-              Municipal Water District Command Center and Resident Service Portal. Providing real-time telemetry, automated triage, and crew dispatching for the City of San Fernando, Pampanga.
-            </p>
-          </div>
-
-          <div className="md:col-span-3 flex flex-col space-y-4 text-left">
-            <h4 className="text-[10px] font-black uppercase tracking-widest text-slate-400 dark:text-slate-500">
-              Quick Links
-            </h4>
-            <ul className="flex flex-col space-y-2 text-xs font-bold">
-              <li>
-                <a href="#home" className="text-slate-600 dark:text-slate-450 hover:text-[#00aeef] dark:hover:text-white transition-colors">
-                  Home
-                </a>
-              </li>
-              <li>
-                <a href="#about" className="text-slate-600 dark:text-slate-450 hover:text-[#00aeef] dark:hover:text-white transition-colors">
-                  About Us
-                </a>
-              </li>
-              <li>
-                <a href="#offices" className="text-slate-600 dark:text-slate-450 hover:text-[#00aeef] dark:hover:text-white transition-colors">
-                  District Offices
-                </a>
-              </li>
-              <li>
-                <a href="#announcements" className="text-slate-600 dark:text-slate-450 hover:text-[#00aeef] dark:hover:text-white transition-colors">
-                  Announcements
-                </a>
-              </li>
-            </ul>
-          </div>
-
-          <div className="md:col-span-3 flex flex-col space-y-4 text-left">
-            <h4 className="text-[10px] font-black uppercase tracking-widest text-slate-400 dark:text-slate-500">
-              Connect
-            </h4>
-            <ul className="flex flex-col space-y-3 text-xs font-bold">
-              <li className="flex items-center space-x-2">
-                <span className="text-sm">📧</span>
-                <a href="mailto:info@csfwd.gov.ph" className="text-slate-650 dark:text-slate-400 hover:text-[#00aeef] dark:hover:text-white transition-colors">
-                  info@csfwd.gov.ph
-                </a>
-              </li>
-              <li className="flex items-center space-x-2">
-                <span className="text-sm">🌐</span>
-                <a href="https://facebook.com/csfwaterdistrict" target="_blank" rel="noopener noreferrer" className="text-slate-650 dark:text-slate-400 hover:text-[#00aeef] dark:hover:text-white transition-colors">
-                  facebook.com/csfwaterdistrict
-                </a>
-              </li>
-              <li className="pt-1">
-                <button
-                  onClick={() => setPrivacyOpen(true)}
-                  className="text-slate-500 dark:text-slate-400 hover:text-[#970006] dark:hover:text-red-400 transition-colors text-[10px] uppercase font-black tracking-widest border-b border-transparent hover:border-current cursor-pointer focus:outline-none"
-                >
-                  Privacy Policy
-                </button>
-              </li>
-            </ul>
-          </div>
-
-          <div className="md:col-span-2 flex flex-col items-start md:items-end space-y-3 text-left md:text-right">
-            <h4 className="text-[10px] font-black uppercase tracking-widest text-slate-400 dark:text-slate-500">
-              Developed By
-            </h4>
-            <div className="h-14 flex items-center justify-start md:justify-end">
-              <img src="/GALARA-LIGHT.png" alt="GALARA Logo" className="h-14 w-auto block dark:hidden" />
-              <img src="/GALARA-DARK.png" alt="GALARA Logo" className="h-14 w-auto hidden dark:block" />
-            </div>
-            <div className="text-[9px] font-black uppercase tracking-widest text-slate-500 dark:text-slate-400 leading-tight">
-              GARCIA · LAXAMANA · GUEVARRA
-            </div>
-          </div>
-        </div>
-
-        <div className="max-w-7xl mx-auto mt-12 pt-8 border-t border-slate-300/40 dark:border-white/5 text-center text-[10px] tracking-wider text-slate-455 dark:text-slate-550 font-bold uppercase">
-          &copy; 2026 CSFWD. All Rights Reserved for AquaTrack.
-        </div>
-      </footer>
-
-      {/* Privacy Policy Modal */}
-      <AnimatePresence>
-        {privacyOpen && (
-          <>
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              onClick={() => setPrivacyOpen(false)}
-              className="fixed inset-0 bg-slate-900/60 dark:bg-black/80 backdrop-blur-sm z-[100] flex items-center justify-center p-4"
-            />
-            <motion.div
-              initial={{ opacity: 0, scale: 0.95, y: 16 }}
-              animate={{ opacity: 1, scale: 1, y: 0 }}
-              exit={{ opacity: 0, scale: 0.95, y: 16 }}
-              transition={{ type: "spring", damping: 25, stiffness: 220 }}
-              className="fixed inset-0 m-auto max-w-lg h-fit max-h-[85vh] bg-[#f8fafc] dark:bg-[#07142F] border border-slate-200 dark:border-white/10 rounded-[32px] shadow-2xl p-6 md:p-8 flex flex-col z-[101] overflow-hidden text-left"
-            >
-              <div className="flex items-center space-x-3 pb-4 border-b border-slate-100 dark:border-white/10">
-                <ShieldCheck className="w-6.5 h-6.5 text-[#00aeef]" />
-                <h3 className="font-extrabold text-xl text-[#001e66] dark:text-white tracking-tight">
-                  Data Privacy Policy
-                </h3>
-              </div>
-
-              <div className="flex-1 overflow-y-auto my-5 space-y-4 pr-1 text-slate-655 dark:text-slate-300 text-xs md:text-sm leading-relaxed font-semibold scrollbar-thin">
-                <p>
-                  Municipal Water District of the City of San Fernando (CSFWD) is committed to protecting your personal information in compliance with the <strong>Data Privacy Act of 2012 (Republic Act No. 10173)</strong> of the Philippines.
-                </p>
-                
-                <div>
-                  <h4 className="font-bold text-slate-800 dark:text-slate-100 mb-1">1. Information We Collect</h4>
-                  <p>When you report disruptions, leaks, or water quality issues, we collect your name, contact details (email/phone), and geolocation coordinates to locate the incident.</p>
-                </div>
-
-                <div>
-                  <h4 className="font-bold text-slate-800 dark:text-slate-100 mb-1">2. Purpose of Processing</h4>
-                  <p>Your coordinates and complaint info are analyzed using our PostGIS dispatch database to route service requests to the nearest CSFWD engineering crew.</p>
-                </div>
-
-                <div>
-                  <h4 className="font-bold text-slate-800 dark:text-slate-100 mb-1">3. Data Protection Measures</h4>
-                  <p>All personal details are encrypted and securely stored. Only authorized CSFWD administrative staff and dispatchers have access to the dashboard.</p>
-                </div>
-
-                <div>
-                  <h4 className="font-bold text-slate-800 dark:text-slate-100 mb-1">4. Your Rights</h4>
-                  <p>You have the right to request access, correction, or permanent deletion of your submitted logs and credentials from the system database by emailing us.</p>
-                </div>
-              </div>
-
-              <div className="flex justify-end pt-4 border-t border-slate-100 dark:border-white/10 flex-shrink-0">
-                <button
-                  onClick={() => setPrivacyOpen(false)}
-                  className="bg-[#001e66] dark:bg-[#00aeef] hover:bg-[#00aeef] dark:hover:bg-[#00aeef]/90 text-white dark:text-[#001e66] px-6 py-2.5 rounded-full font-black uppercase tracking-wider text-[10px] hover:scale-105 transition-all cursor-pointer shadow-sm focus:outline-none"
-                >
-                  Accept &amp; Close
-                </button>
-              </div>
-            </motion.div>
-          </>
-        )}
-      </AnimatePresence>
+      <Footer />
     </div>
   );
 }

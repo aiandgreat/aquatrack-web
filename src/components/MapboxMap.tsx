@@ -58,6 +58,38 @@ export default function MapboxMap({
   const isFirstStyleRender = useRef(true);
   const isMapMovingRef = useRef(false);
 
+  const nodesRef = useRef(nodes);
+  const complaintsRef = useRef(complaints);
+
+  useEffect(() => {
+    nodesRef.current = nodes;
+    complaintsRef.current = complaints;
+  }, [nodes, complaints]);
+
+  const getValidComplaints = (list: typeof complaints) => {
+    return list.filter(c => 
+      c && 
+      typeof c.latitude === "number" && 
+      typeof c.longitude === "number" && 
+      !isNaN(c.latitude) && 
+      !isNaN(c.longitude) &&
+      c.latitude !== 0 &&
+      c.longitude !== 0
+    );
+  };
+
+  const getValidNodes = (list: typeof nodes) => {
+    return list.filter(n => 
+      n && 
+      typeof n.latitude === "number" && 
+      typeof n.longitude === "number" && 
+      !isNaN(n.latitude) && 
+      !isNaN(n.longitude) &&
+      n.latitude !== 0 &&
+      n.longitude !== 0
+    );
+  };
+
   useEffect(() => {
     if (!mapContainerRef.current) return;
 
@@ -143,11 +175,16 @@ export default function MapboxMap({
 
       // --- 3. Complaints Cluster Layers ---
       if (!map.getSource("complaints-source")) {
+        const validComplaints = getValidComplaints(complaintsRef.current);
         map.addSource("complaints-source", {
           type: "geojson",
           data: {
             type: "FeatureCollection",
-            features: [],
+            features: validComplaints.map((c) => ({
+              type: "Feature",
+              properties: { id: c.id, urgency: c.urgency, summary: c.summary },
+              geometry: { type: "Point", coordinates: [c.longitude, c.latitude] },
+            })),
           },
           cluster: true,
           clusterMaxZoom: 14,
@@ -531,17 +568,20 @@ export default function MapboxMap({
     }
   }, [show3D]);
 
-  // Update Markers when nodes/complaints list changes
+  // Update Markers when nodes/complaints list changes or style loads
   useEffect(() => {
     const map = mapRef.current;
     if (!map) return;
+
+    const validComplaints = getValidComplaints(complaints);
+    const validNodes = getValidNodes(nodes);
 
     // 1. Update complaints GeoJSON source data for clusters
     const source = map.getSource("complaints-source") as mapboxgl.GeoJSONSource;
     if (source) {
       source.setData({
         type: "FeatureCollection",
-        features: complaints.map((c) => ({
+        features: validComplaints.map((c) => ({
           type: "Feature",
           properties: { id: c.id, urgency: c.urgency, summary: c.summary },
           geometry: { type: "Point", coordinates: [c.longitude, c.latitude] },
@@ -583,7 +623,7 @@ export default function MapboxMap({
     };
 
     // 4. Plot Telemetry Nodes
-    nodes.forEach((node) => {
+    validNodes.forEach((node) => {
       // Outer stable hitbox wrapper (prevents boundary shifts/glitching during hover/scale events)
       const el = document.createElement("div");
       el.className = "w-9 h-9 flex items-center justify-center cursor-pointer bg-transparent relative";
@@ -625,7 +665,7 @@ export default function MapboxMap({
     });
 
     // 5. Plot Citizen Complaints
-    complaints.forEach((comp) => {
+    validComplaints.forEach((comp) => {
       // Outer stable hitbox wrapper (prevents boundary shifts/glitching during hover/scale events)
       const el = document.createElement("div");
       el.className = "w-9 h-9 flex items-center justify-center cursor-pointer bg-transparent relative";
@@ -662,7 +702,7 @@ export default function MapboxMap({
 
     // 6. Dynamic zoom visibility sync for individual markers vs clusters (always visible)
     const syncMarkerVisibility = () => {
-      complaints.forEach((comp) => {
+      validComplaints.forEach((comp) => {
         const marker = markersRef.current[`comp-${comp.id}`];
         if (marker) {
           const el = marker.getElement();
@@ -678,7 +718,7 @@ export default function MapboxMap({
     return () => {
       map.off("zoom", syncMarkerVisibility);
     };
-  }, [nodes, complaints]);
+  }, [nodes, complaints, mapStyle]);
 
   // Dynamic selection and hover visual styling updates (prevents map marker teardown/flickering)
   useEffect(() => {

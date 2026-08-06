@@ -48,17 +48,26 @@ export default function HomeSection({
     <div className="space-y-8 animate-fade-in pb-8 font-sans">
       
       {/* Immersive Water-Themed Hero Banner */}
-      <div className="bg-[#0B2E7A] dark:bg-[#001e66] rounded-[24px] p-6 md:p-8 text-white relative overflow-hidden shadow-md min-h-[220px] flex flex-col justify-center border border-slate-100/10 dark:border-slate-800/40">
+      <div className="relative rounded-[24px] p-6 md:p-8 text-white overflow-hidden shadow-md min-h-[220px] flex flex-col justify-center border border-slate-100/10 dark:border-slate-800/40">
+        
+        {/* Background Image Layer */}
+        <div 
+          className="absolute inset-0 bg-cover bg-no-repeat pointer-events-none z-0"
+          style={{ backgroundImage: "url('/headerpic.png')", backgroundPosition: "center 25%" }}
+        />
+
+        {/* Dark Blue Overlay */}
+        <div className="absolute inset-0 bg-gradient-to-r from-[#0B2E7A]/95 via-[#0B2E7A]/90 to-[#0B2E7A]/80 dark:from-[#001e66]/95 dark:via-[#001e66]/90 dark:to-[#001e66]/80 z-10 pointer-events-none" />
         
         {/* Wave Background SVG Overlay */}
-        <div className="absolute inset-0 opacity-15 pointer-events-none z-0">
+        <div className="absolute inset-0 opacity-15 pointer-events-none z-10">
           <svg className="w-full h-full" viewBox="0 0 100 100" preserveAspectRatio="none" xmlns="http://www.w3.org/2000/svg">
             <path d="M0,40 Q25,30 50,40 T100,40 L100,100 L0,100 Z" fill="rgba(255,255,255,0.08)"></path>
             <path d="M0,50 Q30,60 60,50 T100,50 L100,100 L0,100 Z" fill="rgba(255,255,255,0.04)"></path>
           </svg>
         </div>
 
-        <div className="relative z-10 space-y-4 max-w-xl text-left">
+        <div className="relative z-20 space-y-4 max-w-xl text-left">
           <span className="inline-flex items-center gap-1.5 text-[9px] font-black uppercase tracking-widest bg-white/10 px-3.5 py-1.5 rounded-full border border-white/10 shadow-inner">
             <Sparkles className="w-3 h-3 text-[#00aeef]" />
             Sub-Admin Operations Command
@@ -68,7 +77,7 @@ export default function HomeSection({
               Hello, Sub-Admin Officer!
             </h2>
             <p className="text-[11px] text-blue-150 font-bold tracking-wide mt-2 opacity-90 leading-relaxed">
-              Operations portal for area incident dispatch • Account: <span className="text-cyan-200 select-all font-mono font-bold">{email || "operations@aquatrack.gov.ph"}</span>
+              Operations portal for area incident dispatch
             </p>
           </div>
           <div className="flex pt-1">

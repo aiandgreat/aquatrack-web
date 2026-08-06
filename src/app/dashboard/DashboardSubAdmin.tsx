@@ -4,6 +4,8 @@ import React, { useState, useEffect } from "react";
 import Link from "next/link";
 import { getSupabaseClient } from "../../lib/supabase";
 import { motion, AnimatePresence } from "framer-motion";
+import { ClipboardList, Home, Map, Wrench, Cpu, Megaphone, Activity } from "lucide-react";
+import Footer from "../../components/Footer";
 import MapSection from "./admin-sections/MapSection";
 import TelemetrySection from "./admin-sections/TelemetrySection";
 import HomeSection from "./sub-admin-sections/HomeSection";
@@ -486,55 +488,15 @@ export default function DashboardSubAdmin({
 
   // Nav items definition
   const navItems = [
-    {
-      key: "home",
-      label: "Dashboard Home",
-      icon: (
-        <svg className="w-4 h-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-          <path strokeLinecap="round" strokeLinejoin="round" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
-        </svg>
-      ),
-    },
-    {
-      key: "map",
-      label: "Live Monitoring Map",
-      icon: (
-        <svg className="w-4 h-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-          <path strokeLinecap="round" strokeLinejoin="round" d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7" />
-        </svg>
-      ),
-    },
-    {
-      key: "complaints",
-      label: "Complaints and Reports",
-      icon: (
-        <svg className="w-4 h-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-          <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-        </svg>
-      ),
-    },
-    {
-      key: "telemetry",
-      label: "IoT Telemetry Panel",
-      icon: (
-        <svg className="w-4 h-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-          <path strokeLinecap="round" strokeLinejoin="round" d="M9 3v2m6-2v2M9 19v2m6-2v2M5 9H3m2 6H3m18-6h-2m2 6h-2M7 19h10a2 2 0 002-2V7a2 2 0 00-2-2H7a2 2 0 00-2 2v10a2 2 0 002 2zM9 9h6v6H9V9z" />
-        </svg>
-      ),
-    },
-    {
-      key: "advisories",
-      label: "Advisories & Events",
-      icon: (
-        <svg className="w-4 h-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-          <path strokeLinecap="round" strokeLinejoin="round" d="M11 5.882V19.24a1.76 1.76 0 01-3.417.592l-2.147-6.15M18 13a3 3 0 100-6M5.436 13.683A4.001 4.001 0 017 6h1.832c4.1 0 7.625-1.234 9.168-3v14c-1.543-1.766-5.067-3-9.168-3H7a3.988 3.988 0 01-1.564-.317z" />
-        </svg>
-      ),
-    },
+    { key: "home", label: "Home", icon: Home },
+    { key: "map", label: "Live Monitoring Map", icon: Map },
+    { key: "complaints", label: "Complaints and Reports", icon: Wrench },
+    { key: "telemetry", label: "IoT Telemetry Panel", icon: Cpu },
+    { key: "advisories", label: "Advisories & Events", icon: Megaphone },
   ] as const;
 
   return (
-    <div className="h-screen text-slate-800 flex flex-col font-sans w-full overflow-hidden relative bg-[#E2EAF4]">
+    <div className="min-h-screen text-slate-800 flex flex-col font-sans w-full relative bg-[#E2EAF4]">
       {/* Background Image Layer with custom opacity */}
       <div 
         className="absolute inset-0 bg-cover bg-center bg-no-repeat pointer-events-none"
@@ -723,15 +685,26 @@ export default function DashboardSubAdmin({
       </header>
 
       {/* ── Body ────────────────────────────────────────────────────────────── */}
-      <div className="flex flex-1 overflow-hidden p-4 gap-4 bg-transparent relative z-10">
+      <div className="flex flex-col lg:flex-row flex-1 p-4 gap-4 bg-transparent relative z-10">
 
         {/* ── Sidebar ───────────────────────────────────────────────────────── */}
-        <aside className="hidden lg:flex w-56 shrink-0 bg-white border border-slate-100 flex flex-col h-full rounded-2xl overflow-hidden shadow-sm">
-          <div className="flex-1 py-3 px-3">
-            {/* Section label */}
-            <p className="text-[9px] font-semibold uppercase tracking-widest text-slate-400 px-3 mb-2 mt-2">
-              Staff Console
-            </p>
+        <aside className="hidden lg:flex w-56 shrink-0 bg-white dark:bg-slate-900/50 border border-slate-100 dark:border-white/5 flex flex-col h-[calc(100vh-120px)] lg:sticky lg:top-24 rounded-2xl overflow-hidden shadow-sm">
+          <div className="flex-1 py-3 px-3 overflow-y-auto">
+            {/* Technician Menu Header */}
+            <div className="px-3 mb-5 mt-2 flex items-center justify-start gap-3 pb-3.5 border-b border-slate-100 dark:border-white/5">
+              {/* Activity icon on the left */}
+              <div className="p-1.5 rounded-lg bg-[#00aeef]/10 dark:bg-[#00aeef]/20 shrink-0">
+                <Activity className="w-5 h-5 text-[#00aeef] animate-pulse" />
+              </div>
+              <div className="flex flex-col text-left leading-none">
+                <span className="text-[12px] md:text-[14px] font-black text-[#001e66] dark:text-white uppercase tracking-wider">
+                  Technician Menu
+                </span>
+                <span className="text-[8.5px] font-black uppercase tracking-widest text-[#00aeef] mt-1 block">
+                  AquaTrack
+                </span>
+              </div>
+            </div>
 
             {/* Nav Items */}
             <nav className="flex flex-col gap-0.5">
@@ -741,19 +714,24 @@ export default function DashboardSubAdmin({
                   <button
                     key={item.key}
                     onClick={() => setActiveTab(item.key as any)}
-                    className={`w-full flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-sm font-medium transition-all duration-150 relative ${
+                    className={`w-full flex items-center gap-2.5 px-3.5 py-2.5 rounded-xl text-sm font-medium transition-all duration-200 relative ${
                       isActive
-                        ? "bg-[#001e66]/5 text-[#001e66] font-semibold"
-                        : "text-slate-500 hover:text-[#001e66] hover:bg-slate-50"
+                        ? "bg-blue-600 dark:bg-blue-600/90 text-white font-bold shadow-[0_4px_12px_rgba(37,99,235,0.25)] scale-[1.02]"
+                        : "text-slate-500 dark:text-slate-400 hover:text-blue-600 dark:hover:text-blue-400 hover:bg-slate-50 dark:hover:bg-slate-800/30"
                     }`}
                   >
                     {/* Active left indicator bar */}
                     {isActive && (
-                      <span className="absolute left-0 top-1/2 -translate-y-1/2 w-0.5 h-4 bg-[#00aeef] rounded-full" />
+                      <span className="absolute left-0 top-1/2 -translate-y-1/2 w-0.5 h-4 bg-white rounded-full" />
                     )}
-                    <span className={isActive ? "text-[#001e66]" : "text-slate-400"}>
-                      {item.icon}
-                    </span>
+                    <item.icon
+                      strokeWidth={isActive ? 2.5 : 1.8}
+                      className={`w-4 h-4 shrink-0 transition-all duration-300 ${
+                        isActive
+                          ? "text-white scale-110 drop-shadow-[0_0_8px_rgba(255,255,255,0.45)]"
+                          : "text-slate-400 dark:text-slate-500 group-hover:scale-110 group-hover:rotate-[2deg] group-hover:text-blue-600 dark:group-hover:text-blue-400"
+                      }`}
+                    />
                     <span className="truncate">{item.label}</span>
                   </button>
                 );
@@ -761,25 +739,35 @@ export default function DashboardSubAdmin({
             </nav>
           </div>
 
-          {/* Sidebar Bottom — Assigned count badge + Staff ID */}
-          <div className="px-4 py-4 border-t border-slate-100 flex flex-col gap-3">
-            <div className="flex items-center justify-between">
-              <span className="text-xs text-slate-500 font-medium">Assigned</span>
-              <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
+          {/* Premium Profile Card at bottom */}
+          <div className="mt-auto p-3.5 border-t border-slate-100 dark:border-white/5 space-y-3.5 bg-slate-50/30 dark:bg-slate-900/30">
+            {/* Assigned Status Row */}
+            <div className="flex items-center justify-between text-[10px] font-bold">
+              <span className="text-slate-400 dark:text-slate-500 flex items-center gap-1.5 uppercase tracking-wider">
+                <ClipboardList className="w-3.5 h-3.5 text-slate-400 dark:text-slate-500" />
+                Assigned
+              </span>
+              <span className={`text-[9px] font-black px-2.5 py-0.5 rounded-full border uppercase tracking-wider ${
                 assignedComplaints.length > 0
-                  ? "bg-[#970006]/10 text-[#970006]"
-                  : "bg-slate-100 text-slate-500"
+                  ? "bg-red-50 dark:bg-red-950/20 text-red-650 dark:text-red-400 border-red-100 dark:border-red-900/30 animate-pulse"
+                  : "bg-slate-100 dark:bg-slate-850 text-slate-550 dark:text-slate-400 border-slate-200/50 dark:border-slate-800"
               }`}>
-                {assignedComplaints.length} complaint{assignedComplaints.length !== 1 ? "s" : ""}
+                {assignedComplaints.length} Job{assignedComplaints.length !== 1 ? "s" : ""}
               </span>
             </div>
-            <div className="flex items-center gap-2">
-              <div className="w-6 h-6 rounded-lg bg-[#001e66] text-white text-[10px] font-bold flex items-center justify-center shrink-0">
+
+            {/* Profile Block */}
+            <div className="flex items-center gap-2.5 bg-white dark:bg-slate-900 border border-slate-150 dark:border-slate-800/80 rounded-xl p-2.5 shadow-sm">
+              <div className="w-7 h-7 rounded-lg bg-[#00aeef] text-white flex items-center justify-center text-[11px] font-black shrink-0 uppercase select-none shadow-sm">
                 {initials}
               </div>
-              <div className="flex flex-col leading-none min-w-0">
-                <span className="text-[10px] font-semibold text-[#001e66] truncate">{staffId}</span>
-                <span className="text-[9px] text-slate-400 mt-0.5">Staff ID</span>
+              <div className="flex flex-col leading-none text-left min-w-0 flex-1">
+                <span className="text-[10px] font-black text-[#001e66] dark:text-white truncate">
+                  {userProfile?.name || staffId}
+                </span>
+                <span className="text-[8px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest mt-1 block">
+                  {currentUserRole === "ADMIN" ? "Admin Staff" : "Technician"}
+                </span>
               </div>
             </div>
           </div>
@@ -825,9 +813,21 @@ export default function DashboardSubAdmin({
 
                 {/* Drawer Nav Items */}
                 <div className="flex-1 py-3 px-3">
-                  <p className="text-[9px] font-semibold uppercase tracking-widest text-slate-400 px-3 mb-2 mt-2">
-                    Staff Console
-                  </p>
+                  {/* Technician Menu Header */}
+                  <div className="px-3 mb-5 mt-2 flex items-center justify-start gap-3 pb-3.5 border-b border-slate-100 dark:border-slate-800">
+                    {/* Activity icon on the left */}
+                    <div className="p-1.5 rounded-lg bg-[#00aeef]/10 dark:bg-[#00aeef]/20 shrink-0">
+                      <Activity className="w-5 h-5 text-[#00aeef] animate-pulse" />
+                    </div>
+                    <div className="flex flex-col text-left leading-none">
+                      <span className="text-[12px] md:text-[14px] font-black text-[#001e66] dark:text-white uppercase tracking-wider">
+                        Technician Menu
+                      </span>
+                      <span className="text-[8.5px] font-black uppercase tracking-widest text-[#00aeef] mt-1 block">
+                        AquaTrack
+                      </span>
+                    </div>
+                  </div>
                   <nav className="flex flex-col gap-0.5">
                     {navItems.map((item) => {
                       const isActive = activeTab === item.key;
@@ -838,18 +838,23 @@ export default function DashboardSubAdmin({
                             setActiveTab(item.key as any);
                             setIsMobileSidebarOpen(false);
                           }}
-                          className={`w-full flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-sm font-medium transition-all duration-150 relative ${
+                          className={`w-full flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-sm font-medium transition-all duration-200 relative ${
                             isActive
-                              ? "bg-[#001e66]/5 text-[#001e66] font-semibold"
-                              : "text-slate-500 hover:text-[#001e66] hover:bg-slate-50"
+                              ? "bg-blue-600 dark:bg-blue-600/90 text-white font-bold shadow-[0_4px_12px_rgba(37,99,235,0.25)] scale-[1.02]"
+                              : "text-slate-500 dark:text-slate-400 hover:text-blue-600 dark:hover:text-blue-400 hover:bg-slate-50 dark:hover:bg-slate-800/30"
                           }`}
                         >
                           {isActive && (
-                            <span className="absolute left-0 top-1/2 -translate-y-1/2 w-0.5 h-4 bg-[#00aeef] rounded-full" />
+                            <span className="absolute left-0 top-1/2 -translate-y-1/2 w-0.5 h-4 bg-white rounded-full" />
                           )}
-                          <span className={isActive ? "text-[#001e66]" : "text-slate-400"}>
-                            {item.icon}
-                          </span>
+                          <item.icon
+                            strokeWidth={isActive ? 2.5 : 1.8}
+                            className={`w-4 h-4 shrink-0 transition-all duration-300 ${
+                              isActive
+                                ? "text-white scale-110 drop-shadow-[0_0_8px_rgba(255,255,255,0.45)]"
+                                : "text-slate-400 dark:text-slate-500 group-hover:scale-110 group-hover:rotate-[2deg] group-hover:text-blue-600 dark:group-hover:text-blue-400"
+                            }`}
+                          />
                           <span className="truncate">{item.label}</span>
                         </button>
                       );
@@ -858,24 +863,34 @@ export default function DashboardSubAdmin({
                 </div>
 
                 {/* Drawer Bottom */}
-                <div className="px-4 py-4 border-t border-slate-100 flex flex-col gap-3 shrink-0">
-                  <div className="flex items-center justify-between">
-                    <span className="text-xs text-slate-500 font-medium">Assigned</span>
-                    <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
+                <div className="mt-auto p-4 border-t border-slate-100 dark:border-slate-800 space-y-4 bg-slate-50/50 dark:bg-slate-900/50">
+                  {/* Assigned Status Row */}
+                  <div className="flex items-center justify-between text-[11px] font-bold">
+                    <span className="text-slate-450 dark:text-slate-500 flex items-center gap-1.5 uppercase tracking-wider">
+                      <ClipboardList className="w-3.5 h-3.5 text-slate-400 dark:text-slate-500" />
+                      Assigned
+                    </span>
+                    <span className={`text-[10px] font-black px-2.5 py-0.5 rounded-full border uppercase tracking-wider ${
                       assignedComplaints.length > 0
-                        ? "bg-[#970006]/10 text-[#970006]"
-                        : "bg-slate-100 text-slate-500"
+                        ? "bg-red-50 dark:bg-red-950/20 text-red-650 dark:text-red-400 border-red-100 dark:border-red-900/30 animate-pulse"
+                        : "bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-450 border-slate-200/50 dark:border-slate-700/60"
                     }`}>
-                      {assignedComplaints.length} complaint{assignedComplaints.length !== 1 ? "s" : ""}
+                      {assignedComplaints.length} Job{assignedComplaints.length !== 1 ? "s" : ""}
                     </span>
                   </div>
-                  <div className="flex items-center gap-2">
-                    <div className="w-6 h-6 rounded-lg bg-[#001e66] text-white text-[10px] font-bold flex items-center justify-center shrink-0">
+
+                  {/* Profile Block */}
+                  <div className="flex items-center gap-3 bg-white dark:bg-slate-900 border border-slate-150 dark:border-slate-800 rounded-xl p-3 shadow-sm">
+                    <div className="w-9 h-9 rounded-xl bg-[#00aeef] text-white flex items-center justify-center text-xs font-black shrink-0 uppercase select-none shadow-sm">
                       {initials}
                     </div>
-                    <div className="flex flex-col leading-none min-w-0">
-                      <span className="text-[10px] font-semibold text-[#001e66] truncate">{staffId}</span>
-                      <span className="text-[9px] text-slate-400 mt-0.5">Staff ID</span>
+                    <div className="flex flex-col leading-none text-left min-w-0 flex-1">
+                      <span className="text-xs font-black text-[#001e66] dark:text-white truncate">
+                        {userProfile?.name || staffId}
+                      </span>
+                      <span className="text-[9px] font-black text-slate-450 dark:text-slate-500 uppercase tracking-widest mt-1 block">
+                        {currentUserRole === "ADMIN" ? "Admin Staff" : "Technician"}
+                      </span>
                     </div>
                   </div>
                 </div>
@@ -885,7 +900,7 @@ export default function DashboardSubAdmin({
         </AnimatePresence>
 
         {/* ── Main Content ──────────────────────────────────────────────────── */}
-        <main className="flex-1 bg-white border border-slate-100/80 overflow-y-auto p-6 flex flex-col rounded-2xl shadow-sm">
+        <main className="flex-1 bg-white dark:bg-slate-900/50 border border-slate-100/80 dark:border-white/5 p-6 flex flex-col rounded-2xl shadow-sm">
           {alertMessage && (
             <div
               className={`p-4 rounded-xl border mb-6 flex items-start space-x-3 text-sm animate-fade-in ${
@@ -1080,6 +1095,9 @@ export default function DashboardSubAdmin({
           </AnimatePresence>
         </main>
       </div>
+
+      {/* Reusable Footer */}
+      <Footer />
 
       {/* Map Preview Modal */}
       <MapPreviewModal

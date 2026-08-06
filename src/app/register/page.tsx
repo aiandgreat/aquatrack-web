@@ -231,12 +231,22 @@ export default function RegisterPage() {
           style={{ background: "radial-gradient(circle, rgba(232,69,60,0.08) 0%, transparent 70%)" }} />
 
         {/* Content - Cleaned of all info text / cards / metadata, leaving improved back button */}
-        <div className="relative z-10 flex flex-col h-full p-10 md:p-12 min-h-[140px] md:min-h-screen">
+        <div className="relative z-10 flex flex-col justify-between h-full p-10 md:p-12 min-h-[220px] md:min-h-screen">
           {/* Improved Back Button */}
           <Link href="/" className="self-start flex items-center gap-2 px-4 py-2.5 rounded-full bg-white/5 border border-white/10 text-xs font-black uppercase tracking-wider text-white hover:bg-white/15 hover:border-white/20 transition-all shadow-sm active:scale-95 group">
             <ArrowLeft className="w-3.5 h-3.5 transition-transform group-hover:-translate-x-1" />
             Back to Home
           </Link>
+
+          {/* Slogan */}
+          <div className="mt-auto text-left">
+            <p className="text-[10px] font-black uppercase tracking-[0.2em] text-[#00aeef] drop-shadow-sm">
+              Operational Focus
+            </p>
+            <h2 className="text-xl md:text-2xl font-black text-white mt-1 leading-snug drop-shadow-md max-w-xs">
+              Securing Clean Water for Communities
+            </h2>
+          </div>
         </div>
       </div>
 

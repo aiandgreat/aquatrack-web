@@ -6,10 +6,11 @@ import { getSupabaseClient } from "../../lib/supabase";
 import { generateComplianceReport } from "../../lib/pdf-generator";
 import { calculateDistance } from "../../lib/spatial-sorting";
 import { motion, AnimatePresence } from "framer-motion";
+import Footer from "../../components/Footer";
 import { 
   Home, Map, AlertTriangle, Flame, Cpu, BarChart3, Users, 
   Megaphone, Settings, Bell, HelpCircle, Sun, Moon, ChevronDown, 
-  Menu, X, User, LogOut, CheckCircle2, Wrench, WifiOff
+  Menu, X, User, LogOut, CheckCircle2, Wrench, WifiOff, ClipboardList, Activity
 } from "lucide-react";
 
 // Import Modular Sections
@@ -1023,7 +1024,7 @@ export default function DashboardAdmin({
 
   // Navigation Items
   const navItems = [
-    { key: "home", label: "Dashboard Home", icon: Home },
+    { key: "home", label: "Home", icon: Home },
     { key: "map", label: "Live Monitoring Map", icon: Map },
     { key: "reports", label: "Complaints & Reports", icon: AlertTriangle },
     { key: "heatmaps", label: "Spatial Heatmaps", icon: Flame },
@@ -1035,7 +1036,7 @@ export default function DashboardAdmin({
   ] as const;
 
   return (
-    <div className="h-screen text-slate-800 flex flex-col font-sans w-full overflow-hidden relative bg-[#E2EAF4]">
+    <div className="min-h-screen text-slate-800 flex flex-col font-sans w-full relative bg-[#E2EAF4]">
       {/* Background Image Layer with custom opacity */}
       <div 
         className="absolute inset-0 bg-cover bg-center bg-no-repeat pointer-events-none"
@@ -1271,14 +1272,26 @@ export default function DashboardAdmin({
       </header>
 
       {/* ── Body ────────────────────────────────────────────────────────────── */}
-      <div className="flex flex-1 overflow-hidden p-4 gap-4 bg-transparent relative z-10">
+      <div className="flex flex-col lg:flex-row flex-1 p-4 gap-4 bg-transparent relative z-10">
 
         {/* ── Sidebar ───────────────────────────────────────────────────────── */}
-        <aside className="hidden lg:flex w-56 shrink-0 bg-white border border-slate-100 flex flex-col h-full rounded-2xl overflow-hidden shadow-sm">
-          <div className="flex-1 py-3 px-3">
-            <p className="text-[9px] font-semibold uppercase tracking-widest text-slate-400 px-3 mb-2 mt-2">
-              Control Console
-            </p>
+        <aside className="hidden lg:flex w-56 shrink-0 bg-white dark:bg-slate-900/50 border border-slate-100 dark:border-white/5 flex flex-col h-[calc(100vh-120px)] lg:sticky lg:top-24 rounded-2xl overflow-hidden shadow-sm">
+          <div className="flex-1 py-3 px-3 overflow-y-auto">
+            {/* Admin Menu Header */}
+            <div className="px-3 mb-5 mt-2 flex items-center justify-start gap-3 pb-3.5 border-b border-slate-100 dark:border-white/5">
+              {/* Activity icon on the left */}
+              <div className="p-1.5 rounded-lg bg-[#00aeef]/10 dark:bg-[#00aeef]/20 shrink-0">
+                <Activity className="w-5 h-5 text-[#00aeef] animate-pulse" />
+              </div>
+              <div className="flex flex-col text-left leading-none">
+                <span className="text-[12px] md:text-[14px] font-black text-[#001e66] dark:text-white uppercase tracking-wider">
+                  Admin Menu
+                </span>
+                <span className="text-[8.5px] font-black uppercase tracking-widest text-[#00aeef] mt-1 block">
+                  AquaTrack
+                </span>
+              </div>
+            </div>
             <nav className="flex flex-col gap-0.5">
               {navItems.map((item) => {
                 const isActive = activeTab === item.key;
@@ -1288,19 +1301,19 @@ export default function DashboardAdmin({
                     onClick={() => setActiveTab(item.key as any)}
                     className={`w-full flex items-center gap-2.5 px-3.5 py-2.5 rounded-xl text-sm font-medium transition-all duration-200 hover:translate-x-1 relative ${
                       isActive
-                        ? "bg-[#001e66]/8 text-[#001e66] font-bold shadow-sm scale-[1.02]"
-                        : "text-slate-500 hover:text-[#001e66] hover:bg-slate-50/70"
+                        ? "bg-blue-600 dark:bg-blue-600/90 text-white font-bold shadow-[0_4px_12px_rgba(37,99,235,0.25)] scale-[1.02]"
+                        : "text-slate-500 dark:text-slate-400 hover:text-blue-600 dark:hover:text-blue-400 hover:bg-slate-50/70 dark:hover:bg-slate-800/30"
                     }`}
                   >
                     {isActive && (
-                      <span className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-5 bg-[#00aeef] rounded-full animate-pulse" />
+                      <span className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-5 bg-white rounded-full animate-pulse" />
                     )}
                     <item.icon
                       strokeWidth={isActive ? 2.5 : 1.8}
                       className={`w-4.5 h-4.5 shrink-0 transition-all duration-300 ${
                         isActive
-                          ? "text-[#001e66] dark:text-[#00aeef] scale-110 drop-shadow-[0_0_8px_rgba(0,174,239,0.55)]"
-                          : "text-slate-400 group-hover:scale-110 group-hover:rotate-[2deg] group-hover:text-[#001e66] dark:group-hover:text-[#00aeef] group-hover:drop-shadow-[0_0_5px_rgba(0,174,239,0.3)]"
+                          ? "text-white scale-110 drop-shadow-[0_0_8px_rgba(255,255,255,0.45)]"
+                          : "text-slate-400 dark:text-slate-500 group-hover:scale-110 group-hover:rotate-[2deg] group-hover:text-blue-600 dark:group-hover:text-blue-400"
                       }`}
                     />
                     <span className="truncate">{item.label}</span>
@@ -1310,14 +1323,28 @@ export default function DashboardAdmin({
             </nav>
           </div>
 
-          {/* Sidebar Bottom: Role chip + user info */}
-          <div className="px-4 py-4 border-t border-slate-100 flex flex-col gap-2">
-            <span className="inline-flex items-center gap-1.5 bg-[#001e66]/5 text-[#001e66] text-[10px] font-bold px-2.5 py-1 rounded-full border border-[#001e66]/10 w-full justify-center">
+          {/* Premium Profile Card at bottom */}
+          <div className="mt-auto p-3.5 border-t border-slate-100 dark:border-white/5 space-y-3 bg-slate-50/30 dark:bg-slate-900/30">
+            {/* Super Admin Status Badge */}
+            <div className="inline-flex items-center gap-1.5 bg-[#001e66]/5 dark:bg-[#00aeef]/10 text-[#001e66] dark:text-[#00aeef] text-[10px] font-black uppercase tracking-wider px-2.5 py-1.5 rounded-xl border border-[#001e66]/10 dark:border-[#00aeef]/20 w-full justify-center shadow-inner">
+              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
               Super Admin Mode
-            </span>
-            <span className="text-[10px] text-slate-400 font-mono text-center truncate w-full" title={session?.user?.email}>
-              {session?.user?.email || "admin@csfwd.gov.ph"}
-            </span>
+            </div>
+
+            {/* Profile Block */}
+            <div className="flex items-center gap-2.5 bg-white dark:bg-slate-900 border border-slate-150 dark:border-slate-800/80 rounded-xl p-2.5 shadow-sm">
+              <div className="w-7 h-7 rounded-lg bg-[#00aeef] text-white flex items-center justify-center text-[11px] font-black shrink-0 uppercase select-none shadow-sm">
+                A
+              </div>
+              <div className="flex flex-col leading-none text-left min-w-0 flex-1">
+                <span className="text-[10px] font-black text-[#001e66] dark:text-white truncate">
+                  {userProfile?.name || session?.user?.email?.split("@")[0] || "Administrator"}
+                </span>
+                <span className="text-[8px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest mt-1 block">
+                  System Executive
+                </span>
+              </div>
+            </div>
           </div>
         </aside>
 
@@ -1359,9 +1386,20 @@ export default function DashboardAdmin({
 
                 {/* Drawer Nav Items */}
                 <div className="flex-1 py-3 px-3">
-                  <p className="text-[9px] font-semibold uppercase tracking-widest text-slate-400 px-3 mb-2 mt-2">
-                    Control Console
-                  </p>
+                  {/* Admin Menu Header */}
+                  <div className="px-3 mb-5 mt-2 flex items-center justify-start gap-3 pb-3.5 border-b border-slate-100 dark:border-slate-800">
+                    <div className="p-1.5 rounded-lg bg-[#00aeef]/10 dark:bg-[#00aeef]/20 shrink-0">
+                      <Activity className="w-5 h-5 text-[#00aeef] animate-pulse" />
+                    </div>
+                    <div className="flex flex-col text-left leading-none">
+                      <span className="text-[12px] md:text-[14px] font-black text-[#001e66] dark:text-white uppercase tracking-wider">
+                        Admin Menu
+                      </span>
+                      <span className="text-[8.5px] font-black uppercase tracking-widest text-[#00aeef] mt-1 block">
+                        AquaTrack
+                      </span>
+                    </div>
+                  </div>
                   <nav className="flex flex-col gap-0.5">
                     {navItems.map((item) => {
                       const isActive = activeTab === item.key;
@@ -1374,19 +1412,19 @@ export default function DashboardAdmin({
                           }}
                           className={`w-full flex items-center gap-2.5 px-3.5 py-2.5 rounded-xl text-sm font-medium transition-all duration-200 hover:translate-x-1 relative ${
                             isActive
-                              ? "bg-[#001e66]/8 text-[#001e66] font-bold shadow-sm scale-[1.02]"
-                              : "text-slate-500 hover:text-[#001e66] hover:bg-slate-50/70"
+                              ? "bg-blue-600 dark:bg-blue-600/90 text-white font-bold shadow-[0_4px_12px_rgba(37,99,235,0.25)] scale-[1.02]"
+                              : "text-slate-500 dark:text-slate-400 hover:text-blue-600 dark:hover:text-blue-400 hover:bg-slate-50/70 dark:hover:bg-slate-800/30"
                           }`}
                         >
                           {isActive && (
-                            <span className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-5 bg-[#00aeef] rounded-full animate-pulse" />
+                            <span className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-5 bg-white rounded-full animate-pulse" />
                           )}
                           <item.icon
                             strokeWidth={isActive ? 2.5 : 1.8}
                             className={`w-4.5 h-4.5 shrink-0 transition-all duration-300 ${
                               isActive
-                                ? "text-[#001e66] dark:text-[#00aeef] scale-110 drop-shadow-[0_0_8px_rgba(0,174,239,0.55)]"
-                                : "text-slate-400 group-hover:scale-110 group-hover:rotate-[2deg] group-hover:text-[#001e66] dark:group-hover:text-[#00aeef] group-hover:drop-shadow-[0_0_5px_rgba(0,174,239,0.3)]"
+                                ? "text-white scale-110 drop-shadow-[0_0_8px_rgba(255,255,255,0.45)]"
+                                : "text-slate-400 dark:text-slate-500 group-hover:scale-110 group-hover:rotate-[2deg] group-hover:text-blue-600 dark:group-hover:text-blue-400"
                             }`}
                           />
                           <span className="truncate">{item.label}</span>
@@ -1397,13 +1435,27 @@ export default function DashboardAdmin({
                 </div>
 
                 {/* Drawer Bottom */}
-                <div className="px-4 py-4 border-t border-slate-100 flex flex-col gap-2 shrink-0">
-                  <span className="inline-flex items-center gap-1.5 bg-[#001e66]/5 text-[#001e66] text-[10px] font-bold px-2.5 py-1 rounded-full border border-[#001e66]/10 w-full justify-center">
+                <div className="mt-auto p-4 border-t border-slate-100 dark:border-slate-800 space-y-3 bg-slate-50/50 dark:bg-slate-900/50">
+                  {/* Super Admin Status Badge */}
+                  <div className="inline-flex items-center gap-1.5 bg-[#001e66]/5 dark:bg-[#00aeef]/10 text-[#001e66] dark:text-[#00aeef] text-[10px] font-black uppercase tracking-wider px-2.5 py-1.5 rounded-xl border border-[#001e66]/10 dark:border-[#00aeef]/20 w-full justify-center shadow-inner">
+                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
                     Super Admin Mode
-                  </span>
-                  <span className="text-[10px] text-slate-400 font-mono text-center truncate w-full" title={session?.user?.email}>
-                    {session?.user?.email || "admin@csfwd.gov.ph"}
-                  </span>
+                  </div>
+
+                  {/* Profile Block */}
+                  <div className="flex items-center gap-3 bg-white dark:bg-slate-900 border border-slate-150 dark:border-slate-800 rounded-xl p-3 shadow-sm">
+                    <div className="w-9 h-9 rounded-xl bg-[#00aeef] text-white flex items-center justify-center text-xs font-black shrink-0 uppercase select-none shadow-sm">
+                      A
+                    </div>
+                    <div className="flex flex-col leading-none text-left min-w-0 flex-1">
+                      <span className="text-xs font-black text-[#001e66] dark:text-white truncate">
+                        {userProfile?.name || session?.user?.email?.split("@")[0] || "Administrator"}
+                      </span>
+                      <span className="text-[9px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest mt-1 block">
+                        System Executive
+                      </span>
+                    </div>
+                  </div>
                 </div>
               </motion.aside>
             </>
@@ -1411,7 +1463,7 @@ export default function DashboardAdmin({
         </AnimatePresence>
 
         {/* ── Main Content Area ──────────────────────────────────────────────── */}
-        <main className="flex-1 bg-white border border-slate-100/80 overflow-y-auto p-6 flex flex-col rounded-2xl shadow-sm">
+        <main className="flex-1 bg-white dark:bg-slate-900/50 border border-slate-100/80 dark:border-white/5 p-6 flex flex-col rounded-2xl shadow-sm">
           {alertMessage && (
             <div
               className={`p-4 rounded-xl border mb-6 flex items-start space-x-3 text-sm animate-fade-in ${
@@ -1548,6 +1600,9 @@ export default function DashboardAdmin({
           </AnimatePresence>
         </main>
       </div>
+
+      {/* Reusable Footer */}
+      <Footer />
 
       {/* Help Modal */}
       {showHelpModal && (
