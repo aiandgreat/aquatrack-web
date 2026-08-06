@@ -233,8 +233,13 @@ npm start
 - **Legacy Peer Deps**: `@tremor/react` pins to React 18 peer deps; installed with `--legacy-peer-deps` since the project runs React 19.
 - **Dialect Translation**: Gemini is prompted to translate Tagalog, Taglish, and Kapampangan before classification to ensure consistent enum mapping regardless of input language.
 
-## Recent Platform Upgrades (July 2026)
+## Recent Platform Upgrades (August 2026)
 
+- **Mapbox Standard 3D Layer Safety & Stale Closure Fix**: Resolved a critical console crash (`layers.3d-buildings: source "composite" not found`) when toggling standard map styles by introducing `mapStyleRef` references to track map styles outside stale event listener closures.
+- **Dynamic Time-of-Day Map Lighting Presets**: Integrated real-time local hour detection into the Mapbox Standard style configuration, dynamically setting light presets (`day`, `dusk`, `dawn`, `night`) to match real-world lighting cycles.
+- **Native Mapbox Standard 3D Config Toggle**: Configured standard style properties (`show3dObjects` and `showTerrain`) to natively toggle 3D assets and topographic elevation based on UI controls.
+- **Tailwind Config & Webpack Build Stability**: Restored Tailwind CSS `@config` directive routing inside Webpack and Turbopack compiler environments by anchoring target styles to `src/app/tailwind.config.ts`.
+- **Barangay Pin Hover & Anti-Flicker Fixes**: Stabilized hover state transformations by shifting coordinate markers into transparent outer bounds (`w-9 h-9`) and spacing tooltips.
 - **Firebase Cloud Messaging (FCM) Integration**: Added a `pushToken` string column to the `User` database model, introduced a Next.js `/api/auth/push-token` token registration route, and created an FCM notification trigger pipeline in the `/api/advisories` creation handler via `fcm-sender.ts`, allowing targeted push broadcasts to Residents or Field Technicians.
 - **Searchable, Sortable, and Filterable Spatial Heatmaps**: Refactored the Barangay Grid incident heatmap in the Admin Portal's command center (`HeatmapsSection.tsx`) to support instant search by name, multi-tier severity filters (All, Critical, Moderate, Low Risk, Clean), and incident count/alphabetical sorting. Added real-time metadata counts and filter-clear buttons to provide a highly manageable incident-density dashboard.
 - **Race-Condition-Free Mapbox Mounting**: Resolved map loading bugs within the client's "File a Complaint" tab (`DashboardClient.tsx`) by replacing fragile `setTimeout` hooks with React callback refs (`handleMapRef`). This guarantees that the Mapbox GL map instance initializes only after the DOM element is fully mounted following exit animations, and forces layout recalculations to fit transition states cleanly.

@@ -10,7 +10,8 @@ import {
   BrainCircuit, 
   AlertTriangle, 
   ShieldCheck, 
-  Activity 
+  Activity,
+  Globe
 } from "lucide-react";
 import { SAN_FERNANDO_POLYGON } from "../../../lib/san-fernando-boundary";
 
@@ -88,6 +89,14 @@ function getHeatLabel(count: number): string {
   return "LOW";
 }
 
+const getLightPresetForTime = () => {
+  const hour = new Date().getHours();
+  if (hour >= 6 && hour < 17) return "day";      // 6 AM - 4:59 PM
+  if (hour >= 17 && hour < 19) return "dusk";    // 5 PM - 6:59 PM
+  if (hour >= 19 || hour < 5) return "night";    // 7 PM - 4:59 AM
+  return "dawn";                                 // 5 AM - 5:59 AM
+};
+
 export default function HeatmapsSection({ complaints = [] }: HeatmapsSectionProps) {
   const [barangays, setBarangays] = useState<BarangayData[]>([]);
   const [maxCount, setMaxCount] = useState(1);
@@ -116,7 +125,7 @@ export default function HeatmapsSection({ complaints = [] }: HeatmapsSectionProp
   const [aiSummary, setAiSummary] = useState<string | null>(null);
   const [aiStatus, setAiStatus] = useState<string | null>(null);
 
-  const [mapStyle, setMapStyle] = useState<"streets" | "dark">("dark");
+  const [mapStyle, setMapStyle] = useState<"streets" | "dark" | "standard">("dark");
   const [isMapReady, setIsMapReady] = useState(false);
 
   // Mapbox refs
@@ -153,7 +162,12 @@ export default function HeatmapsSection({ complaints = [] }: HeatmapsSectionProp
 
     const map = new mapboxgl.Map({
       container: mapContainerRef.current,
-      style: mapStyle === "streets" ? "mapbox://styles/mapbox/streets-v12" : "mapbox://styles/mapbox/dark-v11",
+      style: 
+        mapStyle === "streets" 
+          ? "mapbox://styles/mapbox/streets-v12" 
+          : mapStyle === "standard"
+          ? "mapbox://styles/mapbox/standard"
+          : "mapbox://styles/mapbox/dark-v11",
       center: sfCenter,
       zoom: 12.2,
       pitch: 0,
@@ -164,6 +178,13 @@ export default function HeatmapsSection({ complaints = [] }: HeatmapsSectionProp
 
     map.on("style.load", () => {
       setIsMapReady(true);
+      if (mapStyle === "standard") {
+        try {
+          map.setConfigProperty("basemap", "lightPreset", getLightPresetForTime());
+        } catch (e) {
+          console.warn("Failed to set Mapbox Standard config property on heatmap:", e);
+        }
+      }
       // Add empty source initially
       map.addSource("complaints-heatmap-source", {
         type: "geojson",
@@ -356,12 +377,8 @@ export default function HeatmapsSection({ complaints = [] }: HeatmapsSectionProp
       }
     };
 
-    // Feed source data
-    if (map.isStyleLoaded()) {
-      updateSource();
-    } else {
-      map.once("style.load", updateSource);
-    }
+    // Feed source data directly since isMapReady guarantees the source has been added
+    updateSource();
 
     // Clear old markers
     markersRef.current.forEach((m) => m.remove());
@@ -373,7 +390,7 @@ export default function HeatmapsSection({ complaints = [] }: HeatmapsSectionProp
       const count = matchData ? matchData.count : 0;
 
       const el = document.createElement("div");
-      el.className = "relative flex flex-col items-center justify-center cursor-pointer group transition-all duration-300 hover:-translate-y-1 hover:scale-105 z-10";
+      el.className = "w-9 h-9 relative flex items-center justify-center cursor-pointer group z-10 bg-transparent";
 
       // Select colors and sizes based on intensity of active incidents in the Barangay
       let pinColor = "border-slate-500 bg-slate-900/95 text-slate-300";
@@ -399,19 +416,22 @@ export default function HeatmapsSection({ complaints = [] }: HeatmapsSectionProp
       }
 
       el.innerHTML = `
-        <!-- Outer Pulsing Ring for Visual Severity Alert -->
-        <div class="absolute -inset-1 rounded-full animate-ping pointer-events-none opacity-40" style="background-color: ${glowColor}; animation-duration: 2.5s;"></div>
-        
-        <!-- Round Pin Head -->
-        <div class="relative w-7 h-7 rounded-full border-2 flex items-center justify-center shadow-lg transition-colors ${pinColor}">
-          <span class="text-[9px] leading-none">${count}</span>
+        <!-- Inner wrapper (stationary, avoids flicker loops) -->
+        <div class="flex flex-col items-center justify-center transition-all duration-300 pointer-events-none">
+          <!-- Outer Pulsing Ring for Visual Severity Alert -->
+          <div class="absolute -inset-1 rounded-full animate-ping opacity-40" style="background-color: ${glowColor}; animation-duration: 2.5s;"></div>
+          
+          <!-- Round Pin Head -->
+          <div class="relative w-7 h-7 rounded-full border-2 flex items-center justify-center shadow-lg transition-all duration-200 group-hover:border-white group-hover:brightness-125 ${pinColor}">
+            <span class="text-[9px] leading-none">${count}</span>
+          </div>
+          
+          <!-- Pin Tip pointing precisely to coordinate -->
+          <div class="w-1.5 h-1.5 rotate-45 -mt-[4px] shadow-sm transition-all duration-200 group-hover:bg-white ${tipColor}"></div>
         </div>
         
-        <!-- Pin Tip pointing precisely to coordinate -->
-        <div class="w-1.5 h-1.5 rotate-45 -mt-[4px] shadow-sm ${tipColor}"></div>
-        
         <!-- Modernized Hover Tooltip -->
-        <div class="absolute bottom-9 bg-slate-950/95 border border-slate-800 text-[9px] font-mono font-bold text-slate-200 px-2.5 py-1.5 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none whitespace-nowrap shadow-2xl z-20">
+        <div class="absolute bottom-11 bg-slate-950/95 border border-slate-800 text-[9px] font-mono font-bold text-slate-200 px-2.5 py-1.5 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none whitespace-nowrap shadow-2xl z-20">
           <span class="text-cyan-400">Brgy. ${name}</span>
           <span class="text-slate-500 mx-1">•</span>
           <span>${count} complaints</span>
@@ -655,6 +675,18 @@ export default function HeatmapsSection({ complaints = [] }: HeatmapsSectionProp
           >
             <Moon className="w-3 h-3" />
             <span>Dark</span>
+          </button>
+          <button
+            type="button"
+            onClick={() => setMapStyle("standard")}
+            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[9px] font-black uppercase tracking-wider transition-all border-none focus:outline-none cursor-pointer ${
+              mapStyle === "standard" 
+                ? "bg-[#001e66] text-white shadow-sm" 
+                : "text-slate-600 hover:text-[#001e66] hover:bg-slate-100"
+            }`}
+          >
+            <Globe className="w-3 h-3" />
+            <span>Standard</span>
           </button>
         </div>
 

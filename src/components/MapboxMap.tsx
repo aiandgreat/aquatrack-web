@@ -40,6 +40,14 @@ interface MapboxMapProps {
   onSelectComplaint: (id: string | null) => void;
 }
 
+const getLightPresetForTime = () => {
+  const hour = new Date().getHours();
+  if (hour >= 6 && hour < 17) return "day";      // 6 AM - 4:59 PM
+  if (hour >= 17 && hour < 19) return "dusk";    // 5 PM - 6:59 PM
+  if (hour >= 19 || hour < 5) return "night";    // 7 PM - 4:59 AM
+  return "dawn";                                 // 5 AM - 5:59 AM
+};
+
 export default function MapboxMap({
   nodes,
   complaints,
@@ -51,7 +59,7 @@ export default function MapboxMap({
   const mapContainerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<mapboxgl.Map | null>(null);
   const markersRef = useRef<Record<string, mapboxgl.Marker>>({});
-  const [mapStyle, setMapStyle] = useState<"streets" | "satellite" | "dark">("streets");
+  const [mapStyle, setMapStyle] = useState<"streets" | "satellite" | "dark" | "standard">("streets");
   const [show3D, setShow3D] = useState(true);
   const [hoveredComplaintId, setHoveredComplaintId] = useState<string | null>(null);
   const [hoveredNodeId, setHoveredNodeId] = useState<string | null>(null);
@@ -60,11 +68,13 @@ export default function MapboxMap({
 
   const nodesRef = useRef(nodes);
   const complaintsRef = useRef(complaints);
+  const mapStyleRef = useRef(mapStyle);
 
   useEffect(() => {
     nodesRef.current = nodes;
     complaintsRef.current = complaints;
-  }, [nodes, complaints]);
+    mapStyleRef.current = mapStyle;
+  }, [nodes, complaints, mapStyle]);
 
   const getValidComplaints = (list: typeof complaints) => {
     return list.filter(c => 
@@ -123,54 +133,65 @@ export default function MapboxMap({
 
     // Re-add layers when style loads/changes
     map.on("style.load", () => {
-      // --- 1. 3D Terrain & Elevation ---
-      if (!map.getSource("mapbox-dem")) {
-        map.addSource("mapbox-dem", {
-          type: "raster-dem",
-          url: "mapbox://mapbox.mapbox-terrain-dem-v1",
-          tileSize: 512,
-          maxzoom: 14,
-        });
-        if (show3D) {
-          map.setTerrain({ source: "mapbox-dem", exaggeration: 1.2 });
+      // If it's Mapbox Standard style, handle 3D objects and terrain natively via config properties
+      if (mapStyleRef.current === "standard") {
+        try {
+          map.setConfigProperty("basemap", "show3dObjects", show3D);
+          map.setConfigProperty("basemap", "showTerrain", show3D);
+          map.setConfigProperty("basemap", "lightPreset", getLightPresetForTime());
+        } catch (e) {
+          console.warn("Failed to set Mapbox Standard config properties:", e);
         }
-      }
-
-      // --- 2. 3D Building Extrusions ---
-      if (!map.getLayer("3d-buildings")) {
-        map.addLayer({
-          id: "3d-buildings",
-          source: "composite",
-          "source-layer": "building",
-          filter: ["==", "extrude", "true"],
-          type: "fill-extrusion",
-          minzoom: 15,
-          layout: {
-            "visibility": show3D ? "visible" : "none"
-          },
-          paint: {
-            "fill-extrusion-color": mapStyle === "dark" ? "#1e293b" : "#cbd5e1",
-            "fill-extrusion-height": [
-              "interpolate",
-              ["linear"],
-              ["zoom"],
-              15,
-              0,
-              15.05,
-              ["get", "height"]
-            ],
-            "fill-extrusion-base": [
-              "interpolate",
-              ["linear"],
-              ["zoom"],
-              15,
-              0,
-              15.05,
-              ["get", "min_height"]
-            ],
-            "fill-extrusion-opacity": 0.55
+      } else {
+        // --- 1. 3D Terrain & Elevation ---
+        if (!map.getSource("mapbox-dem")) {
+          map.addSource("mapbox-dem", {
+            type: "raster-dem",
+            url: "mapbox://mapbox.mapbox-terrain-dem-v1",
+            tileSize: 512,
+            maxzoom: 14,
+          });
+          if (show3D) {
+            map.setTerrain({ source: "mapbox-dem", exaggeration: 1.2 });
           }
-        });
+        }
+
+        // --- 2. 3D Building Extrusions ---
+        if (map.getSource("composite") && !map.getLayer("3d-buildings")) {
+          map.addLayer({
+            id: "3d-buildings",
+            source: "composite",
+            "source-layer": "building",
+            filter: ["==", "extrude", "true"],
+            type: "fill-extrusion",
+            minzoom: 15,
+            layout: {
+              "visibility": show3D ? "visible" : "none"
+            },
+            paint: {
+              "fill-extrusion-color": mapStyleRef.current === "dark" ? "#1e293b" : "#cbd5e1",
+              "fill-extrusion-height": [
+                "interpolate",
+                ["linear"],
+                ["zoom"],
+                15,
+                0,
+                15.05,
+                ["get", "height"]
+              ],
+              "fill-extrusion-base": [
+                "interpolate",
+                ["linear"],
+                ["zoom"],
+                15,
+                0,
+                15.05,
+                ["get", "min_height"]
+              ],
+              "fill-extrusion-opacity": 0.55
+            }
+          });
+        }
       }
 
       // --- 3. Complaints Cluster Layers ---
@@ -536,6 +557,7 @@ export default function MapboxMap({
     if (map) {
       if (mapStyle === "streets") map.setStyle("mapbox://styles/mapbox/streets-v12");
       else if (mapStyle === "satellite") map.setStyle("mapbox://styles/mapbox/satellite-streets-v12");
+      else if (mapStyle === "standard") map.setStyle("mapbox://styles/mapbox/standard");
       else map.setStyle("mapbox://styles/mapbox/dark-v11");
     }
   }, [mapStyle]);
@@ -546,18 +568,28 @@ export default function MapboxMap({
     if (!map) return;
 
     const update3DState = () => {
-      // 1. Terrain Mesh
-      if (map.getSource("mapbox-dem")) {
-        if (show3D) {
-          map.setTerrain({ source: "mapbox-dem", exaggeration: 1.2 });
-        } else {
-          map.setTerrain(null);
+      if (mapStyleRef.current === "standard") {
+        try {
+          map.setConfigProperty("basemap", "show3dObjects", show3D);
+          map.setConfigProperty("basemap", "showTerrain", show3D);
+          map.setConfigProperty("basemap", "lightPreset", getLightPresetForTime());
+        } catch (e) {
+          console.warn("Failed to set Mapbox Standard config properties:", e);
         }
-      }
+      } else {
+        // 1. Terrain Mesh
+        if (map.getSource("mapbox-dem")) {
+          if (show3D) {
+            map.setTerrain({ source: "mapbox-dem", exaggeration: 1.2 });
+          } else {
+            map.setTerrain(null);
+          }
+        }
 
-      // 2. Building Extrusions Layer
-      if (map.getLayer("3d-buildings")) {
-        map.setLayoutProperty("3d-buildings", "visibility", show3D ? "visible" : "none");
+        // 2. Building Extrusions Layer
+        if (map.getLayer("3d-buildings")) {
+          map.setLayoutProperty("3d-buildings", "visibility", show3D ? "visible" : "none");
+        }
       }
     };
 
@@ -810,7 +842,7 @@ export default function MapboxMap({
       {/* Floating Style & 3D Switcher */}
       <div className="absolute top-4 left-4 z-10 flex gap-2">
         <div className="bg-slate-900/90 border border-slate-700/60 rounded-xl p-1.5 flex gap-1 shadow-lg backdrop-blur-md">
-          {(["streets", "satellite", "dark"] as const).map((style) => (
+          {(["streets", "satellite", "dark", "standard"] as const).map((style) => (
             <button
               key={style}
               type="button"
