@@ -603,7 +603,7 @@ export default function AnalyticsSection({
           )}
 
           <div className="pt-2 flex justify-between items-center text-[9px] font-mono text-slate-400">
-            <span>Powered by Google Gemini 3.1 Flash Lite API</span>
+            <span>Powered by Google Gemini 3.5 Flash Lite API</span>
             <span>Real-time cross-validation active</span>
           </div>
         </div>

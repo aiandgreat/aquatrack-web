@@ -22,11 +22,11 @@ export async function POST(req: Request) {
 
     // Configure Gemini model using Vercel AI SDK custom provider
     const googleProvider = createGoogle({ apiKey });
-    const model = googleProvider("gemini-3.1-flash-lite");
+    const model = googleProvider("gemini-3.5-flash-lite");
 
     const { text: aiResponse } = await generateText({
       model,
-      temperature: 0.1,
+      temperature: 0.0,
       prompt: `You are an AI engineer for a municipal water district. Analyze this citizen complaint: "${text}".
       
       Instruction: The report may be written in English, Tagalog, Taglish, or Kapampangan dialect. Use this Kapampangan translation guide to translate accurately to English:

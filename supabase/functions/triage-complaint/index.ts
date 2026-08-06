@@ -66,7 +66,7 @@ serve(async (req) => {
     Translate the report to English, capturing all details including water discoloration, flow, and duration. Classify category (PIPELINE_BREACH_PRESSURE_DROP, HIGH_TURBIDITY, HIGH_MINERAL_CONTENT_TDS, CHEMICAL_DISCOLORATION_CONTAMINATION, UNCLASSIFIED_INFRASTRUCTURE_ANOMALY) and urgency (LOW, MEDIUM, HIGH, CRITICAL). Summarize in one sentence.`;
     
     // Call Gemini API (Structured JSON output)
-    const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.1-flash-lite:generateContent?key=${GEMINI_API_KEY}`;
+    const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.5-flash-lite:generateContent?key=${GEMINI_API_KEY}`;
     const aiResponse = await fetch(geminiUrl, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -74,7 +74,7 @@ serve(async (req) => {
         contents: [{ parts: [{ text: `${systemPrompt}\nReport: "${complaint.rawText}"\nNearby Sensor: ${contextNode ? JSON.stringify(contextNode) : "None"}` }] }],
         generationConfig: {
           responseMimeType: "application/json",
-          temperature: 0.1,
+          temperature: 0.0,
           maxOutputTokens: 2048,
           responseSchema: {
             type: "OBJECT",

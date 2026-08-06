@@ -24,6 +24,8 @@ import AnnouncementsSection from "./admin-sections/AnnouncementsSection";
 import ConfigSection from "./admin-sections/ConfigSection";
 import MapPreviewModal from "../../components/MapPreviewModal";
 
+
+
 interface User {
   id: string;
   name: string;
@@ -487,9 +489,22 @@ export default function DashboardAdmin({
         )
         .subscribe();
 
+      const usersChannel = client
+        .channel("admin-users-realtime")
+        .on(
+          "postgres_changes",
+          { event: "UPDATE", schema: "public", table: "User" },
+          (payload) => {
+            console.log("Realtime user profile update received:", payload);
+            fetchUsers(); // Re-fetch users to update live locations!
+          }
+        )
+        .subscribe();
+
       return () => {
         client.removeChannel(channel);
         client.removeChannel(readingsChannel);
+        client.removeChannel(usersChannel);
       };
     } catch (err) {
       console.error("Failed to setup realtime subscriptions:", err);

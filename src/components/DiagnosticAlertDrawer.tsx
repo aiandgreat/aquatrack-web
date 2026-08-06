@@ -2,6 +2,15 @@
 
 import React, { useState } from "react";
 import { sortCrewsByProximity } from "../lib/spatial-sorting";
+import { 
+  AlertTriangle, 
+  Activity, 
+  MapPin, 
+  CheckCircle2, 
+  ClipboardList, 
+  Navigation,
+  Compass
+} from "lucide-react";
 
 interface Alert {
   id: string;
@@ -35,92 +44,91 @@ export default function DiagnosticAlertDrawer({ alert, crews, onDispatch }: Diag
   const handleDispatch = (crewId: string) => {
     setDispatchingId(crewId);
     onDispatch(crewId);
-    // Reset state after a brief mock delay if needed, or let parent component handle state changes
     setTimeout(() => {
       setDispatchingId(null);
     }, 1500);
   };
 
   return (
-    <div className="relative overflow-hidden rounded-xl border border-slate-800 bg-slate-950/95 p-5 text-slate-100 shadow-2xl backdrop-blur-md">
-      {/* Decorative top pulse light bar */}
-      <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-red-500 via-amber-500 to-cyan-500" />
+    <div className="relative overflow-hidden rounded-2xl border border-slate-200/80 dark:border-slate-800/80 bg-white dark:bg-slate-950 p-5 text-slate-800 dark:text-slate-100 shadow-md backdrop-blur-md">
+      {/* Decorative top pulse brand accent bar */}
+      <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-[#0B2E7A] via-[#00aeef] to-emerald-500" />
 
       {/* Header */}
       <div className="flex items-start justify-between">
         <div>
           <div className="flex items-center space-x-2">
             <span className="relative flex h-2 w-2">
-              <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-red-400 opacity-75"></span>
-              <span className="relative inline-flex h-2 w-2 rounded-full bg-red-500"></span>
+              <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-rose-400 opacity-75"></span>
+              <span className="relative inline-flex h-2 w-2 rounded-full bg-rose-500"></span>
             </span>
-            <span className="text-[10px] font-bold uppercase tracking-wider text-red-400">
-              AI Diagnostic Analysis
+            <span className="text-[10px] font-black uppercase tracking-wider text-rose-600 dark:text-rose-400 flex items-center gap-1">
+              <AlertTriangle className="w-3 h-3" />
+              Diagnostic Analysis
             </span>
           </div>
-          <h3 className="mt-1 text-lg font-extrabold tracking-tight text-white">
-            Root-Cause Report
+          <h3 className="mt-1.5 text-base font-black tracking-tight text-[#001e66] dark:text-slate-100">
+            Root-Cause Diagnostic Report
           </h3>
-          <p className="text-xs text-slate-400 mt-0.5">
-            Node: <span className="font-semibold text-slate-200">{alert.node.name}</span>
+          <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
+            Sensor Node: <span className="font-bold text-[#00aeef]">{alert.node.name}</span>
           </p>
         </div>
       </div>
 
       {/* Probable Cause Card */}
-      <div className="mt-4 rounded-lg border border-red-950 bg-red-950/20 p-3.5">
+      <div className="mt-5 rounded-xl border border-rose-100 dark:border-rose-950/40 bg-rose-50/30 dark:bg-rose-950/10 p-4">
         <div className="flex items-center justify-between">
-          <span className="text-xs font-semibold text-red-300">Probable Root Cause</span>
-          <span className="inline-flex items-center rounded-md bg-red-950/80 px-2 py-0.5 text-xs font-bold text-red-400 border border-red-900/50">
+          <span className="text-xs font-black uppercase tracking-wider text-rose-800 dark:text-rose-300 flex items-center gap-1.5">
+            <Activity className="w-3.5 h-3.5 text-rose-600" />
+            Probable Root Cause
+          </span>
+          <span className="inline-flex items-center rounded-lg bg-white dark:bg-slate-900 px-2.5 py-1 text-[10px] font-black text-rose-700 dark:text-rose-400 border border-rose-200 dark:border-rose-900/50 shadow-sm">
             Confidence: {alert.geminiAnalysis.confidenceScore}%
           </span>
         </div>
-        <p className="mt-2 text-sm leading-relaxed text-slate-200">
+        <p className="mt-3 text-xs leading-relaxed text-slate-700 dark:text-slate-200 font-medium">
           {alert.geminiAnalysis.probableRootCause}
         </p>
-        {/* Simple visual score bar */}
-        <div className="mt-3 h-1.5 w-full rounded-full bg-slate-900 overflow-hidden">
+        
+        {/* Visual score slider track */}
+        <div className="mt-4 h-2 w-full rounded-full bg-slate-100 dark:bg-slate-900 overflow-hidden shadow-inner">
           <div
-            className="h-full rounded-full bg-gradient-to-r from-red-500 to-rose-500 transition-all duration-500"
+            className="h-full rounded-full bg-gradient-to-r from-rose-500 to-[#00aeef] transition-all duration-700"
             style={{ width: `${alert.geminiAnalysis.confidenceScore}%` }}
           />
         </div>
       </div>
 
       {/* Recommended Action Card */}
-      <div className="mt-4 rounded-lg border border-slate-800 bg-slate-900/50 p-3.5">
-        <div className="flex items-center space-x-1.5 text-xs font-semibold text-cyan-400">
-          <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01" />
-          </svg>
-          <span>Recommended AI Action</span>
+      <div className="mt-4 rounded-xl border border-slate-100 dark:border-slate-800/80 bg-slate-50/50 dark:bg-slate-900/40 p-4">
+        <div className="flex items-center space-x-1.5 text-xs font-black uppercase tracking-wider text-[#001e66] dark:text-[#00aeef]">
+          <ClipboardList className="w-4 h-4 text-[#00aeef]" />
+          <span>Recommended Action</span>
         </div>
-        <p className="mt-2 text-xs leading-relaxed text-slate-300 italic">
+        <p className="mt-3 text-xs leading-relaxed text-slate-650 dark:text-slate-300 italic font-medium pl-2.5 border-l-2 border-slate-300 dark:border-slate-700">
           "{alert.geminiAnalysis.recommendedAction}"
         </p>
       </div>
 
       {/* Crew Proximity Dispatcher */}
-      <div className="mt-5 border-t border-slate-800 pt-4">
-        <div className="flex items-center justify-between mb-3">
+      <div className="mt-6 border-t border-slate-100 dark:border-slate-800 pt-5">
+        <div className="flex items-center justify-between mb-4">
           <div className="flex items-center space-x-1.5">
-            <svg className="h-4 w-4 text-emerald-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
-            </svg>
-            <span className="text-xs font-bold uppercase tracking-wider text-slate-400">
+            <Compass className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
+            <span className="text-xs font-black uppercase tracking-wider text-slate-500 dark:text-slate-400">
               Technician Proximity Dispatcher
             </span>
           </div>
-          <span className="text-[10px] text-slate-500 font-medium">Sorted by distance</span>
+          <span className="text-[9px] font-black uppercase tracking-widest text-slate-400">Sorted by distance</span>
         </div>
 
         {sortedCrews.length === 0 ? (
-          <div className="rounded-lg border border-dashed border-slate-800 bg-slate-900/20 py-6 text-center text-xs text-slate-500">
+          <div className="rounded-xl border border-dashed border-slate-200 dark:border-slate-800 bg-slate-50/30 dark:bg-slate-900/10 py-8 text-center text-xs text-slate-450 dark:text-slate-550 italic">
             No active technicians found nearby.
           </div>
         ) : (
-          <div className="max-h-56 overflow-y-auto space-y-2 pr-1 scrollbar-thin scrollbar-thumb-slate-800 scrollbar-track-transparent">
+          <div className="max-h-60 overflow-y-auto space-y-2.5 pr-1 scrollbar-thin scrollbar-thumb-slate-200 dark:scrollbar-thumb-slate-800 scrollbar-track-transparent">
             {sortedCrews.map((crew) => {
               const distanceKm = crew.distance / 1000;
               const isDispatching = dispatchingId === crew.id;
@@ -128,17 +136,17 @@ export default function DiagnosticAlertDrawer({ alert, crews, onDispatch }: Diag
               return (
                 <div
                   key={crew.id}
-                  className="flex items-center justify-between rounded-lg border border-slate-800/80 bg-slate-900/40 p-2.5 transition-all duration-200 hover:border-slate-700 hover:bg-slate-900/60"
+                  className="flex items-center justify-between rounded-xl border border-slate-100 dark:border-slate-800/80 bg-slate-50/20 dark:bg-slate-900/20 p-3 transition-all duration-200 hover:border-slate-200 dark:hover:border-slate-700 hover:bg-slate-50/50 dark:hover:bg-slate-900/40 shadow-sm"
                 >
                   <div className="min-w-0 flex-1 pr-2">
-                    <p className="truncate text-xs font-bold text-slate-200">
+                    <p className="truncate text-xs font-black text-slate-750 dark:text-slate-200">
                       {crew.name}
                     </p>
-                    <div className="flex items-center space-x-1.5 mt-0.5">
-                      <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
-                      <span className="text-[10px] font-mono text-slate-400">
+                    <div className="flex items-center space-x-1.5 mt-1">
+                      <MapPin className="w-3.5 h-3.5 text-emerald-500 shrink-0" />
+                      <span className="text-[10px] font-mono font-bold text-slate-500 dark:text-slate-400">
                         {distanceKm < 1 
-                          ? `${crew.distance.toFixed(0)} m` 
+                          ? `${crew.distance.toFixed(0)} meters` 
                           : `${distanceKm.toFixed(2)} km`} away
                       </span>
                     </div>
@@ -146,15 +154,15 @@ export default function DiagnosticAlertDrawer({ alert, crews, onDispatch }: Diag
                   <button
                     onClick={() => handleDispatch(crew.id)}
                     disabled={isDispatching}
-                    className={`ml-2 inline-flex items-center justify-center rounded-md px-3 py-1.5 text-xs font-extrabold transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:ring-offset-2 focus:ring-offset-slate-950 cursor-pointer ${
+                    className={`ml-3 inline-flex items-center justify-center rounded-xl px-4 py-2 text-xs font-black uppercase tracking-wider transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-[#00aeef] focus:ring-offset-2 active:scale-95 cursor-pointer shadow-sm ${
                       isDispatching
-                        ? "bg-slate-800 text-slate-400 cursor-not-allowed"
-                        : "bg-cyan-500 hover:bg-cyan-400 hover:scale-105 active:scale-95 text-slate-950"
+                        ? "bg-slate-100 dark:bg-slate-800 text-slate-400 cursor-not-allowed border border-slate-200 dark:border-slate-700"
+                        : "bg-[#0B2E7A] hover:bg-[#00aeef] text-white active:bg-[#0B2E7A]"
                     }`}
                   >
                     {isDispatching ? (
-                      <span className="flex items-center space-x-1">
-                        <svg className="animate-spin h-3 w-3 text-slate-400" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                      <span className="flex items-center space-x-1.5">
+                        <svg className="animate-spin h-3.5 w-3.5 text-slate-400" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
                           <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
                           <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                         </svg>

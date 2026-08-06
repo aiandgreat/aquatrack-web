@@ -244,7 +244,7 @@ npm start
 - **Interactive Map Popups & HUD Overlay**: Configured a `🗺️ View Map` action button on the complaints logs to switch tabs and fly coordinates. Complaints pins are equipped with Mapbox Popups and detailed HUD overlay cards listing resident names, water service account numbers, barangay, and problem descriptions.
 - **Fluid & Scrollable Viewports**: Removed rigid viewport height locks (`h-screen overflow-hidden`) from all dashboards (admin, sub-admin, and client portals), replacing them with responsive grids and layouts that support natural document scrolling.
 - **Dynamic Heatmaps & Pulse Overlays**: Integrated a native Mapbox GL Heatmap density layer with category-colored pulsing indicators matching issue classifications.
-- **Gemini Barangay Summarizer & AI Triage**: Leveraged `gemini-3.1-flash-lite` for both high-speed threat assessments and automated report classification, optimized with regional dialect instructions (Tagalog, Taglish, Kapampangan) for high translation accuracy, backed by Upstash Redis caching.
+- **Gemini Barangay Summarizer & AI Triage**: Leveraged `gemini-3.5-flash-lite` for both high-speed threat assessments and automated report classification, optimized with regional dialect instructions (Tagalog, Taglish, Kapampangan) for high translation accuracy, backed by Upstash Redis caching.
 - **Anti-Flicker Marker Physics**: Wrapped Mapbox pins in stationary transparent hitboxes (`w-9 h-9`) to resolve boundary scaling glitches and hover flickering during map zooming/panning.
 - **Supabase Real-Time Broadcasts**: Connected Web socket subscription listeners across the Admin, Sub-Admin, and Resident client portals to push database modifications instantly.
 - **Unified Font Stack**: Loaded Plus Jakarta Sans (for body text and titles) and Geist Mono (for IDs, emails, timestamps, and coordinates) into Tailwind CSS v4 `@theme` layouts.
@@ -256,7 +256,7 @@ npm start
 - **Cinematic Curtain-Split Splash Screen**: Added a light-themed curtain-split splash animation to the root landing page (`/`). Features a 20% opacity map of San Fernando blending with a `bg-slate-50` background, a centered colored logo, and branded blue/azure typography, which splits vertically down the middle to reveal the home content.
 - **Premium Glassmorphism & High-Fidelity UI Elements**: Applied a unified glassmorphic theme system across all administrative and consumer components (`bg-white/40 border border-slate-200/80 backdrop-blur-md shadow-sm`). Inputs, drop-downs, and location badges feature custom-focused glow borders and transition animations.
 - **Water Analytics Recharts & SVG Overhaul**: Built a dual-axis Recharts timeline graph (pH/Turbidity on left axis, TDS on right axis) to prevent scaling flattening, alongside stacked barangay classifications, a scrollable barangay status feed ledger, and a mathematically calculated custom SVG Donut chart with spring-physics hover displacement.
-- **Gemini AI System Summary Engine**: Integrated an automated system narrative generator at the bottom of the analytics dashboard, powered by the `gemini-3.1-flash-lite` model, and cached in Upstash Redis to generate human-readable operations briefings.
+- **Gemini AI System Summary Engine**: Integrated an automated system narrative generator at the bottom of the analytics dashboard, powered by the `gemini-3.5-flash-lite` model, and cached in Upstash Redis to generate human-readable operations briefings.
 - **Multipage Compliance PDF Compiler**: Overhauled the downloadable compliance documentation (`pdf-generator.ts`) to mirror the new Analytics dashboard. Incorporates the executive AI summary cards, hotspot stats, and node logs populated with realistic parameter variations.
 - **Database Connection Singleton Pattern**: Resolved `Connection terminated unexpectedly` errors by establishing a thread-safe global connection cache (`prisma.ts`) in the application utilities. Caps connection limits and idle timeouts per pool.
 - **Auth Session & Role Caching**: Reduced checking-session loading states and login redirect delays by caching user profiles in Upstash Redis (2-hour TTL), reducing auth routing latency to `<10ms`.
@@ -434,7 +434,7 @@ Results are ordered by `distance_meters ASC`.
 **Processing flow**:
 
 1. **Parallel fetch**: Simultaneously fetches the complaint from `Complaint` and calls `find_nearby_anomalies()` RPC to get the closest sensor evidence node.
-2. **Gemini AI triage** (`gemini-3.1-flash-lite`, structured JSON schema):
+2. **Gemini AI triage** (`gemini-3.5-flash-lite`, structured JSON schema):
    - Translates the report from English / Tagalog / Taglish / **Kapampangan** to English
    - Classifies `category` (5 `IssueCategory` enums) and `urgency` (LOW / MEDIUM / HIGH / CRITICAL)
    - Generates a one-sentence `summary`, `probableRootCause`, `confidenceScore`, and `recommendedAction`

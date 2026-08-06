@@ -169,37 +169,60 @@ export default function MapSection({
           <div className="flex-1 flex flex-col justify-between min-h-0">
             <div className="space-y-2">
               <h3 className="text-xxs font-black uppercase tracking-widest text-slate-400 flex items-center gap-1.5 mb-3">
-                <Cpu className="w-3.5 h-3.5 text-orange-500 shrink-0" />
+                <Cpu className="w-3.5 h-3.5 text-blue-500 shrink-0" />
                 <span>Telemetry Nodes</span>
               </h3>
               
               <div className="space-y-2 overflow-y-auto max-h-[220px] pr-1">
-                {displayedNodes.map((node) => (
-                  <div
-                    key={node.id}
-                    onClick={() => setSelectedNodeId(node.id === selectedNodeId ? null : node.id)}
-                    className={`p-3 rounded-xl border text-xs cursor-pointer transition-all flex items-start gap-2.5 ${
-                      selectedNodeId === node.id
-                        ? "bg-orange-50/70 border-orange-400 text-[#001e66] shadow-sm"
-                        : "bg-white border-slate-200 hover:border-orange-300 text-slate-700"
-                    }`}
-                  >
-                    <Cpu className={`w-3.5 h-3.5 mt-0.5 shrink-0 ${
-                      selectedNodeId === node.id ? "text-orange-600 animate-pulse" : "text-orange-400"
-                    }`} />
-                    <div className="flex-1 min-w-0">
-                      <div className="flex justify-between items-center font-bold gap-2">
-                        <span className="truncate">{node.name}</span>
-                        <span className={`text-[8px] font-black uppercase px-1.5 py-0.5 rounded shrink-0 ${
-                          node.status === "ONLINE" ? "bg-emerald-100 text-emerald-800" : "bg-rose-100 text-rose-800"
-                        }`}>
-                          {node.status}
-                        </span>
+                {displayedNodes.map((node) => {
+                  const isSelected = selectedNodeId === node.id;
+                  
+                  // Dynamically resolve theme colors based on node status
+                  let themeClass = {
+                    card: isSelected
+                      ? "bg-emerald-50/70 border-emerald-400 text-[#001e66] shadow-sm"
+                      : "bg-white border-slate-200 hover:border-emerald-300 text-slate-700",
+                    icon: isSelected ? "text-emerald-600 animate-pulse" : "text-emerald-400",
+                    badge: "bg-emerald-100 text-emerald-800 border border-emerald-200"
+                  };
+                  
+                  if (node.status === "MAINTENANCE") {
+                    themeClass = {
+                      card: isSelected
+                        ? "bg-amber-50/70 border-amber-400 text-[#001e66] shadow-sm"
+                        : "bg-white border-slate-200 hover:border-amber-300 text-slate-700",
+                      icon: isSelected ? "text-amber-600 animate-pulse" : "text-amber-400",
+                      badge: "bg-amber-100 text-amber-800 border border-amber-200"
+                    };
+                  } else if (node.status === "OFFLINE") {
+                    themeClass = {
+                      card: isSelected
+                        ? "bg-rose-50/70 border-rose-400 text-[#001e66] shadow-sm"
+                        : "bg-white border-slate-200 hover:border-rose-300 text-slate-700",
+                      icon: isSelected ? "text-rose-600 animate-pulse" : "text-rose-400",
+                      badge: "bg-rose-100 text-rose-800 border border-rose-200"
+                    };
+                  }
+
+                  return (
+                    <div
+                      key={node.id}
+                      onClick={() => setSelectedNodeId(isSelected ? null : node.id)}
+                      className={`p-3 rounded-xl border text-xs cursor-pointer transition-all flex items-start gap-2.5 ${themeClass.card}`}
+                    >
+                      <Cpu className={`w-3.5 h-3.5 mt-0.5 shrink-0 ${themeClass.icon}`} />
+                      <div className="flex-1 min-w-0">
+                        <div className="flex justify-between items-center font-bold gap-2">
+                          <span className="truncate">{node.name}</span>
+                          <span className={`text-[8px] font-black uppercase px-1.5 py-0.5 rounded shrink-0 ${themeClass.badge}`}>
+                            {node.status}
+                          </span>
+                        </div>
+                        <p className="text-[9px] font-mono text-slate-500 mt-1 select-all truncate">{getUniqueNodeId(node.id)}</p>
                       </div>
-                      <p className="text-[9px] font-mono text-slate-500 mt-1 select-all truncate">{getUniqueNodeId(node.id)}</p>
                     </div>
-                  </div>
-                ))}
+                  );
+                })}
                 
                 {nodes.length === 0 && (
                   <div className="p-4 text-center text-slate-400 text-xs italic bg-white border border-slate-100 rounded-xl">

@@ -59,7 +59,7 @@ export async function GET(req: Request) {
       }
 
       const googleProvider = createGoogle({ apiKey });
-      const model = googleProvider("gemini-3.1-flash-lite");
+      const model = googleProvider("gemini-3.5-flash-lite");
 
       const prompt = `You are a municipal utility analyst. Here is a list of citizen complaints for Barangay ${barangay} in San Fernando, Pampanga:
 ${complaints.map((c, i) => `${i + 1}. [Urgency: ${c.urgency}, Category: ${c.category}] "${c.rawText}"`).join("\n")}
@@ -73,6 +73,7 @@ Based on the complaints list, return ONLY a raw JSON object matching this schema
       const { text: aiResponse } = await generateText({
         model,
         prompt,
+        temperature: 0.0,
       });
 
       const cleanJson = aiResponse.replace(/```json|```/g, "").trim();

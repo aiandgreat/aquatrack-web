@@ -18,7 +18,7 @@ export async function POST(req: Request) {
     };
 
     try {
-      const cached = await redis.get<{ role: string; name: string; email?: string; phone?: string | null; address?: string | null; serviceAccountNo?: string | null }>(cacheKey);
+      const cached = await redis.get<{ role: string; name: string; email?: string; phone?: string | null; address?: string | null; serviceAccountNo?: string | null; latitude?: number | null; longitude?: number | null }>(cacheKey);
       if (cached?.role) {
         return NextResponse.json({
           role: cached.role,
@@ -27,6 +27,8 @@ export async function POST(req: Request) {
           phone: cached.phone,
           address: cached.address,
           serviceAccountNo: cached.serviceAccountNo,
+          latitude: cached.latitude || null,
+          longitude: cached.longitude || null,
           cached: true
         }, { headers: responseHeaders });
       }
@@ -37,7 +39,7 @@ export async function POST(req: Request) {
     // 2. Fallback to PostgreSQL database query
     const user = await prisma.user.findUnique({
       where: { id: userId },
-      select: { id: true, name: true, email: true, role: true, phone: true, address: true, serviceAccountNo: true },
+      select: { id: true, name: true, email: true, role: true, phone: true, address: true, serviceAccountNo: true, latitude: true, longitude: true },
     });
 
     if (!user) {
@@ -52,7 +54,9 @@ export async function POST(req: Request) {
         email: user.email,
         phone: user.phone,
         address: user.address,
-        serviceAccountNo: user.serviceAccountNo
+        serviceAccountNo: user.serviceAccountNo,
+        latitude: user.latitude,
+        longitude: user.longitude
       }, { ex: 7200 });
     } catch (redisErr) {
       console.warn("Redis cache write failed in profile api:", redisErr);
@@ -65,6 +69,8 @@ export async function POST(req: Request) {
       phone: user.phone, 
       address: user.address,
       serviceAccountNo: user.serviceAccountNo, 
+      latitude: user.latitude,
+      longitude: user.longitude,
       cached: false 
     }, { headers: responseHeaders });
   } catch (error: any) {

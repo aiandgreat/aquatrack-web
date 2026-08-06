@@ -1,6 +1,25 @@
 import React, { useState } from "react";
 import DiagnosticAlertDrawer from "../../../components/DiagnosticAlertDrawer";
-import { BarChart3, Newspaper, Megaphone, Zap, Calendar } from "lucide-react";
+import { 
+  BarChart3, 
+  Newspaper, 
+  Megaphone, 
+  Zap, 
+  Calendar,
+  Activity,
+  Cpu,
+  User,
+  FileText,
+  Globe,
+  MapPin,
+  ChevronLeft,
+  ChevronRight,
+  TrendingUp,
+  AlertTriangle,
+  ArrowRight,
+  Sparkles,
+  Inbox
+} from "lucide-react";
 
 interface DashboardStats {
   totalUsers: number;
@@ -88,7 +107,7 @@ export default function HomeSection({
         return { month: monthAbbr, day };
       }
     } catch (e) {
-      // Fallback parsing failed
+      // Fallback
     }
     return { month: "EVT", day: "•" };
   };
@@ -102,17 +121,17 @@ export default function HomeSection({
       description: ad.text,
       tag: ad.targetRole === "consumers" ? "CONSUMERS" : ad.targetRole === "technicians" ? "STAFF" : "PUBLIC",
     }))
-    .slice(0, 2); // Display only the latest 2 news items
+    .slice(0, 2);
 
   const eventsList = advisories
     .filter((ad) => ad.type === "event")
     .map((ad, idx) => {
       const { month, day } = parseEventDate(ad.date);
       const color = [
-        "bg-purple-100 text-purple-700",
-        "bg-indigo-100 text-indigo-700",
-        "bg-blue-100 text-blue-700",
-        "bg-pink-100 text-pink-700",
+        "bg-purple-100 text-purple-700 dark:bg-purple-950/40 dark:text-purple-300 border border-purple-200 dark:border-purple-900/40",
+        "bg-indigo-100 text-indigo-700 dark:bg-indigo-950/40 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-900/40",
+        "bg-blue-100 text-blue-700 dark:bg-blue-950/40 dark:text-blue-300 border border-blue-200 dark:border-blue-900/40",
+        "bg-pink-100 text-pink-700 dark:bg-pink-950/40 dark:text-pink-300 border border-pink-200 dark:border-pink-900/40",
       ][idx % 4];
       return {
         id: ad.id,
@@ -124,84 +143,91 @@ export default function HomeSection({
       };
     });
 
-  // Calculate offline nodes, critical urgency complaints, and warning advisories
   const offlineNodes = nodes.filter((n) => n.status === "OFFLINE");
   const criticalComplaints = complaints.filter(
     (c) => c.status !== "RESOLVED" && c.urgency === "CRITICAL"
   );
   const warningAdvisories = advisories.filter((ad) => ad.type === "warning");
-  const hasAlerts = offlineNodes.length > 0 || criticalComplaints.length > 0 || warningAdvisories.length > 0;
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 font-sans">
       {/* Executive Welcome Banner with Clickable Summary Cards */}
-      <div className="bg-[#063A8C] rounded-[17px] min-h-[220px] p-6 text-white flex flex-col justify-between shadow-md shadow-blue-950/20 relative overflow-hidden">
-        <div className="space-y-2 z-10 relative">
-          <div className="border border-cyan-300 text-cyan-200 text-[9px] font-mono font-bold tracking-wider px-2.5 py-1 rounded-full w-fit uppercase bg-white/5">
-            EXECUTIVE OPERATIONS COMMAND
+      <div className="bg-[#0B2E7A] dark:bg-[#001e66] rounded-[24px] min-h-[220px] p-6 text-white flex flex-col justify-between shadow-md relative overflow-hidden transition-all duration-300 border border-slate-100/10 dark:border-slate-800/40">
+        
+        {/* Decorative Wave Design */}
+        <div className="absolute inset-0 opacity-10 pointer-events-none z-0">
+          <svg className="w-full h-full" viewBox="0 0 100 100" preserveAspectRatio="none" xmlns="http://www.w3.org/2000/svg">
+            <path d="M0,45 Q25,35 50,45 T100,45 L100,100 L0,100 Z" fill="rgba(255,255,255,0.08)"></path>
+          </svg>
+        </div>
+
+        <div className="space-y-2 z-10 relative text-left">
+          <div className="border border-cyan-300/40 text-cyan-200 text-[9px] font-mono font-bold tracking-wider px-3 py-1 rounded-full w-fit uppercase bg-white/5 flex items-center gap-1.5">
+            <Sparkles className="w-3 h-3 text-[#00aeef]" />
+            Executive Operations Command
           </div>
-          <h2 className="text-2xl font-black tracking-tight text-white mt-3">
+          <h2 className="text-2xl font-black tracking-tight text-white mt-3.5">
             Hello, Admin Officer!
           </h2>
-          <p className="text-xs text-white/95 leading-relaxed max-w-[650px]">
+          <p className="text-xs text-slate-200 leading-relaxed max-w-[650px] font-medium opacity-90 mt-1">
             Executive management portal designed for supervising municipal water distribution networks, coordinating technical personnel, posting advisories, adjusting global AI triage strictness, and ensuring district-wide compliance with PNSDW standards.
           </p>
         </div>
 
         {/* Statistics Row */}
-        <div className="grid grid-cols-4 gap-4 mt-6 pt-4 border-t border-white/10 z-10 relative">
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-6 pt-5 border-t border-white/10 z-10 relative">
           <div
             onClick={() => setExpandedCard(expandedCard === "compliance" ? null : "compliance")}
-            className={`bg-white/10 border border-white/15 rounded-[13px] h-[52px] px-3 flex flex-col justify-center cursor-pointer hover:bg-white/20 select-none transition-all ${
+            className={`bg-white/10 border border-white/15 rounded-xl h-[58px] px-3.5 flex flex-col justify-center cursor-pointer hover:bg-white/20 select-none transition-all ${
               expandedCard === "compliance" ? "ring-2 ring-cyan-300 bg-white/20" : ""
             }`}
           >
-            <span className="text-[8px] font-mono tracking-wider text-cyan-200 uppercase leading-none">
+            <span className="text-[8px] font-mono font-bold tracking-wider text-cyan-200 uppercase leading-none">
               COMPLIANCE INDEX
             </span>
-            <span className="text-sm font-black mt-1 text-white leading-none">
+            <span className="text-sm font-black mt-1.5 text-white leading-none">
               {stats.complianceIndex}% PNSDW
             </span>
           </div>
 
           <div
             onClick={() => setExpandedCard(expandedCard === "sensors" ? null : "sensors")}
-            className={`bg-white/10 border border-white/15 rounded-[13px] h-[52px] px-3 flex flex-col justify-center cursor-pointer hover:bg-white/20 select-none transition-all ${
+            className={`bg-white/10 border border-white/15 rounded-xl h-[58px] px-3.5 flex flex-col justify-center cursor-pointer hover:bg-white/20 select-none transition-all ${
               expandedCard === "sensors" ? "ring-2 ring-cyan-300 bg-white/20" : ""
             }`}
           >
-            <span className="text-[8px] font-mono tracking-wider text-cyan-200 uppercase leading-none">
+            <span className="text-[8px] font-mono font-bold tracking-wider text-cyan-200 uppercase leading-none">
               ACTIVE IOT SENSORS
             </span>
-            <span className="text-sm font-black mt-1 text-white leading-none">
+            <span className="text-sm font-black mt-1.5 text-white leading-none">
               {stats.onlineNodes} / {stats.totalNodes} Online
             </span>
           </div>
 
           <div
             onClick={() => setExpandedCard(expandedCard === "reports" ? null : "reports")}
-            className={`bg-white/10 border border-white/15 rounded-[13px] h-[52px] px-3 flex flex-col justify-center cursor-pointer hover:bg-white/20 select-none transition-all ${
+            className={`bg-white/10 border border-white/15 rounded-xl h-[58px] px-3.5 flex flex-col justify-center cursor-pointer hover:bg-white/20 select-none transition-all ${
               expandedCard === "reports" ? "ring-2 ring-cyan-300 bg-white/20" : ""
             }`}
           >
-            <span className="text-[8px] font-mono tracking-wider text-cyan-200 uppercase leading-none">
+            <span className="text-[8px] font-mono font-bold tracking-wider text-cyan-200 uppercase leading-none">
               UNRESOLVED REPORTS
             </span>
-            <span className="text-sm font-black mt-1 text-white leading-none">
+            <span className="text-sm font-black mt-1.5 text-white leading-none">
               {stats.unresolvedComplaints} Pending
             </span>
           </div>
 
           <div
             onClick={() => setExpandedCard(expandedCard === "advisories" ? null : "advisories")}
-            className={`bg-white/10 border border-white/15 rounded-[13px] h-[52px] px-3 flex flex-col justify-center cursor-pointer hover:bg-white/20 select-none transition-all ${
+            className={`bg-white/10 border border-white/15 rounded-xl h-[58px] px-3.5 flex flex-col justify-center cursor-pointer hover:bg-white/20 select-none transition-all ${
               expandedCard === "advisories" ? "ring-2 ring-cyan-300 bg-white/20" : ""
             }`}
           >
-            <span className="text-[8px] font-mono tracking-wider text-cyan-200 uppercase leading-none">
+            <span className="text-[8px] font-mono font-bold tracking-wider text-cyan-200 uppercase leading-none">
               ADVISORIES LOGGED
             </span>
-            <span className="text-sm font-black mt-1 text-white leading-none">
+            <span className="text-sm font-black mt-1.5 text-white leading-none">
               {advisories.length} Active
             </span>
           </div>
@@ -210,70 +236,76 @@ export default function HomeSection({
 
       {/* Summary Card Expansion Drawer */}
       {expandedCard && (
-        <div className="bg-[#f8fafc] border border-slate-200 rounded-[17px] p-5 shadow-inner transition-all duration-300 relative">
+        <div className="bg-slate-50 dark:bg-slate-900/60 border border-slate-200 dark:border-slate-800 rounded-[20px] p-5 shadow-inner transition-all duration-300 relative">
           <button
             onClick={() => setExpandedCard(null)}
-            className="absolute top-4 right-4 text-slate-400 hover:text-slate-600 font-extrabold text-sm select-none"
+            className="absolute top-4 right-4 text-slate-400 hover:text-slate-650 dark:hover:text-slate-200 font-extrabold text-sm select-none"
           >
             ✕
           </button>
 
           {expandedCard === "compliance" && (
-            <div className="space-y-3">
-              <h4 className="text-xs font-black text-[#001e66] uppercase tracking-wider">Compliance Index Diagnostics</h4>
-              <p className="text-xs text-slate-500 font-medium">Target metrics specified by the Philippine National Standards for Drinking Water (PNSDW):</p>
+            <div className="space-y-3 text-left">
+              <h4 className="text-xs font-black text-[#001e66] dark:text-slate-100 uppercase tracking-wider flex items-center gap-1.5">
+                <TrendingUp className="w-4 h-4 text-[#00aeef]" />
+                Compliance Index Diagnostics
+              </h4>
+              <p className="text-xs text-slate-500 dark:text-slate-400 font-medium">Target metrics specified by the Philippine National Standards for Drinking Water (PNSDW):</p>
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 pt-2">
-                <div className="bg-white border border-slate-150 rounded-xl p-3 shadow-sm">
-                  <span className="text-[9px] font-black text-slate-400 uppercase tracking-wider">Avg pH</span>
-                  <div className="text-sm font-black text-[#001e66] mt-0.5">7.2 pH</div>
-                  <div className="w-full bg-slate-100 h-1.5 rounded-full mt-2 overflow-hidden">
+                <div className="bg-white dark:bg-slate-950 border border-slate-150 dark:border-slate-850 rounded-xl p-3 shadow-sm">
+                  <span className="text-[9px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-wider">Avg pH</span>
+                  <div className="text-sm font-black text-[#001e66] dark:text-slate-200 mt-0.5">7.2 pH</div>
+                  <div className="w-full bg-slate-100 dark:bg-slate-800 h-1.5 rounded-full mt-2 overflow-hidden">
                     <div className="bg-emerald-500 h-1.5 rounded-full" style={{ width: "75%" }}></div>
                   </div>
-                  <span className="text-[8px] text-slate-400 block mt-1 font-bold">Target: 6.5 - 8.5</span>
+                  <span className="text-[8px] text-slate-400 dark:text-slate-500 block mt-1 font-bold">Target: 6.5 - 8.5</span>
                 </div>
-                <div className="bg-white border border-slate-150 rounded-xl p-3 shadow-sm">
-                  <span className="text-[9px] font-black text-slate-400 uppercase tracking-wider">Avg Turbidity</span>
-                  <div className="text-sm font-black text-[#001e66] mt-0.5">1.8 NTU</div>
-                  <div className="w-full bg-slate-100 h-1.5 rounded-full mt-2 overflow-hidden">
+                <div className="bg-white dark:bg-slate-950 border border-slate-150 dark:border-slate-850 rounded-xl p-3 shadow-sm">
+                  <span className="text-[9px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-wider">Avg Turbidity</span>
+                  <div className="text-sm font-black text-[#001e66] dark:text-slate-200 mt-0.5">1.8 NTU</div>
+                  <div className="w-full bg-slate-100 dark:bg-slate-800 h-1.5 rounded-full mt-2 overflow-hidden">
                     <div className="bg-emerald-500 h-1.5 rounded-full" style={{ width: "36%" }}></div>
                   </div>
-                  <span className="text-[8px] text-slate-400 block mt-1 font-bold">Target: &lt; 5.0 NTU</span>
+                  <span className="text-[8px] text-slate-400 dark:text-slate-500 block mt-1 font-bold">Target: &lt; 5.0 NTU</span>
                 </div>
-                <div className="bg-white border border-slate-150 rounded-xl p-3 shadow-sm">
-                  <span className="text-[9px] font-black text-slate-400 uppercase tracking-wider">Avg TDS</span>
-                  <div className="text-sm font-black text-[#001e66] mt-0.5">240 ppm</div>
-                  <div className="w-full bg-slate-100 h-1.5 rounded-full mt-2 overflow-hidden">
+                <div className="bg-white dark:bg-slate-950 border border-slate-150 dark:border-slate-850 rounded-xl p-3 shadow-sm">
+                  <span className="text-[9px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-wider">Avg TDS</span>
+                  <div className="text-sm font-black text-[#001e66] dark:text-slate-200 mt-0.5">240 ppm</div>
+                  <div className="w-full bg-slate-100 dark:bg-slate-800 h-1.5 rounded-full mt-2 overflow-hidden">
                     <div className="bg-emerald-500 h-1.5 rounded-full" style={{ width: "48%" }}></div>
                   </div>
-                  <span className="text-[8px] text-slate-400 block mt-1 font-bold">Target: &lt; 500 ppm</span>
+                  <span className="text-[8px] text-slate-400 dark:text-slate-500 block mt-1 font-bold">Target: &lt; 500 ppm</span>
                 </div>
-                <div className="bg-white border border-slate-150 rounded-xl p-3 shadow-sm">
-                  <span className="text-[9px] font-black text-slate-400 uppercase tracking-wider">Avg Pressure</span>
-                  <div className="text-sm font-black text-[#001e66] mt-0.5">44.0 PSI</div>
-                  <div className="w-full bg-slate-100 h-1.5 rounded-full mt-2 overflow-hidden">
+                <div className="bg-white dark:bg-slate-950 border border-slate-150 dark:border-slate-850 rounded-xl p-3 shadow-sm">
+                  <span className="text-[9px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-wider">Avg Pressure</span>
+                  <div className="text-sm font-black text-[#001e66] dark:text-slate-200 mt-0.5">44.0 PSI</div>
+                  <div className="w-full bg-slate-100 dark:bg-slate-800 h-1.5 rounded-full mt-2 overflow-hidden">
                     <div className="bg-emerald-500 h-1.5 rounded-full" style={{ width: "80%" }}></div>
                   </div>
-                  <span className="text-[8px] text-slate-400 block mt-1 font-bold">Target: 30 - 60 PSI</span>
+                  <span className="text-[8px] text-slate-400 dark:text-slate-500 block mt-1 font-bold">Target: 30 - 60 PSI</span>
                 </div>
               </div>
             </div>
           )}
 
           {expandedCard === "sensors" && (
-            <div className="space-y-3">
-              <h4 className="text-xs font-black text-[#001e66] uppercase tracking-wider">IoT Sensor Stations Status</h4>
-              <p className="text-xs text-slate-500 font-medium">Live operational status across all district nodes:</p>
-              <div className="max-h-48 overflow-y-auto pt-1 space-y-2">
+            <div className="space-y-3 text-left">
+              <h4 className="text-xs font-black text-[#001e66] dark:text-slate-100 uppercase tracking-wider flex items-center gap-1.5">
+                <Cpu className="w-4 h-4 text-[#00aeef]" />
+                IoT Sensor Stations Status
+              </h4>
+              <p className="text-xs text-slate-500 dark:text-slate-400 font-medium">Live operational status across all district nodes:</p>
+              <div className="max-h-48 overflow-y-auto pt-1 space-y-2 pr-1">
                 {nodes && nodes.length > 0 ? (
                   nodes.map((n) => (
-                    <div key={n.id} className="flex items-center justify-between bg-white border border-slate-150 rounded-xl p-2.5 text-xs shadow-sm">
-                      <div className="font-extrabold text-[#001e66]">{n.name}</div>
+                    <div key={n.id} className="flex items-center justify-between bg-white dark:bg-slate-950 border border-slate-150 dark:border-slate-850 rounded-xl p-2.5 text-xs shadow-sm">
+                      <div className="font-extrabold text-[#001e66] dark:text-slate-200">{n.name}</div>
                       <div className="flex items-center gap-2">
-                        <span className="text-[10px] text-slate-400 font-mono">Lat: {n.latitude.toFixed(4)}, Lng: {n.longitude.toFixed(4)}</span>
-                        <span className={`px-2.5 py-0.5 rounded-full text-[9px] font-black uppercase ${
-                          n.status === "ONLINE" ? "bg-emerald-50 text-emerald-700 border border-emerald-200" :
-                          n.status === "MAINTENANCE" ? "bg-amber-50 text-amber-700 border border-amber-200" :
-                          "bg-red-50 text-red-700 border border-red-200"
+                        <span className="text-[10px] text-slate-450 dark:text-slate-500 font-mono font-bold">Lat: {n.latitude.toFixed(4)}, Lng: {n.longitude.toFixed(4)}</span>
+                        <span className={`px-2.5 py-0.5 rounded-full text-[9px] font-black uppercase border ${
+                          n.status === "ONLINE" ? "bg-emerald-50 text-emerald-700 border-emerald-200/50 dark:bg-emerald-950/20 dark:text-emerald-400 dark:border-emerald-800/40" :
+                          n.status === "MAINTENANCE" ? "bg-amber-50 text-amber-700 border-amber-200/50 dark:bg-amber-950/20 dark:text-amber-400 dark:border-amber-800/40" :
+                          "bg-red-50 text-red-700 border-red-200/50 dark:bg-red-950/20 dark:text-red-400 dark:border-red-800/40"
                         }`}>
                           {n.status}
                         </span>
@@ -281,71 +313,77 @@ export default function HomeSection({
                     </div>
                   ))
                 ) : (
-                  <p className="text-xs text-slate-400 italic">No nodes registered in the system.</p>
+                  <p className="text-xs text-slate-400 dark:text-slate-500 italic">No nodes registered in the system.</p>
                 )}
               </div>
             </div>
           )}
 
           {expandedCard === "reports" && (
-            <div className="space-y-3">
-              <h4 className="text-xs font-black text-[#001e66] uppercase tracking-wider">Pending Citizen Complaints</h4>
-              <p className="text-xs text-slate-500 font-medium">Unresolved complaints waiting for assignment or triage confirmation:</p>
-              <div className="max-h-48 overflow-y-auto pt-1 space-y-2">
+            <div className="space-y-3 text-left">
+              <h4 className="text-xs font-black text-[#001e66] dark:text-slate-100 uppercase tracking-wider flex items-center gap-1.5">
+                <Megaphone className="w-4 h-4 text-rose-500" />
+                Pending Citizen Complaints
+              </h4>
+              <p className="text-xs text-slate-500 dark:text-slate-400 font-medium">Unresolved complaints waiting for assignment or triage confirmation:</p>
+              <div className="max-h-48 overflow-y-auto pt-1 space-y-2 pr-1">
                 {complaints && complaints.filter(c => c.status !== "RESOLVED").length > 0 ? (
                   complaints.filter(c => c.status !== "RESOLVED").slice(0, 5).map((c) => (
-                    <div key={c.id} className="bg-white border border-slate-150 rounded-xl p-3 text-xs space-y-1 shadow-sm">
+                    <div key={c.id} className="bg-white dark:bg-slate-950 border border-slate-150 dark:border-slate-850 rounded-xl p-3 text-xs space-y-1.5 shadow-sm">
                       <div className="flex justify-between items-center">
-                        <span className="font-extrabold text-[#001e66]">{c.summary || "Complaint Report"}</span>
+                        <span className="font-extrabold text-[#001e66] dark:text-slate-200">{c.summary || "Complaint Report"}</span>
                         <span className={`px-2 py-0.5 rounded text-[9px] font-black uppercase ${
-                          c.urgency === "CRITICAL" ? "bg-red-100 text-red-800" :
-                          c.urgency === "HIGH" ? "bg-amber-100 text-amber-800" :
-                          "bg-slate-100 text-slate-800"
+                          c.urgency === "CRITICAL" ? "bg-red-100 text-red-800 dark:bg-red-950/40 dark:text-red-400" :
+                          c.urgency === "HIGH" ? "bg-amber-100 text-amber-800 dark:bg-amber-950/40 dark:text-amber-400" :
+                          "bg-slate-100 text-slate-800 dark:bg-slate-800 dark:text-slate-300"
                         }`}>
                           {c.urgency}
                         </span>
                       </div>
-                      <p className="text-slate-500 italic text-[11px] truncate">"{c.rawText}"</p>
-                      <div className="flex justify-between items-center text-[10px] text-slate-400 font-bold pt-1">
+                      <p className="text-slate-500 dark:text-slate-400 italic text-[10px] truncate">"{c.rawText}"</p>
+                      <div className="flex justify-between items-center text-[9px] text-slate-400 dark:text-slate-500 font-bold pt-1">
                         <span>📍 {c.barangay || "San Fernando"}</span>
                         <span>Logged: {new Date(c.createdAt).toLocaleDateString()}</span>
                       </div>
                     </div>
                   ))
                 ) : (
-                  <p className="text-xs text-slate-400 italic">No unresolved complaints in active queue.</p>
+                  <p className="text-xs text-slate-400 dark:text-slate-500 italic">No unresolved complaints in active queue.</p>
                 )}
               </div>
             </div>
           )}
 
           {expandedCard === "advisories" && (
-            <div className="space-y-3">
-              <h4 className="text-xs font-black text-[#001e66] uppercase tracking-wider">Logged Advisories & Bulletins</h4>
-              <p className="text-xs text-slate-500 font-medium">Active broadcasts currently displayed to staff and residents:</p>
-              <div className="max-h-48 overflow-y-auto pt-1 space-y-2">
+            <div className="space-y-3 text-left">
+              <h4 className="text-xs font-black text-[#001e66] dark:text-slate-100 uppercase tracking-wider flex items-center gap-1.5">
+                <Newspaper className="w-4 h-4 text-[#00aeef]" />
+                Logged Advisories & Bulletins
+              </h4>
+              <p className="text-xs text-slate-500 dark:text-slate-400 font-medium">Active broadcasts currently displayed to staff and residents:</p>
+              <div className="max-h-48 overflow-y-auto pt-1 space-y-2 pr-1">
                 {advisories && advisories.length > 0 ? (
                   advisories.map((ad) => (
-                    <div key={ad.id} className="bg-white border border-slate-150 rounded-xl p-3 text-xs space-y-1 shadow-sm">
+                    <div key={ad.id} className="bg-white dark:bg-slate-950 border border-slate-150 dark:border-slate-850 rounded-xl p-3 text-xs space-y-1 shadow-sm">
                       <div className="flex justify-between items-center">
-                        <span className="font-extrabold text-[#001e66]">{ad.title}</span>
+                        <span className="font-extrabold text-[#001e66] dark:text-slate-200">{ad.title}</span>
                         <span className={`px-2 py-0.5 rounded text-[9px] font-black uppercase ${
-                          ad.type === "warning" ? "bg-red-50 text-red-600" :
-                          ad.type === "event" ? "bg-purple-50 text-purple-600" :
-                          ad.type === "news" ? "bg-emerald-50 text-emerald-600" :
-                          "bg-blue-50 text-blue-600"
+                          ad.type === "warning" ? "bg-red-50 text-red-600 dark:bg-red-950/20 dark:text-red-400" :
+                          ad.type === "event" ? "bg-purple-50 text-purple-600 dark:bg-purple-950/20 dark:text-purple-400" :
+                          ad.type === "news" ? "bg-emerald-50 text-emerald-600 dark:bg-emerald-950/20 dark:text-emerald-400" :
+                          "bg-blue-50 text-blue-600 dark:bg-blue-950/20 dark:text-blue-400"
                         }`}>
                           {ad.type}
                         </span>
                       </div>
-                      <p className="text-slate-500 text-[11px] line-clamp-1">{ad.text}</p>
-                      <div className="text-[10px] text-slate-400 font-bold">
+                      <p className="text-slate-500 dark:text-slate-400 text-[11px] line-clamp-1">{ad.text}</p>
+                      <div className="text-[9px] text-slate-400 dark:text-slate-500 font-bold">
                         Published: {ad.date} • Target: {ad.targetRole || "broadcast"}
                       </div>
                     </div>
                   ))
                 ) : (
-                  <p className="text-xs text-slate-400 italic">No advisories posted.</p>
+                  <p className="text-xs text-slate-400 dark:text-slate-500 italic">No advisories posted.</p>
                 )}
               </div>
             </div>
@@ -365,37 +403,34 @@ export default function HomeSection({
             text: string;
           }> = [];
 
-          // 1. Add citizen complaints (up to 5)
           complaints.forEach((comp) => {
             activities.push({
               id: `complaint-${comp.id}`,
               timestamp: new Date(comp.createdAt),
               tag: "AI Triage",
-              tagColor: "text-rose-500",
+              tagColor: "text-rose-600 dark:text-rose-400",
               ringColor: "bg-rose-500 ring-rose-500/20",
               text: `Citizen in Brgy. ${comp.barangay || "San Fernando"} reported: "${comp.summary || comp.rawText}" (${comp.urgency})`
             });
           });
 
-          // 2. Add faulty sensor node events (if any nodes are not ONLINE)
           nodes.filter(n => n.status !== "ONLINE").forEach((node) => {
             activities.push({
               id: `node-${node.id}`,
-              timestamp: new Date(Date.now() - 1000 * 60 * 2), // Mock slightly in past for layout ordering
+              timestamp: new Date(Date.now() - 1000 * 60 * 2),
               tag: "Sensor Alert",
-              tagColor: "text-amber-500",
+              tagColor: "text-amber-600 dark:text-amber-400",
               ringColor: "bg-amber-500 ring-amber-500/20",
               text: `Sensor node "${node.name}" status changed to ${node.status} due to threshold breach.`
             });
           });
 
-          // 3. Fallback baseline activity logs if no complaints or faulty nodes exist
           if (activities.length === 0) {
             activities.push({
               id: "sys-ok-1",
               timestamp: new Date(Date.now() - 1000 * 60 * 15),
               tag: "Telemetry Stream",
-              tagColor: "text-emerald-500",
+              tagColor: "text-emerald-600 dark:text-emerald-450",
               ringColor: "bg-emerald-500 ring-emerald-500/20",
               text: "Global water telemetry stream is active. All pump sensors reporting normal pressures."
             });
@@ -403,15 +438,14 @@ export default function HomeSection({
               id: "sys-ok-2",
               timestamp: new Date(Date.now() - 1000 * 60 * 120),
               tag: "AI Coeff Update",
-              tagColor: "text-purple-500",
+              tagColor: "text-purple-600 dark:text-purple-400",
               ringColor: "bg-purple-500 ring-purple-500/20",
               text: "System-wide automated diagnostic sensitivity updated: standard filtering verified."
             });
           }
 
-          // Sort chronologically descending (newest first)
           activities.sort((a, b) => b.timestamp.getTime() - a.timestamp.getTime());
-          return activities.slice(0, 5); // Limit to top 5 logs
+          return activities.slice(0, 5);
         };
 
         const dynamicActivities = getDynamicActivities();
@@ -421,94 +455,93 @@ export default function HomeSection({
         const tdsVal = stats.avgTds ?? 240;
 
         return (
-          /* Lower Content Grid (Adjusted spans: left takes 8 cols, right takes 4 cols) */
           <div className="grid grid-cols-12 gap-[18px]">
-            {/* Left Column: Quick Analytics & District News (Expanded to 8 columns) */}
+            {/* Left Column: Quick Analytics & District News */}
             <div className="col-span-12 lg:col-span-8 space-y-[18px]">
               
               {/* Quick Analytics Grid */}
               <div className="space-y-4">
-                <div className="flex items-center space-x-3 pb-2 border-b border-slate-200">
+                <div className="flex items-center space-x-3 pb-2 border-b border-slate-200 dark:border-slate-800">
                   <div className="w-8 h-8 rounded-lg bg-[#001e66]/5 dark:bg-[#00aeef]/10 flex items-center justify-center text-[#001e66] dark:text-[#00aeef] shrink-0">
-                    <BarChart3 className="w-4.5 h-4.5 transition-all duration-300 hover:scale-115 hover:drop-shadow-[0_0_4px_rgba(0,174,239,0.4)]" />
+                    <BarChart3 className="w-4.5 h-4.5 transition-all duration-300 hover:scale-115" />
                   </div>
                   <h3 className="text-sm font-black uppercase text-[#001e66] dark:text-slate-200 tracking-wider">
                     Quick District Analytics
                   </h3>
                 </div>
 
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   {/* pH Card */}
-                  <div className="bg-white border border-slate-200 rounded-[13px] p-4 flex items-center justify-between shadow-sm">
-                    <div>
-                      <span className="text-[10px] font-black text-slate-400 uppercase tracking-wider block">System Avg pH</span>
-                      <div className="text-lg font-black text-[#001e66] mt-1">{phVal.toFixed(1)} pH</div>
+                  <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800/80 rounded-2xl p-4 flex items-center justify-between shadow-sm">
+                    <div className="text-left">
+                      <span className="text-[10px] font-black text-slate-450 dark:text-slate-500 uppercase tracking-wider block">System Avg pH</span>
+                      <div className="text-lg font-black text-[#001e66] dark:text-slate-200 mt-1">{phVal.toFixed(1)} pH</div>
                       {phVal < 6.5 || phVal > 8.5 ? (
-                        <span className="text-[9px] text-rose-600 font-bold bg-rose-50 px-1.5 py-0.5 rounded border border-rose-150 mt-1.5 inline-block">⚠️ ANOMALOUS</span>
+                        <span className="text-[9px] text-rose-700 dark:text-rose-400 font-bold bg-rose-50 dark:bg-rose-950/20 px-2 py-0.5 rounded border border-rose-200 dark:border-rose-900/40 mt-1.5 inline-block">⚠️ ANOMALOUS</span>
                       ) : (
-                        <span className="text-[9px] text-emerald-600 font-bold bg-emerald-50 px-1.5 py-0.5 rounded border border-emerald-150 mt-1.5 inline-block">✓ STABLE</span>
+                        <span className="text-[9px] text-emerald-700 dark:text-emerald-400 font-bold bg-emerald-50 dark:bg-emerald-950/20 px-2 py-0.5 rounded border border-emerald-250/50 dark:border-emerald-900/40 mt-1.5 inline-block">✓ STABLE</span>
                       )}
                     </div>
-                    <div className={`w-12 h-12 flex items-center justify-center rounded-full border shrink-0 font-black text-xs ${
-                      phVal < 6.5 || phVal > 8.5 ? "bg-rose-50 text-rose-600 border-rose-100" : "bg-emerald-50 text-emerald-600 border-emerald-100"
+                    <div className={`w-12 h-12 flex items-center justify-center rounded-full border shrink-0 font-mono font-black text-xs ${
+                      phVal < 6.5 || phVal > 8.5 ? "bg-rose-55 dark:bg-rose-950/20 text-rose-600 dark:text-rose-400 border-rose-100 dark:border-rose-900/40" : "bg-emerald-55 dark:bg-emerald-950/20 text-emerald-600 dark:text-emerald-450 border-emerald-100 dark:border-emerald-900/40"
                     }`}>
                       <span>{phVal.toFixed(1)}</span>
                     </div>
                   </div>
 
                   {/* Turbidity Card */}
-                  <div className="bg-white border border-slate-200 rounded-[13px] p-4 flex items-center justify-between shadow-sm">
-                    <div>
-                      <span className="text-[10px] font-black text-slate-400 uppercase tracking-wider block">Avg Turbidity</span>
-                      <div className="text-lg font-black text-[#001e66] mt-1">{turbVal.toFixed(1)} NTU</div>
+                  <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800/80 rounded-2xl p-4 flex items-center justify-between shadow-sm">
+                    <div className="text-left">
+                      <span className="text-[10px] font-black text-slate-455 dark:text-slate-500 uppercase tracking-wider block">Avg Turbidity</span>
+                      <div className="text-lg font-black text-[#001e66] dark:text-slate-200 mt-1">{turbVal.toFixed(1)} NTU</div>
                       {turbVal > 5.0 ? (
-                        <span className="text-[9px] text-amber-600 font-bold bg-amber-50 px-1.5 py-0.5 rounded border border-amber-150 mt-1.5 inline-block">⚠️ ELEVATED</span>
+                        <span className="text-[9px] text-amber-700 dark:text-amber-400 font-bold bg-amber-50 dark:bg-amber-950/20 px-2 py-0.5 rounded border border-amber-200 dark:border-amber-900/40 mt-1.5 inline-block">⚠️ ELEVATED</span>
                       ) : (
-                        <span className="text-[9px] text-emerald-600 font-bold bg-emerald-50 px-1.5 py-0.5 rounded border border-emerald-150 mt-1.5 inline-block">✓ OPTIMAL</span>
+                        <span className="text-[9px] text-emerald-700 dark:text-emerald-400 font-bold bg-emerald-50 dark:bg-emerald-950/20 px-2 py-0.5 rounded border border-emerald-250/50 dark:border-emerald-900/40 mt-1.5 inline-block">✓ OPTIMAL</span>
                       )}
                     </div>
-                    <div className={`w-12 h-12 flex items-center justify-center rounded-full border shrink-0 font-black text-xs ${
-                      turbVal > 5.0 ? "bg-amber-50 text-amber-600 border-amber-100" : "bg-sky-50 text-sky-600 border-sky-100"
+                    <div className={`w-12 h-12 flex items-center justify-center rounded-full border shrink-0 font-mono font-black text-xs ${
+                      turbVal > 5.0 ? "bg-amber-50 dark:bg-amber-950/20 text-amber-600 dark:text-amber-400 border-amber-100 dark:border-amber-900/40" : "bg-[#eff6ff] dark:bg-blue-950/20 text-[#00aeef] dark:text-blue-300 border-blue-100 dark:border-blue-900/40"
                     }`}>
                       <span>{turbVal.toFixed(1)}</span>
                     </div>
                   </div>
 
                   {/* Pressure Card */}
-                  <div className="bg-white border border-slate-200 rounded-[13px] p-4 flex items-center justify-between shadow-sm">
-                    <div>
-                      <span className="text-[10px] font-black text-slate-400 uppercase tracking-wider block">Line Pressure</span>
-                      <div className="text-lg font-black text-[#001e66] mt-1">{pressVal.toFixed(1)} PSI</div>
+                  <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800/80 rounded-2xl p-4 flex items-center justify-between shadow-sm">
+                    <div className="text-left">
+                      <span className="text-[10px] font-black text-slate-455 dark:text-slate-500 uppercase tracking-wider block">Line Pressure</span>
+                      <div className="text-lg font-black text-[#001e66] dark:text-slate-200 mt-1">{pressVal.toFixed(1)} PSI</div>
                       {pressVal <= 5.0 ? (
-                        <span className="text-[9px] text-rose-600 font-bold bg-rose-50 px-1.5 py-0.5 rounded border border-rose-150 mt-1.5 inline-block">❌ OFFLINE</span>
+                        <span className="text-[9px] text-rose-700 dark:text-rose-400 font-bold bg-rose-50 dark:bg-rose-950/20 px-2 py-0.5 rounded border border-rose-200 dark:border-rose-900/40 mt-1.5 inline-block">❌ OFFLINE</span>
                       ) : pressVal < 30.0 ? (
-                        <span className="text-[9px] text-amber-600 font-bold bg-amber-50 px-1.5 py-0.5 rounded border border-amber-150 mt-1.5 inline-block">⚠️ LOW PRESSURE</span>
+                        <span className="text-[9px] text-amber-700 dark:text-amber-400 font-bold bg-amber-50 dark:bg-amber-950/20 px-2 py-0.5 rounded border border-amber-200 dark:border-amber-900/40 mt-1.5 inline-block">⚠️ LOW PRESSURE</span>
                       ) : (
-                        <span className="text-[9px] text-emerald-600 font-bold bg-emerald-50 px-1.5 py-0.5 rounded border border-emerald-150 mt-1.5 inline-block">✓ NOMINAL</span>
+                        <span className="text-[9px] text-emerald-700 dark:text-emerald-400 font-bold bg-emerald-50 dark:bg-emerald-950/20 px-2 py-0.5 rounded border border-emerald-250/50 dark:border-emerald-900/40 mt-1.5 inline-block">✓ NOMINAL</span>
                       )}
                     </div>
-                    <div className={`w-12 h-12 flex items-center justify-center rounded-full border shrink-0 font-black text-xs ${
-                      pressVal <= 5.0 ? "bg-rose-50 text-rose-600 border-rose-100" :
-                      pressVal < 30.0 ? "bg-amber-50 text-amber-600 border-amber-100" :
-                      "bg-blue-50 text-blue-600 border-blue-100"
+                    <div className={`w-12 h-12 flex items-center justify-center rounded-full border shrink-0 font-mono font-black text-xs ${
+                      pressVal <= 5.0 ? "bg-rose-55 dark:bg-rose-950/20 text-rose-600 dark:text-rose-400 border-rose-100 dark:border-rose-900/40" :
+                      pressVal < 30.0 ? "bg-amber-50 dark:bg-amber-950/20 text-amber-600 dark:text-amber-400 border-amber-100 dark:border-amber-900/40" :
+                      "bg-blue-50 dark:bg-blue-950/20 text-blue-600 dark:text-blue-300 border-blue-100 dark:border-blue-900/40"
                     }`}>
                       <span>{Math.round(pressVal)}</span>
                     </div>
                   </div>
 
                   {/* TDS Card */}
-                  <div className="bg-white border border-slate-200 rounded-[13px] p-4 flex items-center justify-between shadow-sm">
-                    <div>
-                      <span className="text-[10px] font-black text-slate-400 uppercase tracking-wider block">TDS / Minerals</span>
-                      <div className="text-lg font-black text-[#001e66] mt-1">{tdsVal} ppm</div>
+                  <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800/80 rounded-2xl p-4 flex items-center justify-between shadow-sm">
+                    <div className="text-left">
+                      <span className="text-[10px] font-black text-slate-455 dark:text-slate-500 uppercase tracking-wider block">TDS / Minerals</span>
+                      <div className="text-lg font-black text-[#001e66] dark:text-slate-200 mt-1">{tdsVal} ppm</div>
                       {tdsVal > 500 ? (
-                        <span className="text-[9px] text-amber-600 font-bold bg-amber-50 px-1.5 py-0.5 rounded border border-amber-150 mt-1.5 inline-block">⚠️ HIGH MINERAL</span>
+                        <span className="text-[9px] text-amber-700 dark:text-amber-400 font-bold bg-amber-50 dark:bg-amber-950/20 px-2 py-0.5 rounded border border-amber-200 dark:border-amber-900/40 mt-1.5 inline-block">⚠️ HIGH MINERAL</span>
                       ) : (
-                        <span className="text-[9px] text-emerald-600 font-bold bg-emerald-50 px-1.5 py-0.5 rounded border border-emerald-150 mt-1.5 inline-block">✓ SECURE</span>
+                        <span className="text-[9px] text-emerald-700 dark:text-emerald-400 font-bold bg-emerald-50 dark:bg-emerald-950/20 px-2 py-0.5 rounded border border-emerald-250/50 dark:border-emerald-900/40 mt-1.5 inline-block">✓ SECURE</span>
                       )}
                     </div>
-                    <div className={`w-12 h-12 flex items-center justify-center rounded-full border shrink-0 font-black text-xs ${
-                      tdsVal > 500 ? "bg-amber-50 text-amber-600 border-amber-100" : "bg-purple-50 text-purple-600 border-purple-100"
+                    <div className={`w-12 h-12 flex items-center justify-center rounded-full border shrink-0 font-mono font-black text-xs ${
+                      tdsVal > 500 ? "bg-amber-55 dark:bg-amber-950/20 text-amber-600 dark:text-amber-400 border-amber-100 dark:border-amber-900/40" : "bg-purple-50 dark:bg-purple-950/20 text-purple-600 dark:text-purple-300 border-purple-100 dark:border-purple-900/40"
                     }`}>
                       <span>{tdsVal}</span>
                     </div>
@@ -518,9 +551,9 @@ export default function HomeSection({
 
               {/* Latest News */}
               <div className="space-y-4 pt-2">
-                <div className="flex items-center space-x-3 pb-2 border-b border-slate-200">
+                <div className="flex items-center space-x-3 pb-2 border-b border-slate-200 dark:border-slate-800">
                   <div className="w-8 h-8 rounded-lg bg-[#001e66]/5 dark:bg-[#00aeef]/10 flex items-center justify-center text-[#001e66] dark:text-[#00aeef] shrink-0">
-                    <Newspaper className="w-4.5 h-4.5 transition-all duration-300 hover:scale-115 hover:drop-shadow-[0_0_4px_rgba(0,174,239,0.4)]" />
+                    <Newspaper className="w-4.5 h-4.5 transition-all duration-300 hover:scale-115" />
                   </div>
                   <h3 className="text-sm font-black uppercase text-[#001e66] dark:text-slate-200 tracking-wider">
                     Latest District News
@@ -541,17 +574,17 @@ export default function HomeSection({
                           <div
                             key={news.id}
                             onClick={() => setActiveDetailNews(news)}
-                            className="bg-white border border-slate-200 rounded-[13px] p-4 hover:border-[#00aeef] transition-all cursor-pointer shadow-sm relative pr-28 text-left"
+                            className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800/80 rounded-2xl p-4 hover:border-[#00aeef] dark:hover:border-[#00aeef] transition-all cursor-pointer shadow-sm relative pr-28 text-left"
                           >
-                            <span className="text-[10px] font-bold text-slate-400">{news.date}</span>
-                            <h4 className="font-black text-[#001e66] text-sm mt-1">{news.title}</h4>
-                            <p className="text-xs text-slate-500 leading-relaxed mt-1.5 line-clamp-2">
+                            <span className="text-[10px] font-bold text-slate-400 dark:text-slate-500 font-mono">{news.date}</span>
+                            <h4 className="font-black text-[#001e66] dark:text-slate-200 text-sm mt-1">{news.title}</h4>
+                            <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed mt-1.5 line-clamp-2">
                               {news.description}
                             </p>
-                            <span className={`absolute top-4 right-4 text-[9px] font-mono font-black uppercase px-2 py-0.5 rounded ${
-                              news.tag === "CORE UPGRADE" ? "bg-blue-50 text-blue-600" :
-                              news.tag === "COMPLIANCE" ? "bg-emerald-50 text-emerald-600" :
-                              "bg-slate-55 text-[#001e66]"
+                            <span className={`absolute top-4 right-4 text-[9px] font-mono font-black uppercase px-2 py-0.5 rounded border ${
+                              news.tag === "CORE UPGRADE" ? "bg-blue-50 text-blue-600 border-blue-200/50 dark:bg-blue-950/40 dark:text-blue-300 dark:border-blue-900/40" :
+                              news.tag === "COMPLIANCE" ? "bg-emerald-50 text-emerald-700 border-emerald-250/50 dark:bg-emerald-950/40 dark:text-emerald-400 dark:border-emerald-800/40" :
+                              "bg-slate-50 text-[#001e66] border-slate-200 dark:bg-slate-800 dark:text-slate-300 dark:border-slate-700/60"
                             }`}>
                               {news.tag}
                             </span>
@@ -564,7 +597,7 @@ export default function HomeSection({
                           <button
                             type="button"
                             onClick={() => setActiveTab("announcements")}
-                            className="text-[10px] font-black text-[#00aeef] hover:text-[#001e66] transition-all flex items-center gap-1 group cursor-pointer bg-white px-3 py-1 rounded-full border border-slate-200 shadow-sm hover:shadow-md active:scale-95"
+                            className="text-[10px] font-black text-[#00aeef] hover:text-[#001e66] dark:hover:text-white transition-all flex items-center gap-1 group cursor-pointer bg-white dark:bg-slate-900 px-3.5 py-1.5 rounded-full border border-slate-200 dark:border-slate-800 shadow-sm hover:shadow-md active:scale-95"
                           >
                             See More Bulletins
                             <span className="transform translate-x-0 group-hover:translate-x-1 transition-transform">→</span>
@@ -573,7 +606,7 @@ export default function HomeSection({
                       )}
                     </div>
                   ) : (
-                    <div className="border border-dashed border-slate-200 rounded-[13px] p-8 text-center text-slate-400 bg-slate-50/55">
+                    <div className="border border-dashed border-slate-200 dark:border-slate-800 rounded-[13px] p-8 text-center text-slate-400 dark:text-slate-500 bg-slate-50/55 dark:bg-slate-950/20">
                       <p className="text-xs font-bold uppercase tracking-wider">No News Broadcasts Posted</p>
                       <p className="text-[11px] text-slate-500 mt-1">Operational announcements will appear here once published.</p>
                     </div>
@@ -589,9 +622,9 @@ export default function HomeSection({
 
                 return staffAdvisories.length > 0 ? (
                   <div className="space-y-3 mt-2">
-                    <div className="flex items-center space-x-2 pb-1 border-b border-slate-200">
+                    <div className="flex items-center space-x-2 pb-1 border-b border-slate-200 dark:border-slate-800">
                       <div className="w-8 h-8 rounded-lg bg-[#001e66]/5 dark:bg-[#00aeef]/10 flex items-center justify-center text-[#001e66] dark:text-[#00aeef] shrink-0">
-                        <Megaphone className="w-4 h-4 transition-all duration-300 hover:scale-115 hover:rotate-3 hover:drop-shadow-[0_0_4px_rgba(0,174,239,0.4)]" />
+                        <Megaphone className="w-4 h-4 transition-all duration-300 hover:scale-115" />
                       </div>
                       <span className="text-[10px] font-black text-[#001e66] dark:text-[#00aeef] uppercase tracking-wider">
                         Active Staff Advisories ({staffAdvisories.length})
@@ -609,19 +642,19 @@ export default function HomeSection({
                         {staffAdvisories.map((ad) => (
                           <div
                             key={ad.id}
-                            className={`border-l-[4px] rounded-r-xl rounded-l-md p-3.5 shadow-sm text-left ${
+                            className={`border-l-[4px] rounded-r-2xl rounded-l-md p-3.5 shadow-sm text-left ${
                               ad.type === "warning"
-                                ? "bg-red-50/60 dark:bg-red-950/20 border border-red-200 dark:border-red-900 border-l-red-500"
+                                ? "bg-red-50/60 dark:bg-red-950/10 border border-red-200 dark:border-red-900 border-l-red-500"
                                 : "bg-blue-50/60 dark:bg-slate-900/40 border border-blue-200 dark:border-slate-800 border-l-blue-500"
                             }`}
                           >
                             <div className="flex items-center justify-between">
-                              <span className={`text-[8px] font-black px-1.5 py-0.5 rounded ${
-                                ad.type === "warning" ? "bg-red-100 text-red-700" : "bg-blue-100 text-blue-700"
+                              <span className={`text-[8px] font-black px-1.5 py-0.5 rounded border ${
+                                ad.type === "warning" ? "bg-red-100 text-red-700 border-red-200/50 dark:bg-red-950 dark:text-red-400" : "bg-blue-100 text-blue-700 border-blue-200/50 dark:bg-blue-950 dark:text-blue-300"
                               }`}>
                                 {ad.type.toUpperCase()}
                               </span>
-                              <span className="text-[9px] font-mono text-slate-400">{ad.date}</span>
+                              <span className="text-[9px] font-mono font-bold text-slate-400 dark:text-slate-500">{ad.date}</span>
                             </div>
                             <h4 className={`text-xs font-black mt-2 leading-tight ${
                               ad.type === "warning" ? "text-red-950 dark:text-red-300" : "text-[#001e66] dark:text-blue-300"
@@ -635,14 +668,12 @@ export default function HomeSection({
                         ))}
                       </div>
 
-
-
                       {setActiveTab && (
                         <div className="absolute bottom-0 right-0 left-0 flex justify-center z-20">
                           <button
                             type="button"
                             onClick={() => setActiveTab("announcements")}
-                            className="text-[10px] font-black text-[#00aeef] hover:text-[#001e66] transition-all flex items-center gap-1 group cursor-pointer bg-white px-3 py-1 rounded-full border border-slate-200 shadow-sm hover:shadow-md active:scale-95"
+                            className="text-[10px] font-black text-[#00aeef] hover:text-[#001e66] dark:hover:text-white transition-all flex items-center gap-1 group cursor-pointer bg-white dark:bg-slate-900 px-3.5 py-1.5 rounded-full border border-slate-200 dark:border-slate-800 shadow-sm hover:shadow-md active:scale-95"
                           >
                             See More Advisories
                             <span className="transform translate-x-0 group-hover:translate-x-1 transition-transform">→</span>
@@ -652,7 +683,7 @@ export default function HomeSection({
                     </div>
                   </div>
                 ) : (
-                  <div className="bg-[#EEF4FC]/50 dark:bg-slate-900/20 border border-slate-200 dark:border-slate-800 border-dashed rounded-[13px] p-4 text-center text-slate-400 mt-2">
+                  <div className="bg-[#EEF4FC]/50 dark:bg-slate-900/10 border border-slate-200 dark:border-slate-800 border-dashed rounded-xl p-4 text-center text-slate-400 dark:text-slate-500 mt-2">
                     <p className="text-xs font-bold uppercase tracking-wider">No Active Staff Advisories</p>
                     <p className="text-[11px] text-slate-500 mt-1">Global maintenance broadcasts will list here.</p>
                   </div>
@@ -660,32 +691,32 @@ export default function HomeSection({
               })()}
             </div>
 
-            {/* Right Column: Live Activity Feed & Events (Reduced to 4 columns) */}
+            {/* Right Column: Live Activity Feed & Events */}
             <div className="col-span-12 lg:col-span-4 space-y-[18px]">
               
               {/* Live Activity Feed */}
               <div className="space-y-4">
-                <div className="flex items-center space-x-3 pb-2 border-b border-slate-200">
+                <div className="flex items-center space-x-3 pb-2 border-b border-slate-200 dark:border-slate-800">
                   <div className="w-8 h-8 rounded-lg bg-[#001e66]/5 dark:bg-[#00aeef]/10 flex items-center justify-center text-[#001e66] dark:text-[#00aeef] shrink-0">
-                    <Zap className="w-4.5 h-4.5 transition-all duration-300 hover:scale-115 hover:drop-shadow-[0_0_4px_rgba(0,174,239,0.4)] text-amber-500 animate-pulse" />
+                    <Zap className="w-4.5 h-4.5 text-amber-500 animate-pulse" />
                   </div>
                   <h3 className="text-sm font-black uppercase text-[#001e66] dark:text-slate-200 tracking-wider">
                     Live Activity Feed
                   </h3>
                 </div>
 
-                <div className="bg-white border border-slate-200 rounded-[17px] p-4 shadow-sm space-y-4 max-h-[310px] overflow-y-auto">
+                <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-4 shadow-sm space-y-4 max-h-[310px] overflow-y-auto pr-1">
                   {dynamicActivities.map((act) => (
                     <div key={act.id} className="flex gap-3 text-xs">
                       <div className="flex flex-col items-center">
-                        <div className={`w-2.5 h-2.5 rounded-full shrink-0 ring-4 ${act.ringColor}`}></div>
-                        <div className="w-[1.5px] bg-slate-200 flex-1 my-1"></div>
+                        <div className={`w-2 h-2 rounded-full shrink-0 ring-4 ${act.ringColor}`}></div>
+                        <div className="w-[1.5px] bg-slate-200 dark:bg-slate-800 flex-1 my-1"></div>
                       </div>
                       <div className="space-y-0.5 text-left min-w-0 flex-1">
-                        <span className="text-[9px] text-slate-400 font-mono block">
+                        <span className="text-[9px] text-slate-400 dark:text-slate-500 font-mono font-bold block">
                           {act.timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                         </span>
-                        <p className="text-slate-600 font-bold leading-normal line-clamp-2" title={act.text}>
+                        <p className="text-slate-650 dark:text-slate-300 font-semibold leading-normal line-clamp-2" title={act.text}>
                           <span className={`${act.tagColor} font-black`}>[{act.tag}]</span> {act.text}
                         </p>
                       </div>
@@ -696,9 +727,9 @@ export default function HomeSection({
 
               {/* Events */}
               <div className="space-y-4">
-                <div className="flex items-center space-x-3 pb-2 border-b border-slate-200">
+                <div className="flex items-center space-x-3 pb-2 border-b border-slate-200 dark:border-slate-800">
                   <div className="w-8 h-8 rounded-lg bg-[#001e66]/5 dark:bg-[#00aeef]/10 flex items-center justify-center text-[#001e66] dark:text-[#00aeef] shrink-0">
-                    <Calendar className="w-4.5 h-4.5 transition-all duration-300 hover:scale-115 hover:drop-shadow-[0_0_4px_rgba(0,174,239,0.4)]" />
+                    <Calendar className="w-4.5 h-4.5 transition-all duration-300 hover:scale-115" />
                   </div>
                   <h3 className="text-sm font-black uppercase text-[#001e66] dark:text-slate-200 tracking-wider">
                     Upcoming District Events
@@ -716,11 +747,9 @@ export default function HomeSection({
                     const daysInMonth = new Date(year, month + 1, 0).getDate();
 
                     const daysArray: Array<number | null> = [];
-                    // Add empty slots for month starting offset
                     for (let i = 0; i < firstDayIndex; i++) {
                       daysArray.push(null);
                     }
-                    // Add days of month
                     for (let i = 1; i <= daysInMonth; i++) {
                       daysArray.push(i);
                     }
@@ -764,9 +793,8 @@ export default function HomeSection({
                               return <div key={`empty-${idx}`} className="w-8 h-8" />;
                             }
 
-                            // Match node event
                             const event = eventsList.find(e => Number(e.day) === dayNum && e.month.toUpperCase().startsWith(curMonthAbbr.substring(0, 3)));
-                            const isToday = dayNum === 25 && month === 6 && year === 2026; // Match Jul 25, 2026 baseline
+                            const isToday = dayNum === 25 && month === 6 && year === 2026;
 
                             if (event) {
                               return (
@@ -788,7 +816,7 @@ export default function HomeSection({
                                 className={`w-8 h-8 text-[11px] font-bold rounded-full flex items-center justify-center mx-auto transition-all ${
                                   isToday
                                     ? "border-2 border-[#001e66] dark:border-[#00aeef] text-[#001e66] dark:text-[#00aeef]"
-                                    : "text-slate-500 dark:text-slate-400 hover:bg-slate-200/50 dark:hover:bg-slate-800"
+                                    : "text-slate-550 dark:text-slate-450 hover:bg-slate-200/50 dark:hover:bg-slate-800"
                                 }`}
                               >
                                 {dayNum}
@@ -815,12 +843,12 @@ export default function HomeSection({
                           </div>
                           <div className="text-left flex-1 min-w-0">
                             <h4 className="font-extrabold text-[#001e66] dark:text-slate-200 text-xs truncate leading-tight">{evt.title}</h4>
-                            <p className="text-[11px] text-slate-500 mt-0.5 line-clamp-1 leading-normal">{evt.description}</p>
+                            <p className="text-[11px] text-slate-550 dark:text-slate-450 mt-0.5 line-clamp-1 leading-normal">{evt.description}</p>
                           </div>
                         </div>
                       ))
                     ) : (
-                      <div className="border border-dashed border-slate-200 dark:border-slate-800 rounded-xl p-4 text-center text-slate-400 bg-slate-50/50 dark:bg-slate-900/30">
+                      <div className="border border-dashed border-slate-200 dark:border-slate-850 rounded-xl p-4 text-center text-slate-450 dark:text-slate-500 bg-slate-50/50 dark:bg-slate-900/30">
                         <p className="text-xs font-bold uppercase tracking-wider">No Scheduled Events</p>
                       </div>
                     )}

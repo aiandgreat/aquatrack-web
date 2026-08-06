@@ -66,7 +66,7 @@ export async function GET() {
       const apiKey = process.env.GOOGLE_GENERATIVE_AI_API_KEY || process.env.GEMINI_API_KEY;
       if (apiKey) {
         const googleProvider = createGoogle({ apiKey });
-        const model = googleProvider("gemini-3.1-flash-lite");
+        const model = googleProvider("gemini-3.5-flash-lite");
 
         const prompt = `You are a municipal utility analyst. Generate a short, professional system status summary paragraph (exactly 4 sentences, around 50-60 words) for the City of San Fernando Water District.
 Use these actual live database metrics from the system:
@@ -83,7 +83,7 @@ Output only the raw text paragraph, no markdown, no quotes.`;
         const { text: aiResponse } = await generateText({
           model,
           prompt,
-          temperature: 0.2,
+          temperature: 0.0,
         });
 
         if (aiResponse && aiResponse.trim().length > 10) {

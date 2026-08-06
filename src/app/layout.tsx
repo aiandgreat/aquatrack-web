@@ -31,7 +31,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="en" className={`${plusJakartaSans.variable} ${geistMono.variable}`}>
+    <html lang="en" className={`${plusJakartaSans.variable} ${geistMono.variable}`} suppressHydrationWarning>
       <head>
         <script dangerouslySetInnerHTML={{__html: `
           try {

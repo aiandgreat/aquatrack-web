@@ -86,6 +86,8 @@ export default async function DashboardPage() {
     role: u.role.toString(),
     phone: u.phone,
     serviceAccountNo: u.serviceAccountNo,
+    latitude: u.latitude !== null ? Number(u.latitude) : null,
+    longitude: u.longitude !== null ? Number(u.longitude) : null,
   }));
 
   const serializedNodes = nodes.map((n) => ({

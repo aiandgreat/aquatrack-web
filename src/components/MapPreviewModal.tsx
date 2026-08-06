@@ -248,16 +248,16 @@ export default function MapPreviewModal({
 
           {/* Right Panel: AI Spatial Diagnostics (Only rendered if PostGIS correlated alert exists) */}
           {matchedAlert && (
-            <div className="bg-slate-950 text-slate-100 flex flex-col relative min-w-0">
+            <div className="bg-slate-50 dark:bg-slate-950 text-slate-800 dark:text-slate-100 flex flex-col relative min-w-0">
               {/* Close Button overlay in upper right for split-screen */}
               <button
                 onClick={onClose}
-                className="absolute top-4 right-4 z-10 w-8 h-8 rounded-full bg-slate-900 flex items-center justify-center text-slate-400 hover:text-slate-200 hover:bg-slate-850 transition-all font-black text-sm cursor-pointer border border-slate-800 active:scale-95"
+                className="absolute top-4 right-4 z-10 w-8 h-8 rounded-full bg-slate-150 dark:bg-slate-900 flex items-center justify-center text-slate-500 hover:text-slate-700 dark:hover:text-slate-200 hover:bg-slate-200 dark:hover:bg-slate-850 transition-all font-black text-sm cursor-pointer border border-slate-200 dark:border-slate-800 active:scale-95"
               >
                 ✕
               </button>
               
-              <div className="p-5 flex-1 overflow-y-auto max-h-[580px] scrollbar-thin scrollbar-thumb-slate-800 scrollbar-track-transparent">
+              <div className="p-5 flex-1 overflow-y-auto max-h-[580px] scrollbar-thin scrollbar-thumb-slate-200 dark:scrollbar-thumb-slate-800 scrollbar-track-transparent">
                 <DiagnosticAlertDrawer
                   alert={matchedAlert}
                   crews={crews}

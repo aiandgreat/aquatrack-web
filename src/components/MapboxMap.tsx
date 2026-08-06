@@ -4,6 +4,17 @@ import React, { useEffect, useRef, useState } from "react";
 import mapboxgl from "mapbox-gl";
 import "mapbox-gl/dist/mapbox-gl.css";
 import { SAN_FERNANDO_POLYGON } from "../lib/san-fernando-boundary";
+import { 
+  Megaphone, 
+  Cpu, 
+  User, 
+  FileText, 
+  MapPin, 
+  AlertTriangle, 
+  Globe,
+  Settings,
+  Activity
+} from "lucide-react";
 
 // Set token safely from environment variables
 mapboxgl.accessToken = process.env.NEXT_PUBLIC_MAPBOX_TOKEN || "";
@@ -790,10 +801,9 @@ export default function MapboxMap({
 
       {/* HUD Layer Grid (top transparent layer) */}
       <div className="absolute inset-0 bg-[linear-gradient(to_right,#1e293b_1.5px,transparent_1.5px),linear-gradient(to_bottom,#1e293b_1.5px,transparent_1.5px)] bg-[size:5rem_5rem] opacity-5 pointer-events-none" />
-
       {/* Selected Indicator HUD overlay (Hover for Complaints and Nodes) */}
       {(hoveredComplaintId || hoveredNodeId) && (
-        <div className="absolute bottom-4 left-4 z-10 bg-slate-950/95 border border-slate-800 rounded-xl p-4 text-xs font-mono backdrop-blur-md text-slate-200 max-w-xs sm:max-w-sm shadow-2xl z-20">
+        <div className="absolute bottom-4 left-4 z-10 bg-white/95 dark:bg-slate-900/95 border border-slate-200/80 dark:border-slate-800/80 rounded-2xl p-4 text-xs font-sans text-slate-700 dark:text-slate-200 max-w-xs sm:max-w-sm shadow-xl backdrop-blur-md z-20 transition-all duration-300">
           {hoveredComplaintId ? (() => {
             const comp = complaints.find((c) => c.id === hoveredComplaintId);
             if (!comp) return null;
@@ -801,19 +811,22 @@ export default function MapboxMap({
             const staticMapUrl = `https://api.mapbox.com/styles/v1/mapbox/satellite-v9/static/${comp.longitude},${comp.latitude},16.5,0/280x120?access_token=${mapboxToken}`;
             return (
               <div className="space-y-2">
-                <div className="text-rose-500 font-black text-[9px] tracking-widest uppercase">⚠️ CITIZEN INCIDENT FOCUS</div>
-                <div className="text-white font-black text-xs leading-tight">{comp.summary}</div>
-                <div className="border-t border-slate-800 my-2 pt-2 space-y-1.5 text-slate-400 text-xxs leading-normal">
-                  <div><strong className="text-slate-300">Name:</strong> {comp.userName || "Anonymous Resident"}</div>
-                  <div><strong className="text-slate-300">Acct No:</strong> {comp.serviceAccountNo || "N/A - Non Consumer"}</div>
-                  <div><strong className="text-slate-300">Barangay:</strong> {comp.barangay || "San Fernando"}</div>
-                  <div><strong className="text-slate-300">Location:</strong> {comp.latitude.toFixed(5)}, {comp.longitude.toFixed(5)}</div>
-                  <div className="mt-2 p-2 bg-slate-900/80 rounded border border-slate-800 text-slate-300 italic font-medium leading-relaxed max-h-24 overflow-y-auto">
+                <div className="text-rose-600 dark:text-rose-450 font-black text-[9px] tracking-widest uppercase flex items-center gap-1.5">
+                  <Megaphone className="w-3.5 h-3.5 shrink-0" />
+                  CITIZEN INCIDENT FOCUS
+                </div>
+                <div className="text-[#001e66] dark:text-slate-100 font-black text-sm tracking-tight leading-snug">{comp.summary}</div>
+                <div className="border-t border-slate-100 dark:border-slate-800/80 my-2.5 pt-2.5 space-y-2 text-slate-500 dark:text-slate-400 text-xxs font-semibold leading-normal">
+                  <div className="flex items-center gap-2"><User className="w-3.5 h-3.5 text-slate-400 shrink-0" /> <span className="font-bold text-slate-700 dark:text-slate-200">{comp.userName || "Anonymous Resident"}</span></div>
+                  <div className="flex items-center gap-2"><FileText className="w-3.5 h-3.5 text-slate-400 shrink-0" /> <span>Acct No: <span className="font-bold text-slate-700 dark:text-slate-200">{comp.serviceAccountNo || "N/A"}</span></span></div>
+                  <div className="flex items-center gap-2"><Globe className="w-3.5 h-3.5 text-slate-400 shrink-0" /> <span>Barangay: <span className="font-bold text-slate-700 dark:text-slate-200">{comp.barangay || "San Fernando"}</span></span></div>
+                  <div className="flex items-center gap-2"><MapPin className="w-3.5 h-3.5 text-slate-400 shrink-0" /> <span className="font-mono font-bold text-slate-600 dark:text-slate-350">{comp.latitude.toFixed(5)}, {comp.longitude.toFixed(5)}</span></div>
+                  <div className="mt-3 p-3 bg-slate-50 dark:bg-slate-900/60 rounded-xl border border-slate-100 dark:border-slate-800 text-slate-650 dark:text-slate-350 italic font-medium leading-relaxed max-h-24 overflow-y-auto shadow-inner">
                     "{comp.rawText}"
                   </div>
-                  <div className="mt-2.5">
-                    <span className="text-[9px] font-black text-slate-400 uppercase block mb-1">📍 Location Satellite Preview</span>
-                    <div className="rounded-lg overflow-hidden border border-slate-800 shadow-md">
+                  <div className="mt-3">
+                    <span className="text-[9px] font-black text-slate-450 dark:text-slate-400 uppercase tracking-wider block mb-1.5">📍 Location Satellite Preview</span>
+                    <div className="rounded-xl overflow-hidden border border-slate-200 dark:border-slate-850 shadow-sm">
                       <img src={staticMapUrl} alt="Location Satellite Preview" className="w-full h-[120px] object-cover" />
                     </div>
                   </div>
@@ -829,22 +842,35 @@ export default function MapboxMap({
             const barangay = node.name.split(" ")[0] || "San Fernando";
             return (
               <div className="space-y-2">
-                <div className="text-cyan-400 font-black text-[9px] tracking-widest uppercase">📡 TELEMETRY NODE FOCUS</div>
-                <div className="text-white font-black text-xs leading-tight">{node.name}</div>
-                <div className="border-t border-slate-800 my-2 pt-2 space-y-1.5 text-slate-400 text-xxs leading-normal">
-                  <div>
-                    <strong className="text-slate-300">Status:</strong>{" "}
-                    <span className={node.status === "ONLINE" ? "text-emerald-400 font-bold" : node.status === "MAINTENANCE" ? "text-amber-400 font-bold" : "text-rose-400 font-bold"}>
+                <div className="text-[#00aeef] font-black text-[9px] tracking-widest uppercase flex items-center gap-1.5">
+                  <Cpu className="w-3.5 h-3.5 shrink-0" />
+                  TELEMETRY NODE FOCUS
+                </div>
+                <div className="text-[#001e66] dark:text-slate-100 font-black text-sm tracking-tight leading-snug">{node.name}</div>
+                <div className="border-t border-slate-100 dark:border-slate-800/80 my-2.5 pt-2.5 space-y-2 text-slate-500 dark:text-slate-400 text-xxs font-semibold leading-normal">
+                  <div className="flex items-center gap-2">
+                    <Activity className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+                    <span>Status:</span>
+                    <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-lg text-[9px] font-black uppercase border ${
+                      node.status === "ONLINE" ? "bg-emerald-50 text-emerald-800 border-emerald-250/70" :
+                      node.status === "MAINTENANCE" ? "bg-amber-50 text-amber-800 border-amber-250/70" :
+                      "bg-rose-50 text-rose-800 border-rose-250/70"
+                    }`}>
+                      <span className={`w-1.5 h-1.5 rounded-full ${
+                        node.status === "ONLINE" ? "bg-emerald-500 animate-pulse" :
+                        node.status === "MAINTENANCE" ? "bg-amber-500 animate-pulse" :
+                        "bg-rose-500 animate-pulse"
+                      }`} />
                       {node.status}
                     </span>
                   </div>
-                  <div><strong className="text-slate-300">Type:</strong> {node.type.replace(/_/g, " ")}</div>
-                  <div><strong className="text-slate-300">Barangay:</strong> {barangay}</div>
-                  <div><strong className="text-slate-300">Location:</strong> {node.latitude.toFixed(5)}, {node.longitude.toFixed(5)}</div>
+                  <div className="flex items-center gap-2"><Settings className="w-3.5 h-3.5 text-slate-400 shrink-0" /> <span>Type: <span className="font-bold text-slate-700 dark:text-slate-200">{node.type.replace(/_/g, " ")}</span></span></div>
+                  <div className="flex items-center gap-2"><Globe className="w-3.5 h-3.5 text-slate-400 shrink-0" /> <span>Barangay: <span className="font-bold text-slate-700 dark:text-slate-200">{barangay}</span></span></div>
+                  <div className="flex items-center gap-2"><MapPin className="w-3.5 h-3.5 text-slate-400 shrink-0" /> <span className="font-mono font-bold text-slate-600 dark:text-slate-350">{node.latitude.toFixed(5)}, {node.longitude.toFixed(5)}</span></div>
                   
-                  <div className="mt-2.5">
-                    <span className="text-[9px] font-black text-slate-400 uppercase block mb-1">📍 Location Satellite Preview</span>
-                    <div className="rounded-lg overflow-hidden border border-slate-800 shadow-md">
+                  <div className="mt-3">
+                    <span className="text-[9px] font-black text-slate-450 dark:text-slate-400 uppercase tracking-wider block mb-1.5">📍 Location Satellite Preview</span>
+                    <div className="rounded-xl overflow-hidden border border-slate-200 dark:border-slate-850 shadow-sm">
                       <img src={staticMapUrl} alt="Location Satellite Preview" className="w-full h-[120px] object-cover" />
                     </div>
                   </div>
