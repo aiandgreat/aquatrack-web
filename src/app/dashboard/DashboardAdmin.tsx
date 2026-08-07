@@ -10,7 +10,8 @@ import Footer from "../../components/Footer";
 import { 
   Home, Map, AlertTriangle, Flame, Cpu, BarChart3, Users, 
   Megaphone, Settings, Bell, HelpCircle, Sun, Moon, ChevronDown, 
-  Menu, X, User, LogOut, CheckCircle2, Wrench, WifiOff, ClipboardList, Activity
+  Menu, X, User, LogOut, CheckCircle2, Wrench, WifiOff, ClipboardList, Activity,
+  Shield, PanelLeftClose, PanelLeftOpen
 } from "lucide-react";
 
 // Import Modular Sections
@@ -156,6 +157,20 @@ export default function DashboardAdmin({
   const [showProfileMenu, setShowProfileMenu] = useState(false);
   const [showLogoutModal, setShowLogoutModal] = useState(false);
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
+  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
+
+  useEffect(() => {
+    const cached = localStorage.getItem("sidebar_collapsed");
+    if (cached === "true") {
+      setIsSidebarCollapsed(true);
+    }
+  }, []);
+
+  const toggleSidebar = () => {
+    const nextState = !isSidebarCollapsed;
+    setIsSidebarCollapsed(nextState);
+    localStorage.setItem("sidebar_collapsed", nextState ? "true" : "false");
+  };
   const [activeDetailNews, setActiveDetailNews] = useState<any | null>(null);
   const [activeDetailEvent, setActiveDetailEvent] = useState<any | null>(null);
   const [alertMessage, setAlertMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
@@ -1117,46 +1132,63 @@ export default function DashboardAdmin({
                       )}
                     </div>
                     
-                    <div className="divide-y divide-slate-100 dark:divide-slate-800 max-h-72 overflow-y-auto">
+                    <div className="divide-y divide-slate-100 dark:divide-slate-800/85 max-h-[340px] overflow-y-auto p-2 space-y-1.5 bg-slate-50/30 dark:bg-slate-950/20">
                       {activeNotifications.map((item) => {
                         let headerColor = "text-[#970006] dark:text-red-400";
-                        let bgColor = "hover:bg-slate-50 dark:hover:bg-slate-800/40";
+                        let iconBg = "bg-red-500/10";
+                        let iconColor = "text-red-500";
+                        let IconComponent = AlertTriangle;
                         
                         if (item.type === "new_complaint") {
                           headerColor = "text-[#00aeef] dark:text-[#00aeef]";
+                          iconBg = "bg-[#00aeef]/10";
+                          iconColor = "text-[#00aeef]";
+                          IconComponent = AlertTriangle;
                         } else if (item.type === "node_status") {
-                          headerColor = item.title.includes("OFFLINE")
-                            ? "text-red-500 dark:text-red-400"
-                            : "text-amber-500 dark:text-amber-400";
+                          const isOffline = item.title.includes("OFFLINE");
+                          headerColor = isOffline ? "text-red-500 dark:text-red-400" : "text-amber-500 dark:text-amber-400";
+                          iconBg = isOffline ? "bg-red-500/10" : "bg-amber-500/10";
+                          iconColor = isOffline ? "text-red-500" : "text-amber-500";
+                          IconComponent = Cpu;
                         } else if (item.type === "suggested_action") {
-                          headerColor = "text-purple-600 dark:text-purple-400";
+                          headerColor = "text-purple-650 dark:text-purple-400";
+                          iconBg = "bg-purple-500/10";
+                          iconColor = "text-purple-500";
+                          IconComponent = Sparkles;
                         }
 
                         return (
                           <div
                             key={item.id}
                             onClick={() => handleNotificationClick(item)}
-                            className={`p-3.5 ${bgColor} transition-colors cursor-pointer relative group flex justify-between items-start gap-2`}
+                            className="group p-2.5 bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800/60 rounded-xl flex gap-3 hover:bg-slate-50 dark:hover:bg-slate-800/40 transition-all duration-200 hover:-translate-y-0.5 hover:shadow-xs cursor-pointer relative text-left"
                           >
+                            {/* Icon Box */}
+                            <div className={`w-8 h-8 rounded-lg ${iconBg} flex items-center justify-center shrink-0`}>
+                              <IconComponent className={`w-4 h-4 ${iconColor}`} />
+                            </div>
+
                             <div className="flex-1 min-w-0">
                               <div className="flex justify-between items-start gap-2">
-                                <span className={`font-bold text-xs ${headerColor} truncate`}>
+                                <span className={`font-bold text-[11px] ${headerColor} truncate`}>
                                   {item.title}
                                 </span>
                                 <span className="text-[8px] text-slate-400 dark:text-slate-500 font-mono shrink-0 mt-0.5">
                                   {item.date}
                                 </span>
                               </div>
-                              <p className="text-slate-500 dark:text-slate-400 mt-1 text-[10px] leading-relaxed line-clamp-2">
+                              <p className="text-slate-500 dark:text-slate-400 mt-0.5 text-[9.5px] leading-relaxed line-clamp-2">
                                 {item.text}
                               </p>
                             </div>
+
+                            {/* Dismiss button */}
                             <button
                               onClick={(e) => {
                                 e.stopPropagation();
                                 dismissNotification(item.id);
                               }}
-                              className="opacity-0 group-hover:opacity-100 text-slate-400 hover:text-slate-650 dark:hover:text-slate-200 transition-opacity p-1 ml-1 -mt-1 rounded hover:bg-slate-100 dark:hover:bg-slate-700/50 cursor-pointer flex items-center justify-center"
+                              className="opacity-0 group-hover:opacity-100 text-slate-400 hover:text-slate-650 dark:hover:text-slate-200 transition-opacity p-1 ml-1 rounded hover:bg-slate-100 dark:hover:bg-slate-850 cursor-pointer flex items-center justify-center shrink-0"
                               title="Dismiss Alert"
                             >
                               <X className="w-3 h-3" />
@@ -1165,7 +1197,7 @@ export default function DashboardAdmin({
                         );
                       })}
                       {activeNotifications.length === 0 && (
-                        <div className="p-6 text-center text-slate-450 dark:text-slate-500 italic text-[11px]">
+                        <div className="p-6 text-center text-slate-400 dark:text-slate-500 italic text-[11px]">
                           No active system alarms or notifications.
                         </div>
                       )}
@@ -1275,22 +1307,38 @@ export default function DashboardAdmin({
       <div className="flex flex-col lg:flex-row flex-1 p-4 gap-4 bg-transparent relative z-10">
 
         {/* ── Sidebar ───────────────────────────────────────────────────────── */}
-        <aside className="hidden lg:flex w-56 shrink-0 bg-white dark:bg-slate-900/50 border border-slate-100 dark:border-white/5 flex flex-col h-[calc(100vh-120px)] lg:sticky lg:top-24 rounded-2xl overflow-hidden shadow-sm">
-          <div className="flex-1 py-3 px-3 overflow-y-auto">
+        <aside className={`hidden lg:flex shrink-0 bg-white dark:bg-slate-900/50 border border-slate-100 dark:border-white/5 flex flex-col h-[calc(100vh-120px)] lg:sticky lg:top-24 rounded-2xl overflow-visible shadow-sm transition-all duration-300 ease-in-out relative z-[60] ${
+          isSidebarCollapsed ? "w-16" : "w-56"
+        }`}>
+          {/* Collapse Toggle Button for Desktop */}
+          <button
+            type="button"
+            onClick={toggleSidebar}
+            className="absolute top-6 -right-3.5 w-7 h-7 rounded-full bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 shadow-md flex items-center justify-center hover:scale-105 active:scale-95 transition-all cursor-pointer z-45 text-slate-500 dark:text-slate-400 hover:text-blue-600 dark:hover:text-blue-400 hover:border-blue-500/30"
+            title={isSidebarCollapsed ? "Expand Sidebar" : "Collapse Sidebar"}
+          >
+            <Menu className={`w-4 h-4 transition-transform duration-300 ${isSidebarCollapsed ? "rotate-180 scale-90 text-[#00aeef]" : "rotate-0"}`} />
+          </button>
+
+          <div className="flex-1 py-3 px-3 overflow-visible">
             {/* Admin Menu Header */}
-            <div className="px-3 mb-5 mt-2 flex items-center justify-start gap-3 pb-3.5 border-b border-slate-100 dark:border-white/5">
-              {/* Activity icon on the left */}
-              <div className="p-1.5 rounded-lg bg-[#00aeef]/10 dark:bg-[#00aeef]/20 shrink-0">
-                <Activity className="w-5 h-5 text-[#00aeef] animate-pulse" />
+            <div className={`mb-5 mt-2 flex items-center gap-3 pb-3.5 border-b border-slate-100 dark:border-white/5 transition-all ${
+              isSidebarCollapsed ? "justify-center px-0" : "justify-start px-3"
+            }`}>
+              {/* Admin Shield Icon */}
+              <div className="p-1.5 rounded-lg bg-[#00aeef]/10 dark:bg-[#00aeef]/20 border border-[#00aeef]/15 shrink-0 shadow-xs">
+                <Shield className="w-5 h-5 text-[#00aeef]" />
               </div>
-              <div className="flex flex-col text-left leading-none">
-                <span className="text-[12px] md:text-[14px] font-black text-[#001e66] dark:text-white uppercase tracking-wider">
-                  Admin Menu
-                </span>
-                <span className="text-[8.5px] font-black uppercase tracking-widest text-[#00aeef] mt-1 block">
-                  AquaTrack
-                </span>
-              </div>
+              {!isSidebarCollapsed && (
+                <div className="flex flex-col text-left leading-none transition-opacity duration-300">
+                  <span className="text-[12px] md:text-[14px] font-black text-[#001e66] dark:text-white uppercase tracking-wider">
+                    Admin Menu
+                  </span>
+                  <span className="text-[8.5px] font-black uppercase tracking-widest text-[#00aeef] mt-1 block">
+                    AquaTrack
+                  </span>
+                </div>
+              )}
             </div>
             <nav className="flex flex-col gap-0.5">
               {navItems.map((item) => {
@@ -1299,14 +1347,19 @@ export default function DashboardAdmin({
                   <button
                     key={item.key}
                     onClick={() => setActiveTab(item.key as any)}
-                    className={`w-full flex items-center gap-2.5 px-3.5 py-2.5 rounded-xl text-sm font-medium transition-all duration-200 hover:translate-x-1 relative ${
+                    className={`w-full flex items-center rounded-xl text-sm font-medium transition-all duration-200 relative group ${
+                      isSidebarCollapsed ? "justify-center p-2.5" : "gap-2.5 px-3.5 py-2.5 hover:translate-x-1"
+                    } ${
                       isActive
                         ? "bg-blue-600 dark:bg-blue-600/90 text-white font-bold shadow-[0_4px_12px_rgba(37,99,235,0.25)] scale-[1.02]"
                         : "text-slate-500 dark:text-slate-400 hover:text-blue-600 dark:hover:text-blue-400 hover:bg-slate-50/70 dark:hover:bg-slate-800/30"
                     }`}
                   >
-                    {isActive && (
+                    {isActive && !isSidebarCollapsed && (
                       <span className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-5 bg-white rounded-full animate-pulse" />
+                    )}
+                    {isActive && isSidebarCollapsed && (
+                      <span className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-4 bg-white rounded-full animate-pulse" />
                     )}
                     <item.icon
                       strokeWidth={isActive ? 2.5 : 1.8}
@@ -1316,7 +1369,10 @@ export default function DashboardAdmin({
                           : "text-slate-400 dark:text-slate-500 group-hover:scale-110 group-hover:rotate-[2deg] group-hover:text-blue-600 dark:group-hover:text-blue-400"
                       }`}
                     />
-                    <span className="truncate">{item.label}</span>
+                    {!isSidebarCollapsed && <span className="truncate">{item.label}</span>}
+                    <div className="absolute left-full ml-3.5 px-2.5 py-1.5 bg-slate-900 dark:bg-slate-800 text-white text-[10.5px] font-black uppercase tracking-wider rounded-lg opacity-0 pointer-events-none group-hover:opacity-100 group-hover:translate-x-1 transition-all duration-150 whitespace-nowrap shadow-md z-50 border border-slate-700/25">
+                      {item.label}
+                    </div>
                   </button>
                 );
               })}
@@ -1324,26 +1380,39 @@ export default function DashboardAdmin({
           </div>
 
           {/* Premium Profile Card at bottom */}
-          <div className="mt-auto p-3.5 border-t border-slate-100 dark:border-white/5 space-y-3 bg-slate-50/30 dark:bg-slate-900/30">
+          <div className={`mt-auto border-t border-slate-100 dark:border-white/5 bg-slate-50/30 dark:bg-slate-900/30 transition-all ${
+            isSidebarCollapsed ? "p-2 flex flex-col items-center gap-2" : "p-3.5 space-y-3"
+          }`}>
             {/* Super Admin Status Badge */}
-            <div className="inline-flex items-center gap-1.5 bg-[#001e66]/5 dark:bg-[#00aeef]/10 text-[#001e66] dark:text-[#00aeef] text-[10px] font-black uppercase tracking-wider px-2.5 py-1.5 rounded-xl border border-[#001e66]/10 dark:border-[#00aeef]/20 w-full justify-center shadow-inner">
-              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
-              Super Admin Mode
-            </div>
+            {!isSidebarCollapsed ? (
+              <div className="inline-flex items-center gap-1.5 bg-[#001e66]/5 dark:bg-[#00aeef]/10 text-[#001e66] dark:text-[#00aeef] text-[10px] font-black uppercase tracking-wider px-2.5 py-1.5 rounded-xl border border-[#001e66]/10 dark:border-[#00aeef]/20 w-full justify-center shadow-inner">
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                Super Admin Mode
+              </div>
+            ) : (
+              <div className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse my-1.5" title="Super Admin Mode Active" />
+            )}
 
             {/* Profile Block */}
-            <div className="flex items-center gap-2.5 bg-white dark:bg-slate-900 border border-slate-150 dark:border-slate-800/80 rounded-xl p-2.5 shadow-sm">
-              <div className="w-7 h-7 rounded-lg bg-[#00aeef] text-white flex items-center justify-center text-[11px] font-black shrink-0 uppercase select-none shadow-sm">
+            <div className={`bg-white dark:bg-slate-900 border border-slate-150 dark:border-slate-800/80 rounded-xl shadow-sm ${
+              isSidebarCollapsed ? "p-1.5" : "p-2.5 flex items-center gap-2.5"
+            }`}>
+              <div 
+                className="w-7 h-7 rounded-lg bg-[#00aeef] text-white flex items-center justify-center text-[11px] font-black shrink-0 uppercase select-none shadow-sm cursor-pointer"
+                title={isSidebarCollapsed ? (userProfile?.name || "Administrator") : undefined}
+              >
                 A
               </div>
-              <div className="flex flex-col leading-none text-left min-w-0 flex-1">
-                <span className="text-[10px] font-black text-[#001e66] dark:text-white truncate">
-                  {userProfile?.name || session?.user?.email?.split("@")[0] || "Administrator"}
-                </span>
-                <span className="text-[8px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest mt-1 block">
-                  System Executive
-                </span>
-              </div>
+              {!isSidebarCollapsed && (
+                <div className="flex flex-col leading-none text-left min-w-0 flex-1">
+                  <span className="text-[10px] font-black text-[#001e66] dark:text-white truncate">
+                    {userProfile?.name || session?.user?.email?.split("@")[0] || "Administrator"}
+                  </span>
+                  <span className="text-[8px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest mt-1 block">
+                    System Executive
+                  </span>
+                </div>
+              )}
             </div>
           </div>
         </aside>
@@ -1388,8 +1457,9 @@ export default function DashboardAdmin({
                 <div className="flex-1 py-3 px-3">
                   {/* Admin Menu Header */}
                   <div className="px-3 mb-5 mt-2 flex items-center justify-start gap-3 pb-3.5 border-b border-slate-100 dark:border-slate-800">
-                    <div className="p-1.5 rounded-lg bg-[#00aeef]/10 dark:bg-[#00aeef]/20 shrink-0">
-                      <Activity className="w-5 h-5 text-[#00aeef] animate-pulse" />
+                    {/* Admin Shield Icon */}
+                    <div className="p-1.5 rounded-lg bg-[#00aeef]/10 dark:bg-[#00aeef]/20 border border-[#00aeef]/15 shrink-0">
+                      <Shield className="w-5 h-5 text-[#00aeef]" />
                     </div>
                     <div className="flex flex-col text-left leading-none">
                       <span className="text-[12px] md:text-[14px] font-black text-[#001e66] dark:text-white uppercase tracking-wider">

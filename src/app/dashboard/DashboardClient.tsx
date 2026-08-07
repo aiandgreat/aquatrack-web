@@ -5,7 +5,7 @@ import Link from "next/link";
 import Footer from "../../components/Footer";
 import { getSupabaseClient, uploadComplaintPhoto } from "../../lib/supabase";
 import { motion, AnimatePresence } from "framer-motion";
-import { Activity } from "lucide-react";
+import { Activity, Megaphone, AlertTriangle } from "lucide-react";
 import mapboxgl from "mapbox-gl";
 import "mapbox-gl/dist/mapbox-gl.css";
 import { isOutsideSanFernando } from "../../lib/geo-utils";
@@ -1278,10 +1278,21 @@ export default function DashboardClient({
                         </button>
                       )}
                     </div>
-                    
-                    <div className="max-h-72 overflow-y-auto divide-y divide-slate-50 dark:divide-slate-800/40">
+                           <div className="max-h-72 overflow-y-auto p-2 space-y-1.5 bg-slate-50/30 dark:bg-slate-950/20 text-left">
                       {filteredAdvisories.map((ad) => {
                         const isUnread = !viewedAdvisoryIds.includes(ad.id);
+                        let headerColor = "text-[#001e66] dark:text-blue-300";
+                        let iconBg = "bg-blue-500/10";
+                        let iconColor = "text-blue-500";
+                        let IconComponent = Megaphone;
+                        
+                        if (ad.type === "warning") {
+                          headerColor = "text-red-650 dark:text-red-400";
+                          iconBg = "bg-red-500/10";
+                          iconColor = "text-red-500";
+                          IconComponent = AlertTriangle;
+                        }
+
                         return (
                           <div
                             key={ad.id}
@@ -1290,33 +1301,39 @@ export default function DashboardClient({
                               setActiveTab("view-announcements");
                               setIsNotificationOpen(false);
                             }}
-                            className={`p-3.5 hover:bg-slate-50 dark:hover:bg-slate-800/40 transition-colors cursor-pointer flex gap-3 items-start relative ${
-                              isUnread ? "bg-[#189BFF]/3 dark:bg-[#189BFF]/3" : ""
+                            className={`p-2.5 bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800/60 rounded-xl flex gap-3 hover:bg-slate-50 dark:hover:bg-slate-800/40 transition-all duration-200 hover:-translate-y-0.5 hover:shadow-xs cursor-pointer relative text-left ${
+                              isUnread ? "ring-1 ring-blue-500/15 bg-blue-50/10 dark:bg-blue-950/5" : ""
                             }`}
                           >
-                            {/* Alert status indicator */}
-                            <span className={`w-1.5 h-1.5 rounded-full mt-1.5 shrink-0 ${
-                              ad.type === "warning" ? "bg-red-500" : "bg-blue-500"
-                            }`} />
-                            
-                            <div className="flex-1 min-w-0">
-                              <div className="flex justify-between items-start gap-1">
-                                <p className={`text-xs truncate text-[#001e66] dark:text-slate-200 ${isUnread ? "font-black" : "font-semibold"}`}>
-                                  {ad.title}
-                                </p>
-                                {isUnread && (
-                                  <span className="w-2 h-2 rounded-full bg-[#00aeef] shrink-0 mt-1 shadow-sm shadow-[#00aeef]/45" />
-                                )}
-                              </div>
-                              <p className="text-[10px] text-slate-400 dark:text-slate-450 truncate mt-0.5">{ad.text}</p>
-                              <p className="text-[9px] text-slate-400 dark:text-slate-500 font-mono mt-1">{ad.date}</p>
+                            {/* Icon Box */}
+                            <div className={`w-8 h-8 rounded-lg ${iconBg} flex items-center justify-center shrink-0`}>
+                              <IconComponent className={`w-4 h-4 ${iconColor}`} />
                             </div>
+
+                            <div className="flex-1 min-w-0">
+                              <div className="flex justify-between items-start gap-2">
+                                <span className={`font-bold text-[11px] ${headerColor} truncate`}>
+                                  {ad.title}
+                                </span>
+                                <span className="text-[8px] text-slate-400 dark:text-slate-500 font-mono shrink-0 mt-0.5">
+                                  {ad.date}
+                                </span>
+                              </div>
+                              <p className="text-slate-500 dark:text-slate-400 mt-0.5 text-[9.5px] leading-relaxed line-clamp-2">
+                                {ad.text}
+                              </p>
+                            </div>
+                            
+                            {/* Blue unread dot in top-right */}
+                            {isUnread && (
+                              <span className="absolute top-2.5 right-2.5 w-1.5 h-1.5 rounded-full bg-blue-500 animate-pulse" />
+                            )}
                           </div>
                         );
                       })}
                       {filteredAdvisories.length === 0 && (
-                        <div className="p-6 text-center text-slate-400 dark:text-slate-500 italic text-xs">
-                          No announcements broadcasted.
+                        <div className="p-6 text-center text-slate-400 dark:text-slate-500 italic text-[11px]">
+                          No active system alarms or advisories.
                         </div>
                       )}
                     </div>

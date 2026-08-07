@@ -4,7 +4,7 @@ import React, { useState, useEffect } from "react";
 import Link from "next/link";
 import { getSupabaseClient } from "../../lib/supabase";
 import { motion, AnimatePresence } from "framer-motion";
-import { ClipboardList, Home, Map, Wrench, Cpu, Megaphone, Activity } from "lucide-react";
+import { ClipboardList, Home, Map, Wrench, Cpu, Megaphone, Activity, PanelLeftClose, PanelLeftOpen, Menu, AlertTriangle } from "lucide-react";
 import Footer from "../../components/Footer";
 import MapSection from "./admin-sections/MapSection";
 import TelemetrySection from "./admin-sections/TelemetrySection";
@@ -109,6 +109,20 @@ export default function DashboardSubAdmin({
   const [advisoriesPage, setAdvisoriesPage] = useState(1);
   const [isDark, setIsDark] = useState(false);
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
+  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
+
+  useEffect(() => {
+    const cached = localStorage.getItem("sidebar_collapsed");
+    if (cached === "true") {
+      setIsSidebarCollapsed(true);
+    }
+  }, []);
+
+  const toggleSidebar = () => {
+    const nextState = !isSidebarCollapsed;
+    setIsSidebarCollapsed(nextState);
+    localStorage.setItem("sidebar_collapsed", nextState ? "true" : "false");
+  };
 
   // Account details states
   const [userProfile, setUserProfile] = useState<{
@@ -566,22 +580,32 @@ export default function DashboardSubAdmin({
                       </span>
                     </div>
                     
-                    <div className="divide-y divide-slate-50 dark:divide-slate-800/40 max-h-60 overflow-y-auto">
+                    <div className="divide-y divide-slate-55 dark:divide-slate-800/80 max-h-72 overflow-y-auto p-2 space-y-1.5 bg-slate-50/30 dark:bg-slate-950/20">
                       {advisories
                         .filter(ad => ad.type === "warning" && (ad.targetRole === "broadcast" || ad.targetRole === "technicians"))
                         .map((ad) => (
-                          <div key={ad.id} className="p-3.5 hover:bg-slate-50 dark:hover:bg-slate-800/40 transition-colors">
-                            <div className="flex justify-between items-start gap-2">
-                              <span className="font-bold text-[#970006] dark:text-red-400 text-xs">{ad.title}</span>
-                              <span className="text-[8px] text-slate-400 dark:text-slate-500 font-mono shrink-0 mt-0.5">{ad.date}</span>
+                          <div 
+                            key={ad.id} 
+                            className="p-2.5 bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800/60 rounded-xl flex gap-3 hover:bg-slate-50 dark:hover:bg-slate-800/40 transition-all duration-200 hover:-translate-y-0.5 hover:shadow-xs text-left"
+                          >
+                            {/* Icon Box */}
+                            <div className="w-8 h-8 rounded-lg bg-red-500/10 flex items-center justify-center shrink-0">
+                              <AlertTriangle className="w-4 h-4 text-red-500" />
                             </div>
-                            <p className="text-slate-500 dark:text-slate-400 mt-1 text-[10px] leading-relaxed">
-                              {ad.text}
-                            </p>
+
+                            <div className="flex-1 min-w-0">
+                              <div className="flex justify-between items-start gap-2">
+                                <span className="font-bold text-red-650 dark:text-red-400 text-[11px] truncate">{ad.title}</span>
+                                <span className="text-[8px] text-slate-400 dark:text-slate-500 font-mono shrink-0 mt-0.5">{ad.date}</span>
+                              </div>
+                              <p className="text-slate-500 dark:text-slate-400 mt-0.5 text-[9.5px] leading-relaxed line-clamp-2">
+                                {ad.text}
+                              </p>
+                            </div>
                           </div>
                         ))}
                       {advisories.filter(ad => ad.type === "warning" && (ad.targetRole === "broadcast" || ad.targetRole === "technicians")).length === 0 && (
-                        <div className="p-6 text-center text-slate-450 dark:text-slate-500 italic text-[11px]">
+                        <div className="p-6 text-center text-slate-400 dark:text-slate-500 italic text-[11px]">
                           No active system alarms.
                         </div>
                       )}
@@ -688,22 +712,38 @@ export default function DashboardSubAdmin({
       <div className="flex flex-col lg:flex-row flex-1 p-4 gap-4 bg-transparent relative z-10">
 
         {/* ── Sidebar ───────────────────────────────────────────────────────── */}
-        <aside className="hidden lg:flex w-56 shrink-0 bg-white dark:bg-slate-900/50 border border-slate-100 dark:border-white/5 flex flex-col h-[calc(100vh-120px)] lg:sticky lg:top-24 rounded-2xl overflow-hidden shadow-sm">
-          <div className="flex-1 py-3 px-3 overflow-y-auto">
+        <aside className={`hidden lg:flex shrink-0 bg-white dark:bg-slate-900/50 border border-slate-100 dark:border-white/5 flex flex-col h-[calc(100vh-120px)] lg:sticky lg:top-24 rounded-2xl overflow-visible shadow-sm transition-all duration-300 ease-in-out relative z-[60] ${
+          isSidebarCollapsed ? "w-16" : "w-56"
+        }`}>
+          {/* Collapse Toggle Button for Desktop */}
+          <button
+            type="button"
+            onClick={toggleSidebar}
+            className="absolute top-6 -right-3.5 w-7 h-7 rounded-full bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 shadow-md flex items-center justify-center hover:scale-105 active:scale-95 transition-all cursor-pointer z-45 text-slate-500 dark:text-slate-400 hover:text-blue-600 dark:hover:text-blue-400 hover:border-blue-500/30"
+            title={isSidebarCollapsed ? "Expand Sidebar" : "Collapse Sidebar"}
+          >
+            <Menu className={`w-4 h-4 transition-transform duration-300 ${isSidebarCollapsed ? "rotate-180 scale-90 text-amber-500" : "rotate-0"}`} />
+          </button>
+
+          <div className="flex-1 py-3 px-3 overflow-visible">
             {/* Technician Menu Header */}
-            <div className="px-3 mb-5 mt-2 flex items-center justify-start gap-3 pb-3.5 border-b border-slate-100 dark:border-white/5">
-              {/* Activity icon on the left */}
-              <div className="p-1.5 rounded-lg bg-[#00aeef]/10 dark:bg-[#00aeef]/20 shrink-0">
-                <Activity className="w-5 h-5 text-[#00aeef] animate-pulse" />
+            <div className={`mb-5 mt-2 flex items-center gap-3 pb-3.5 border-b border-slate-100 dark:border-white/5 transition-all ${
+              isSidebarCollapsed ? "justify-center px-0" : "justify-start px-3"
+            }`}>
+              {/* Technician Wrench Icon */}
+              <div className="p-1.5 rounded-lg bg-amber-500/10 dark:bg-amber-500/20 border border-amber-500/15 shrink-0 shadow-xs">
+                <Wrench className="w-5 h-5 text-amber-500" />
               </div>
-              <div className="flex flex-col text-left leading-none">
-                <span className="text-[12px] md:text-[14px] font-black text-[#001e66] dark:text-white uppercase tracking-wider">
-                  Technician Menu
-                </span>
-                <span className="text-[8.5px] font-black uppercase tracking-widest text-[#00aeef] mt-1 block">
-                  AquaTrack
-                </span>
-              </div>
+              {!isSidebarCollapsed && (
+                <div className="flex flex-col text-left leading-none transition-opacity duration-300">
+                  <span className="text-[12px] md:text-[14px] font-black text-[#001e66] dark:text-white uppercase tracking-wider">
+                    Technician Menu
+                  </span>
+                  <span className="text-[8.5px] font-black uppercase tracking-widest text-[#00aeef] mt-1 block">
+                    AquaTrack
+                  </span>
+                </div>
+              )}
             </div>
 
             {/* Nav Items */}
@@ -714,25 +754,33 @@ export default function DashboardSubAdmin({
                   <button
                     key={item.key}
                     onClick={() => setActiveTab(item.key as any)}
-                    className={`w-full flex items-center gap-2.5 px-3.5 py-2.5 rounded-xl text-sm font-medium transition-all duration-200 relative ${
+                    className={`w-full flex items-center rounded-xl text-sm font-medium transition-all duration-200 relative group ${
+                      isSidebarCollapsed ? "justify-center p-2.5" : "gap-2.5 px-3.5 py-2.5"
+                    } ${
                       isActive
                         ? "bg-blue-600 dark:bg-blue-600/90 text-white font-bold shadow-[0_4px_12px_rgba(37,99,235,0.25)] scale-[1.02]"
                         : "text-slate-500 dark:text-slate-400 hover:text-blue-600 dark:hover:text-blue-400 hover:bg-slate-50 dark:hover:bg-slate-800/30"
                     }`}
                   >
                     {/* Active left indicator bar */}
-                    {isActive && (
-                      <span className="absolute left-0 top-1/2 -translate-y-1/2 w-0.5 h-4 bg-white rounded-full" />
+                    {isActive && !isSidebarCollapsed && (
+                      <span className="absolute left-0 top-1/2 -translate-y-1/2 w-0.5 h-4 bg-white rounded-full animate-pulse" />
+                    )}
+                    {isActive && isSidebarCollapsed && (
+                      <span className="absolute left-0 top-1/2 -translate-y-1/2 w-0.5 h-3 bg-white rounded-full animate-pulse" />
                     )}
                     <item.icon
                       strokeWidth={isActive ? 2.5 : 1.8}
-                      className={`w-4 h-4 shrink-0 transition-all duration-300 ${
+                      className={`w-4.5 h-4.5 shrink-0 transition-all duration-300 ${
                         isActive
                           ? "text-white scale-110 drop-shadow-[0_0_8px_rgba(255,255,255,0.45)]"
                           : "text-slate-400 dark:text-slate-500 group-hover:scale-110 group-hover:rotate-[2deg] group-hover:text-blue-600 dark:group-hover:text-blue-400"
                       }`}
                     />
-                    <span className="truncate">{item.label}</span>
+                    {!isSidebarCollapsed && <span className="truncate">{item.label}</span>}
+                    <div className="absolute left-full ml-3.5 px-2.5 py-1.5 bg-slate-900 dark:bg-slate-800 text-white text-[10.5px] font-black uppercase tracking-wider rounded-lg opacity-0 pointer-events-none group-hover:opacity-100 group-hover:translate-x-1 transition-all duration-150 whitespace-nowrap shadow-md z-50 border border-slate-700/25">
+                      {item.label}
+                    </div>
                   </button>
                 );
               })}
@@ -740,35 +788,51 @@ export default function DashboardSubAdmin({
           </div>
 
           {/* Premium Profile Card at bottom */}
-          <div className="mt-auto p-3.5 border-t border-slate-100 dark:border-white/5 space-y-3.5 bg-slate-50/30 dark:bg-slate-900/30">
+          <div className={`mt-auto border-t border-slate-100 dark:border-white/5 bg-slate-50/30 dark:bg-slate-900/30 transition-all ${
+            isSidebarCollapsed ? "p-2 flex flex-col items-center gap-2" : "p-3.5 space-y-3.5"
+          }`}>
             {/* Assigned Status Row */}
-            <div className="flex items-center justify-between text-[10px] font-bold">
-              <span className="text-slate-400 dark:text-slate-500 flex items-center gap-1.5 uppercase tracking-wider">
-                <ClipboardList className="w-3.5 h-3.5 text-slate-400 dark:text-slate-500" />
-                Assigned
-              </span>
-              <span className={`text-[9px] font-black px-2.5 py-0.5 rounded-full border uppercase tracking-wider ${
-                assignedComplaints.length > 0
-                  ? "bg-red-50 dark:bg-red-950/20 text-red-650 dark:text-red-400 border-red-100 dark:border-red-900/30 animate-pulse"
-                  : "bg-slate-100 dark:bg-slate-850 text-slate-550 dark:text-slate-400 border-slate-200/50 dark:border-slate-800"
-              }`}>
-                {assignedComplaints.length} Job{assignedComplaints.length !== 1 ? "s" : ""}
-              </span>
-            </div>
+            {!isSidebarCollapsed ? (
+              <div className="flex items-center justify-between text-[10px] font-bold">
+                <span className="text-slate-400 dark:text-slate-500 flex items-center gap-1.5 uppercase tracking-wider">
+                  <ClipboardList className="w-3.5 h-3.5 text-slate-400 dark:text-slate-500" />
+                  Assigned
+                </span>
+                <span className={`text-[9px] font-black px-2.5 py-0.5 rounded-full border uppercase tracking-wider ${
+                  assignedComplaints.length > 0
+                    ? "bg-red-50 dark:bg-red-950/20 text-red-650 dark:text-red-400 border-red-100 dark:border-red-900/30 animate-pulse"
+                    : "bg-slate-100 dark:bg-slate-850 text-slate-550 dark:text-slate-400 border-slate-200/50 dark:border-slate-800"
+                }`}>
+                  {assignedComplaints.length} Job{assignedComplaints.length !== 1 ? "s" : ""}
+                </span>
+              </div>
+            ) : (
+              <div 
+                className={`w-2.5 h-2.5 rounded-full ${assignedComplaints.length > 0 ? "bg-red-500 animate-pulse" : "bg-slate-450 dark:bg-slate-600"}`} 
+                title={`Assigned Incidents: ${assignedComplaints.length}`}
+              />
+            )}
 
             {/* Profile Block */}
-            <div className="flex items-center gap-2.5 bg-white dark:bg-slate-900 border border-slate-150 dark:border-slate-800/80 rounded-xl p-2.5 shadow-sm">
-              <div className="w-7 h-7 rounded-lg bg-[#00aeef] text-white flex items-center justify-center text-[11px] font-black shrink-0 uppercase select-none shadow-sm">
+            <div className={`bg-white dark:bg-slate-900 border border-slate-150 dark:border-slate-800/80 rounded-xl shadow-sm ${
+              isSidebarCollapsed ? "p-1.5" : "p-2.5 flex items-center gap-2.5"
+            }`}>
+              <div 
+                className="w-7 h-7 rounded-lg bg-[#00aeef] text-white flex items-center justify-center text-[11px] font-black shrink-0 uppercase select-none shadow-sm cursor-pointer"
+                title={isSidebarCollapsed ? (userProfile?.name || staffId) : undefined}
+              >
                 {initials}
               </div>
-              <div className="flex flex-col leading-none text-left min-w-0 flex-1">
-                <span className="text-[10px] font-black text-[#001e66] dark:text-white truncate">
-                  {userProfile?.name || staffId}
-                </span>
-                <span className="text-[8px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest mt-1 block">
-                  {currentUserRole === "ADMIN" ? "Admin Staff" : "Technician"}
-                </span>
-              </div>
+              {!isSidebarCollapsed && (
+                <div className="flex flex-col leading-none text-left min-w-0 flex-1">
+                  <span className="text-[10px] font-black text-[#001e66] dark:text-white truncate">
+                    {userProfile?.name || staffId}
+                  </span>
+                  <span className="text-[8px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest mt-1 block">
+                    {currentUserRole === "ADMIN" ? "Admin Staff" : "Technician"}
+                  </span>
+                </div>
+              )}
             </div>
           </div>
         </aside>
@@ -815,9 +879,9 @@ export default function DashboardSubAdmin({
                 <div className="flex-1 py-3 px-3">
                   {/* Technician Menu Header */}
                   <div className="px-3 mb-5 mt-2 flex items-center justify-start gap-3 pb-3.5 border-b border-slate-100 dark:border-slate-800">
-                    {/* Activity icon on the left */}
-                    <div className="p-1.5 rounded-lg bg-[#00aeef]/10 dark:bg-[#00aeef]/20 shrink-0">
-                      <Activity className="w-5 h-5 text-[#00aeef] animate-pulse" />
+                    {/* Technician Wrench Icon */}
+                    <div className="p-1.5 rounded-lg bg-amber-500/10 dark:bg-amber-500/20 border border-amber-500/15 shrink-0">
+                      <Wrench className="w-5 h-5 text-amber-500" />
                     </div>
                     <div className="flex flex-col text-left leading-none">
                       <span className="text-[12px] md:text-[14px] font-black text-[#001e66] dark:text-white uppercase tracking-wider">

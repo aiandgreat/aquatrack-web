@@ -18,7 +18,10 @@ import {
   AlertTriangle,
   ArrowRight,
   Sparkles,
-  Inbox
+  Inbox,
+  Brain,
+  Database,
+  Clock
 } from "lucide-react";
 
 interface DashboardStats {
@@ -152,30 +155,39 @@ export default function HomeSection({
   return (
     <div className="space-y-6 font-sans">
       {/* Executive Welcome Banner with Clickable Summary Cards */}
-      <div className="bg-[#0B2E7A] dark:bg-[#001e66] rounded-[24px] min-h-[220px] p-6 text-white flex flex-col justify-between shadow-md relative overflow-hidden transition-all duration-300 border border-slate-100/10 dark:border-slate-800/40">
+      <div className="rounded-[24px] min-h-[220px] p-6 text-white flex flex-col justify-between shadow-md relative overflow-hidden transition-all duration-300 border border-slate-100/10 dark:border-slate-800/40">
         
+        {/* Background Image Layer */}
+        <div 
+          className="absolute inset-0 bg-cover bg-no-repeat pointer-events-none z-0"
+          style={{ backgroundImage: "url('/headerpic.png')", backgroundPosition: "center 25%" }}
+        />
+
+        {/* Dark Blue Overlay */}
+        <div className="absolute inset-0 bg-gradient-to-r from-[#0B2E7A]/95 via-[#0B2E7A]/90 to-[#0B2E7A]/80 dark:from-[#001e66]/95 dark:via-[#001e66]/90 dark:to-[#001e66]/80 z-10 pointer-events-none" />
+
         {/* Decorative Wave Design */}
-        <div className="absolute inset-0 opacity-10 pointer-events-none z-0">
+        <div className="absolute inset-0 opacity-15 pointer-events-none z-10">
           <svg className="w-full h-full" viewBox="0 0 100 100" preserveAspectRatio="none" xmlns="http://www.w3.org/2000/svg">
             <path d="M0,45 Q25,35 50,45 T100,45 L100,100 L0,100 Z" fill="rgba(255,255,255,0.08)"></path>
           </svg>
         </div>
 
-        <div className="space-y-2 z-10 relative text-left">
+        <div className="space-y-2 z-20 relative text-left">
           <div className="border border-cyan-300/40 text-cyan-200 text-[9px] font-mono font-bold tracking-wider px-3 py-1 rounded-full w-fit uppercase bg-white/5 flex items-center gap-1.5">
             <Sparkles className="w-3 h-3 text-[#00aeef]" />
             Executive Operations Command
           </div>
-          <h2 className="text-2xl font-black tracking-tight text-white mt-3.5">
+          <h2 className="text-3xl md:text-3.5xl font-black tracking-tight drop-shadow-sm text-white mt-3.5 animate-fade-in">
             Hello, Admin Officer!
           </h2>
-          <p className="text-xs text-slate-200 leading-relaxed max-w-[650px] font-medium opacity-90 mt-1">
-            Executive management portal designed for supervising municipal water distribution networks, coordinating technical personnel, posting advisories, adjusting global AI triage strictness, and ensuring district-wide compliance with PNSDW standards.
+          <p className="text-xs text-blue-100/90 font-bold tracking-wide mt-2 opacity-95 leading-relaxed">
+            Executive control panel for municipal water networks, field operations, and real-time telemetry analytics.
           </p>
         </div>
 
         {/* Statistics Row */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-6 pt-5 border-t border-white/10 z-10 relative">
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-6 pt-5 border-t border-white/10 z-20 relative">
           <div
             onClick={() => setExpandedCard(expandedCard === "compliance" ? null : "compliance")}
             className={`bg-white/10 border border-white/15 rounded-xl h-[58px] px-3.5 flex flex-col justify-center cursor-pointer hover:bg-white/20 select-none transition-all ${
@@ -399,7 +411,10 @@ export default function HomeSection({
             timestamp: Date;
             tag: string;
             tagColor: string;
-            ringColor: string;
+            badgeBg: string;
+            icon: React.ComponentType<any>;
+            iconColor: string;
+            iconBg: string;
             text: string;
           }> = [];
 
@@ -409,7 +424,10 @@ export default function HomeSection({
               timestamp: new Date(comp.createdAt),
               tag: "AI Triage",
               tagColor: "text-rose-600 dark:text-rose-400",
-              ringColor: "bg-rose-500 ring-rose-500/20",
+              badgeBg: "bg-rose-50 dark:bg-rose-950/30 border border-rose-100 dark:border-rose-900/40",
+              icon: Brain,
+              iconColor: "text-rose-500",
+              iconBg: "bg-rose-500/10",
               text: `Citizen in Brgy. ${comp.barangay || "San Fernando"} reported: "${comp.summary || comp.rawText}" (${comp.urgency})`
             });
           });
@@ -419,8 +437,11 @@ export default function HomeSection({
               id: `node-${node.id}`,
               timestamp: new Date(Date.now() - 1000 * 60 * 2),
               tag: "Sensor Alert",
-              tagColor: "text-amber-600 dark:text-amber-400",
-              ringColor: "bg-amber-500 ring-amber-500/20",
+              tagColor: "text-amber-650 dark:text-amber-400",
+              badgeBg: "bg-amber-50 dark:bg-amber-950/30 border border-amber-100 dark:border-amber-900/40",
+              icon: Activity,
+              iconColor: "text-amber-500",
+              iconBg: "bg-amber-500/10",
               text: `Sensor node "${node.name}" status changed to ${node.status} due to threshold breach.`
             });
           });
@@ -431,15 +452,21 @@ export default function HomeSection({
               timestamp: new Date(Date.now() - 1000 * 60 * 15),
               tag: "Telemetry Stream",
               tagColor: "text-emerald-600 dark:text-emerald-450",
-              ringColor: "bg-emerald-500 ring-emerald-500/20",
+              badgeBg: "bg-emerald-50 dark:bg-emerald-950/30 border border-emerald-100 dark:border-emerald-900/40",
+              icon: Database,
+              iconColor: "text-emerald-500",
+              iconBg: "bg-emerald-500/10",
               text: "Global water telemetry stream is active. All pump sensors reporting normal pressures."
             });
             activities.push({
               id: "sys-ok-2",
               timestamp: new Date(Date.now() - 1000 * 60 * 120),
               tag: "AI Coeff Update",
-              tagColor: "text-purple-600 dark:text-purple-400",
-              ringColor: "bg-purple-500 ring-purple-500/20",
+              tagColor: "text-purple-650 dark:text-purple-400",
+              badgeBg: "bg-purple-50 dark:bg-purple-950/30 border border-purple-100 dark:border-purple-900/40",
+              icon: Sparkles,
+              iconColor: "text-purple-500",
+              iconBg: "bg-purple-500/10",
               text: "System-wide automated diagnostic sensitivity updated: standard filtering verified."
             });
           }
@@ -705,23 +732,40 @@ export default function HomeSection({
                   </h3>
                 </div>
 
-                <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-4 shadow-sm space-y-4 max-h-[310px] overflow-y-auto pr-1">
-                  {dynamicActivities.map((act) => (
-                    <div key={act.id} className="flex gap-3 text-xs">
-                      <div className="flex flex-col items-center">
-                        <div className={`w-2 h-2 rounded-full shrink-0 ring-4 ${act.ringColor}`}></div>
-                        <div className="w-[1.5px] bg-slate-200 dark:bg-slate-800 flex-1 my-1"></div>
+                <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-3 shadow-sm space-y-3 max-h-[340px] overflow-y-auto pr-1">
+                  {dynamicActivities.map((act) => {
+                    const IconComponent = act.icon;
+                    return (
+                      <div 
+                        key={act.id} 
+                        className="group p-3 bg-slate-50/50 dark:bg-slate-950/40 border border-slate-100 dark:border-slate-800/60 rounded-xl flex gap-3 hover:bg-slate-50 dark:hover:bg-slate-900/60 transition-all duration-200 hover:translate-x-0.5 hover:shadow-xs text-xs"
+                      >
+                        {/* Leading Icon Box */}
+                        <div className={`w-8 h-8 rounded-lg ${act.iconBg} flex items-center justify-center shrink-0`}>
+                          <IconComponent className={`w-4 h-4 ${act.iconColor} ${act.tag === "Sensor Alert" ? "animate-pulse" : ""}`} />
+                        </div>
+
+                        <div className="flex-1 min-w-0 space-y-1">
+                          <div className="flex items-center justify-between gap-2">
+                            {/* Category Pill Badge */}
+                            <span className={`px-2 py-0.5 rounded-full text-[9px] font-bold ${act.tagColor} ${act.badgeBg}`}>
+                              {act.tag}
+                            </span>
+                            {/* Timestamp */}
+                            <span className="text-[9px] text-slate-400 dark:text-slate-500 font-mono flex items-center gap-1 font-semibold">
+                              <Clock className="w-2.5 h-2.5" />
+                              {act.timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                            </span>
+                          </div>
+
+                          {/* Message Content */}
+                          <p className="text-slate-600 dark:text-slate-350 font-semibold leading-relaxed" title={act.text}>
+                            {act.text}
+                          </p>
+                        </div>
                       </div>
-                      <div className="space-y-0.5 text-left min-w-0 flex-1">
-                        <span className="text-[9px] text-slate-400 dark:text-slate-500 font-mono font-bold block">
-                          {act.timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                        </span>
-                        <p className="text-slate-650 dark:text-slate-300 font-semibold leading-normal line-clamp-2" title={act.text}>
-                          <span className={`${act.tagColor} font-black`}>[{act.tag}]</span> {act.text}
-                        </p>
-                      </div>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
               </div>
 

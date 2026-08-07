@@ -509,6 +509,22 @@ The full schema is defined in [`prisma/schema.prisma`](./prisma/schema.prisma). 
 
 ---
 
+## 🚀 Recent Platform Updates (August 8, 2026)
+
+### Administrative Dashboard & Collapsible Sidebar
+- **Collapsible Sidebar Layout:** Implemented collapsible sidebars in both Admin and Sub-Admin portals with transitions, caching choice in `localStorage`.
+- **Hover Page-Name Tooltips:** Integrated pure CSS absolute-positioned tooltip indicators showing page labels on hover in both expanded and collapsed states, with `overflow-visible` to prevent clipping.
+- **Improved Collapse Icons:** Swapped static indicators for rotatable `Menu` hamburger icons from Lucide React.
+- **Greeting Banner Enhancements:** Applied the water-themed `/headerpic.png` background graphic to the greeting banners, increased sizing of title text, and streamlined descriptive subtexts.
+- **High-Fidelity Live Activity Feed:** Redesigned the Admin homepage timeline into dynamic grid cards with hover translation animations, clocks, and Lucide React indicator icons.
+
+### Notification System Redesign & Branding Accents
+- **Styled HTML Email Template:** Redesigned the Resend crew dispatch email template (`CrewNotificationEmail.tsx`) to use the official dark AquaTrack logo (`LOGO3.png`) hosted on Supabase storage CDN, brand-specific styling colors, dynamic colored badges for urgency, and call-to-action console link buttons.
+- **Push Notification Copy Refinement:** Improved backend dispatches to use structured titles and emojis (`RESOLVED ✅`, `IN PROGRESS 🛠️`, `UNDER REVIEW 📋`) for consumer updates, and `"🚨 CSFWD Operation Dispatch"` for crew dispatches.
+- **In-App Notification Dropdowns:** Redesigned the Admin, Sub-Admin, and Client portals' notification popover lists using custom border cards, Lucide React icons, read status indicators, and hover transition scales.
+
+---
+
 ## 📁 Related Repositories
 
 | Repository | Description |

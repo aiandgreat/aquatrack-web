@@ -143,10 +143,15 @@ export async function PUT(req: Request) {
           });
           if (consumerUser?.pushToken) {
             const ticketName = current.summary || current.category || "Reported Issue";
+            let formattedStatus = status;
+            if (status === "RESOLVED") formattedStatus = "RESOLVED ✅";
+            else if (status === "ASSIGNED") formattedStatus = "IN PROGRESS 🛠️";
+            else if (status === "PENDING") formattedStatus = "UNDER REVIEW 📋";
+
             await sendFcmNotification(
               [consumerUser.pushToken],
-              "Complaint Status Updated",
-              `Your ticket regarding "${ticketName}" is now "${status}".`,
+              "AquaTrack Alert: Ticket Update",
+              `The status of your ticket regarding "${ticketName}" has been updated to: ${formattedStatus}.`,
               { type: "complaint_status", complaintId: id, status }
             );
           }
@@ -167,8 +172,8 @@ export async function PUT(req: Request) {
           if (technician.pushToken) {
             await sendFcmNotification(
               [technician.pushToken],
-              "New Work Order Assigned",
-              `You have been assigned a new job: "${ticketName}".`,
+              "🚨 CSFWD Operation Dispatch",
+              `New emergency assignment: "${ticketName}". Please open your Technician Console to review details.`,
               { type: "new_assignment", complaintId: id }
             );
           }
@@ -181,7 +186,7 @@ export async function PUT(req: Request) {
               `New Incident Assignment - ${ticketName}`,
               {
                 crewName: technician.name,
-                incidentId: id.substring(0, 8),
+                incidentId: `AQ-${id.slice(0, 8).toUpperCase()}`,
                 urgency: current.urgency || "MEDIUM",
                 description: current.summary || current.category || "Reported water district anomaly."
               }
