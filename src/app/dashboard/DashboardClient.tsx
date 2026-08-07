@@ -2511,15 +2511,15 @@ export default function DashboardClient({
                 </div>
 
                 <div className="overflow-x-auto border border-slate-100 rounded-xl bg-white shadow-sm">
-                  <table className="w-full text-left border-collapse text-xs">
+                  <table className="w-full text-left border-collapse text-xs table-fixed min-w-[800px]">
                     <thead>
                       <tr className="bg-slate-50 border-b border-slate-200 text-slate-500 font-bold uppercase tracking-wider">
-                        <th className="py-3 px-4">ID</th>
-                        <th className="py-3 px-4">Summary</th>
-                        <th className="py-3 px-4">Urgency</th>
-                        <th className="py-3 px-4">Category</th>
-                        <th className="py-3 px-4">Status</th>
-                        <th className="py-3 px-4">Dispatch Notes</th>
+                        <th className="py-3 px-4 w-[14%]">ID</th>
+                        <th className="py-3 px-4 w-[32%]">Summary</th>
+                        <th className="py-3 px-4 w-[12%]">Urgency</th>
+                        <th className="py-3 px-4 w-[18%]">Category</th>
+                        <th className="py-3 px-4 w-[12%]">Status</th>
+                        <th className="py-3 px-4 w-[12%]">Dispatch Notes</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-100">
@@ -2527,16 +2527,16 @@ export default function DashboardClient({
                         .filter((c) => c.status !== "RESOLVED")
                         .map((c) => (
                           <tr key={c.id} className="hover:bg-slate-50/50 transition-colors">
-                            <td className="py-4 px-4 font-mono text-[10px] font-bold text-slate-400">
+                            <td className="py-4 px-4 font-mono text-[10px] font-bold text-slate-400 align-top">
                               AQ-{c.id.slice(0, 8).toUpperCase()}
                             </td>
-                            <td className="py-4 px-4 font-bold text-[#001e66] max-w-xs">
-                              <div>{c.summary || "Resident reported issue"}</div>
-                              <div className="text-slate-500 font-medium italic mt-0.5 leading-relaxed">
+                            <td className="py-4 px-4 font-bold text-[#001e66] pr-2 align-top">
+                              <div className="font-bold text-[#001e66]">{c.summary || "Resident reported issue"}</div>
+                              <div className="text-slate-500 font-medium italic mt-0.5 leading-relaxed line-clamp-2">
                                 "{c.rawText.length > 75 ? c.rawText.slice(0, 75) + "...." : c.rawText}"
                               </div>
                             </td>
-                            <td className="py-4 px-4">
+                            <td className="py-4 px-4 align-top">
                               <span className={`inline-flex items-center px-2 py-0.5 rounded-[6px] text-[9px] font-black uppercase border ${
                                 c.urgency === "CRITICAL" || c.urgency === "HIGH" || c.urgency === "URGENT"
                                   ? "bg-red-50 text-red-700 border-red-200"
@@ -2544,13 +2544,13 @@ export default function DashboardClient({
                                   ? "bg-amber-50 text-amber-700 border-amber-200"
                                   : "bg-slate-50 text-slate-700 border-slate-200"
                               }`}>
-                                {c.urgency}
+                                {c.urgency || "LOW"}
                               </span>
                             </td>
-                            <td className="py-4 px-4 font-bold text-slate-600">
+                            <td className="py-4 px-4 font-bold text-slate-600 align-top break-words">
                               {formatCategory(c.category)}
                             </td>
-                            <td className="py-4 px-4">
+                            <td className="py-4 px-4 align-top">
                               <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-[9px] font-black uppercase border ${
                                 c.status === "PENDING"
                                   ? "bg-yellow-50 text-yellow-700 border-yellow-200"
@@ -2567,7 +2567,7 @@ export default function DashboardClient({
                                 {c.status || "PENDING"}
                               </span>
                             </td>
-                            <td className="py-4 px-4">
+                            <td className="py-4 px-4 align-top">
                               {c.assignedToName ? (
                                 <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded bg-blue-50/70 border border-blue-150 text-blue-700 font-bold text-[9px] uppercase tracking-wide">
                                   🔧 {c.assignedToName}
@@ -2598,15 +2598,15 @@ export default function DashboardClient({
                 </div>
 
                 <div className="overflow-x-auto border border-slate-100 rounded-xl bg-white shadow-sm">
-                  <table className="w-full text-left border-collapse text-xs">
+                  <table className="w-full text-left border-collapse text-xs table-fixed min-w-[800px]">
                     <thead>
                       <tr className="bg-slate-50 border-b border-slate-200 text-slate-500 font-bold uppercase tracking-wider">
-                        <th className="py-3 px-4">ID</th>
-                        <th className="py-3 px-4">Summary</th>
-                        <th className="py-3 px-4">Urgency</th>
-                        <th className="py-3 px-4">Category</th>
-                        <th className="py-3 px-4">Status</th>
-                        <th className="py-3 px-4">Dispatch Notes</th>
+                        <th className="py-3 px-4 w-[14%]">ID</th>
+                        <th className="py-3 px-4 w-[32%]">Summary</th>
+                        <th className="py-3 px-4 w-[12%]">Urgency</th>
+                        <th className="py-3 px-4 w-[18%]">Category</th>
+                        <th className="py-3 px-4 w-[12%]">Status</th>
+                        <th className="py-3 px-4 w-[12%]">Dispatch Notes</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-100">
@@ -2614,29 +2614,35 @@ export default function DashboardClient({
                         .filter((c) => c.status === "RESOLVED")
                         .map((c) => (
                           <tr key={c.id} className="hover:bg-slate-50/50 transition-colors">
-                            <td className="py-4 px-4 font-mono text-[10px] font-bold text-slate-400">
+                            <td className="py-4 px-4 font-mono text-[10px] font-bold text-slate-400 align-top">
                               AQ-{c.id.slice(0, 8).toUpperCase()}
                             </td>
-                            <td className="py-4 px-4 font-bold text-[#001e66] max-w-xs">
-                              <div>{c.summary || "Resident reported issue"}</div>
-                              <div className="text-slate-500 font-medium italic mt-0.5 leading-relaxed">
+                            <td className="py-4 px-4 font-bold text-[#001e66] pr-2 align-top">
+                              <div className="font-bold text-[#001e66]">{c.summary || "Resident reported issue"}</div>
+                              <div className="text-slate-500 font-medium italic mt-0.5 leading-relaxed line-clamp-2">
                                 "{c.rawText.length > 75 ? c.rawText.slice(0, 75) + "...." : c.rawText}"
                               </div>
                             </td>
-                            <td className="py-4 px-4">
-                              <span className="inline-flex items-center px-2 py-0.5 rounded-[6px] text-[9px] font-black uppercase border bg-slate-50 text-slate-700 border-slate-200">
-                                {c.urgency}
+                            <td className="py-4 px-4 align-top">
+                              <span className={`inline-flex items-center px-2 py-0.5 rounded-[6px] text-[9px] font-black uppercase border ${
+                                c.urgency === "CRITICAL" || c.urgency === "HIGH" || c.urgency === "URGENT"
+                                  ? "bg-red-50 text-red-700 border-red-200"
+                                  : c.urgency === "MEDIUM"
+                                  ? "bg-amber-50 text-amber-700 border-amber-200"
+                                  : "bg-slate-50 text-slate-700 border-slate-200"
+                              }`}>
+                                {c.urgency || "LOW"}
                               </span>
                             </td>
-                            <td className="py-4 px-4 font-bold text-slate-600">
+                            <td className="py-4 px-4 font-bold text-slate-600 align-top break-words">
                               {formatCategory(c.category)}
                             </td>
-                            <td className="py-4 px-4">
-                              <span className="px-2.5 py-1 rounded-full text-[9px] font-black uppercase bg-emerald-50 text-emerald-700 border border-emerald-200">
+                            <td className="py-4 px-4 align-top">
+                              <span className="inline-flex items-center px-2.5 py-1 rounded-full text-[9px] font-black uppercase bg-emerald-50 text-emerald-700 border border-emerald-200">
                                 RESOLVED
                               </span>
                             </td>
-                            <td className="py-4 px-4">
+                            <td className="py-4 px-4 align-top">
                               {c.assignedToName ? (
                                 <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded bg-blue-50/70 border border-blue-150 text-blue-700 font-bold text-[9px] uppercase tracking-wide">
                                   🔧 {c.assignedToName}
