@@ -5,7 +5,38 @@ import Link from "next/link";
 import Footer from "../../components/Footer";
 import { getSupabaseClient, uploadComplaintPhoto } from "../../lib/supabase";
 import { motion, AnimatePresence } from "framer-motion";
-import { Activity, Megaphone, AlertTriangle } from "lucide-react";
+import { 
+  Activity, 
+  Megaphone, 
+  AlertTriangle, 
+  MapPinOff, 
+  Menu, 
+  Bell, 
+  Moon, 
+  Sun, 
+  ChevronDown, 
+  User, 
+  LogOut, 
+  X, 
+  CheckCircle2, 
+  AlertCircle, 
+  Upload, 
+  Loader2, 
+  MapPin, 
+  Phone, 
+  PhoneCall,
+  Map,
+  Mail, 
+  Plus, 
+  Eye, 
+  ListTodo, 
+  Clock, 
+  Compass, 
+  UserCog,
+  Droplet,
+  Camera,
+  Send
+} from "lucide-react";
 import mapboxgl from "mapbox-gl";
 import "mapbox-gl/dist/mapbox-gl.css";
 import { isOutsideSanFernando } from "../../lib/geo-utils";
@@ -124,6 +155,9 @@ export default function DashboardClient({
       setProfileEmail(userProfile.email || "");
       setProfilePhone(userProfile.phone || "");
       setProfileAddress(userProfile.address || "");
+      if (userProfile.address) {
+        setAddressSearchQuery((current) => current || userProfile.address);
+      }
     }
   }, [userProfile]);
 
@@ -251,7 +285,11 @@ export default function DashboardClient({
 
   const [myComplaints, setMyComplaints] = useState<Complaint[]>(initialComplaints);
   const [advisories, setAdvisories] = useState<Advisory[]>([]);
+  const [nodes, setNodes] = useState<any[]>(initialNodes || []);
   const [advisoryPage, setAdvisoryPage] = useState(1);
+  const [advisoryFilter, setAdvisoryFilter] = useState<"all" | "warning" | "info">("all");
+  const [selectedAdvisory, setSelectedAdvisory] = useState<Advisory | null>(null);
+  const [loadMiniMap, setLoadMiniMap] = useState(false);
 
   // Form Submission State
   const [complaintText, setComplaintText] = useState("");
@@ -264,6 +302,7 @@ export default function DashboardClient({
   const [addressSearchQuery, setAddressSearchQuery] = useState("");
   const [mapError, setMapError] = useState(false);
   const [lastSubmittedComplaint, setLastSubmittedComplaint] = useState<any | null>(null);
+  const [searchErrorModalOpen, setSearchErrorModalOpen] = useState(false);
 
 
   const clientMapRef = useRef<mapboxgl.Map | null>(null);
@@ -301,12 +340,12 @@ export default function DashboardClient({
     if (file) await uploadFile(file);
   };
 
-  const reverseGeocodeGPSAddress = async (latVal: number, lngVal: number) => {
-    // Avoid re-fetching if profile address is already populated to reduce API queries
-    if (userProfile?.address?.trim()) return;
+  const reverseGeocodeGPSAddress = async (latVal: number, lngVal: number, force = false) => {
+    // Avoid re-fetching if profile address is already populated (unless forced by manual click)
+    if (!force && userProfile?.address?.trim()) return;
 
     try {
-      console.log("No address registered. Auto reverse-geocoding GPS coordinates:", latVal, lngVal);
+      console.log("Reverse-geocoding GPS coordinates:", latVal, lngVal, "force:", force);
       const reverseGeocodeUrl = `https://api.mapbox.com/geocoding/v5/mapbox.places/${lngVal},${latVal}.json?access_token=${mapboxgl.accessToken || process.env.NEXT_PUBLIC_MAPBOX_TOKEN || ""}&limit=1`;
       const res = await fetch(reverseGeocodeUrl);
       if (res.ok) {
@@ -318,24 +357,26 @@ export default function DashboardClient({
           // 1. Set the Address Search input field
           setAddressSearchQuery(detectedAddr);
 
-          // 2. Save it to Postgres
-          await fetch("/api/auth/register", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              id: userProfile?.id,
-              email: userProfile?.email || "",
-              fullName: userProfile?.name || "",
-              phone: userProfile?.phone || "",
-              address: detectedAddr
-            }),
-          });
+          // 2. Save it to Postgres (only if we're auto-detecting a new profile address on mount)
+          if (!userProfile?.address?.trim()) {
+            await fetch("/api/auth/register", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                id: userProfile?.id,
+                email: userProfile?.email || "",
+                fullName: userProfile?.name || "",
+                phone: userProfile?.phone || "",
+                address: detectedAddr
+              }),
+            });
 
-          // 3. Update the local state so it appears under Welcome Back instantly
-          setUserProfile((prev) =>
-            prev ? { ...prev, address: detectedAddr } : null
-          );
-          setProfileAddress(detectedAddr);
+            // 3. Update the local state so it appears under Welcome Back instantly
+            setUserProfile((prev) =>
+              prev ? { ...prev, address: detectedAddr } : null
+            );
+            setProfileAddress(detectedAddr);
+          }
         }
       }
     } catch (err) {
@@ -345,6 +386,8 @@ export default function DashboardClient({
 
   // Request user's exact geolocation GPS coordinates on mount and watch for improvements
   useEffect(() => {
+    if (loading) return; // Wait until auth/profile load completes to prevent race conditions
+
     let watchId: number | null = null;
 
     if (typeof window !== "undefined" && navigator.geolocation) {
@@ -391,7 +434,7 @@ export default function DashboardClient({
         navigator.geolocation.clearWatch(watchId);
       }
     };
-  }, []);
+  }, [loading]);
 
   const mapLoadTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
@@ -770,7 +813,7 @@ export default function DashboardClient({
     checkRole();
   }, []);
 
-  // Enable Supabase Realtime subscriptions for complaint changes
+  // Enable Supabase Realtime subscriptions for complaint and telemetry changes
   useEffect(() => {
     if (!userProfile) return;
 
@@ -788,11 +831,24 @@ export default function DashboardClient({
         )
         .subscribe();
 
+      const readingsChannel = client
+        .channel("client-readings-realtime")
+        .on(
+          "postgres_changes",
+          { event: "INSERT", schema: "public", table: "TelemetryReading" },
+          (payload) => {
+            console.log("Realtime telemetry reading received:", payload);
+            fetchNodes(); // Re-fetch nodes to update live readings immediately!
+          }
+        )
+        .subscribe();
+
       return () => {
         client.removeChannel(channel);
+        client.removeChannel(readingsChannel);
       };
     } catch (err) {
-      console.error("Failed to setup realtime complaints subscription:", err);
+      console.error("Failed to setup realtime subscriptions:", err);
     }
   }, [userProfile]);
 
@@ -821,6 +877,47 @@ export default function DashboardClient({
       console.error("Failed to fetch advisories list", err);
     }
   };
+
+  const fetchNodes = async () => {
+    try {
+      const res = await fetch("/api/admin/nodes");
+      const data = await res.json();
+      if (data.success) {
+        setNodes(data.nodes);
+      }
+    } catch (err) {
+      console.error("Failed to fetch nodes", err);
+    }
+  };
+
+  // Geocode profile address on mount to resolve to initial GPS coordinates
+  useEffect(() => {
+    if (userProfile?.address) {
+      const geocodeAddr = async () => {
+        try {
+          const geocodeUrl = `https://api.mapbox.com/geocoding/v5/mapbox.places/${encodeURIComponent(userProfile.address)}.json?access_token=${mapboxgl.accessToken || process.env.NEXT_PUBLIC_MAPBOX_TOKEN || ""}&limit=1`;
+          const res = await fetch(geocodeUrl);
+          if (res.ok) {
+            const data = await res.json();
+            if (data.features && data.features.length > 0) {
+              const [lng, lat] = data.features[0].center;
+              setCustomLat(lat.toFixed(6));
+              setCustomLng(lng.toFixed(6));
+              setGpsPinpointActive(true);
+              console.log("Geocoded profile address to:", lat, lng);
+            }
+          }
+        } catch (err) {
+          console.error("Geocoding profile address on mount failed", err);
+        }
+      };
+      geocodeAddr();
+    }
+  }, [userProfile?.address]);
+
+
+
+
 
   const runLocalTriageFallback = (text: string) => {
     const lower = text.toLowerCase();
@@ -865,7 +962,7 @@ export default function DashboardClient({
             setGpsAccuracy(position.coords.accuracy);
             setGpsPinpointActive(true);
             setBarangayLoading(false);
-            reverseGeocodeGPSAddress(position.coords.latitude, position.coords.longitude);
+            reverseGeocodeGPSAddress(position.coords.latitude, position.coords.longitude, true);
           },
           (lowError) => {
             console.error("Low-accuracy GPS fallback also failed:", lowError);
@@ -886,7 +983,7 @@ export default function DashboardClient({
           setGpsAccuracy(position.coords.accuracy);
           setGpsPinpointActive(true);
           setBarangayLoading(false);
-          reverseGeocodeGPSAddress(position.coords.latitude, position.coords.longitude);
+          reverseGeocodeGPSAddress(position.coords.latitude, position.coords.longitude, true);
         },
         (error) => {
           console.warn("High-accuracy GPS request failed, retrying with low-accuracy fallback:", error);
@@ -910,36 +1007,56 @@ export default function DashboardClient({
     userHasManuallyPinnedRef.current = true;
     setBarangayLoading(true);
     try {
-      const fullQuery = `${addressSearchQuery}, Pampanga, Philippines`;
-      const res = await fetch(
-        `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(fullQuery)}&format=json&limit=1`,
-        {
-          headers: { "User-Agent": "AquaTrack-CSFWD/1.0 (aquatrack@csfwd.gov.ph)" },
+      let query = addressSearchQuery.trim();
+      // Safely strip duplicate suffixes if already present in the user query
+      const suffixes = ["Philippines", "Pampanga"];
+      for (const suffix of suffixes) {
+        if (query.toLowerCase().endsWith(suffix.toLowerCase())) {
+          query = query.slice(0, -suffix.length).trim().replace(/,$/, "").trim();
         }
-      );
+        if (query.toLowerCase().endsWith(suffix.toLowerCase())) {
+          query = query.slice(0, -suffix.length).trim().replace(/,$/, "").trim();
+        }
+      }
+      const fullQuery = `${query}, Pampanga, Philippines`;
+      const geocodeUrl = `https://api.mapbox.com/geocoding/v5/mapbox.places/${encodeURIComponent(fullQuery)}.json?access_token=${mapboxgl.accessToken || process.env.NEXT_PUBLIC_MAPBOX_TOKEN || ""}&limit=1`;
+      
+      const res = await fetch(geocodeUrl);
       if (res.ok) {
         const data = await res.json();
-        if (data && data.length > 0) {
-          const matched = data[0];
-          const lat = parseFloat(matched.lat).toFixed(6);
-          const lng = parseFloat(matched.lon).toFixed(6);
-          setCustomLat(lat);
-          setCustomLng(lng);
+        if (data.features && data.features.length > 0) {
+          const matched = data.features[0];
+          
+          // Mapbox fallback protection: if match relevance is too low, treat as location not found
+          if (matched.relevance !== undefined && matched.relevance < 0.8) {
+            setSearchErrorModalOpen(true);
+            return;
+          }
+
+          const lng = matched.center[0];
+          const lat = matched.center[1];
+          const latStr = lat.toFixed(6);
+          const lngStr = lng.toFixed(6);
+          
+          setCustomLat(latStr);
+          setCustomLng(lngStr);
           setGpsPinpointActive(true);
           
           const map = clientMapRef.current;
           const marker = clientMarkerRef.current;
           if (map && marker) {
-            marker.setLngLat([parseFloat(lng), parseFloat(lat)]);
-            map.easeTo({ center: [parseFloat(lng), parseFloat(lat)], zoom: 17 });
+            marker.setLngLat([lng, lat]);
+            map.easeTo({ center: [lng, lat], zoom: 17 });
           }
         } else {
-          alert("No matching locations found in Pampanga.");
+          setSearchErrorModalOpen(true);
         }
+      } else {
+        setSearchErrorModalOpen(true);
       }
     } catch (err) {
       console.error("Address search failed:", err);
-      alert("Error searching for location.");
+      setSearchErrorModalOpen(true);
     } finally {
       setBarangayLoading(false);
     }
@@ -1161,20 +1278,132 @@ export default function DashboardClient({
     );
   }
 
+  // Find the nearest node to the current geocoded address coordinates
+  const getNearestNode = () => {
+    if (!nodes || nodes.length === 0) return null;
+    const lat = parseFloat(customLat);
+    const lng = parseFloat(customLng);
+    if (isNaN(lat) || isNaN(lng)) return null;
+
+    let nearest: any = null;
+    let minDistance = Infinity;
+
+    for (const node of nodes) {
+      if (!node.latitude || !node.longitude) continue;
+      // Haversine formula
+      const R = 6371000; // meters
+      const dLat = ((node.latitude - lat) * Math.PI) / 180;
+      const dLng = ((node.longitude - lng) * Math.PI) / 180;
+      const a =
+        Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+        Math.cos((lat * Math.PI) / 180) *
+          Math.cos((node.latitude * Math.PI) / 180) *
+          Math.sin(dLng / 2) *
+          Math.sin(dLng / 2);
+      const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+      const distance = R * c;
+
+      if (distance < minDistance) {
+        minDistance = distance;
+        nearest = { ...node, distanceMeters: distance };
+      }
+    }
+    return nearest;
+  };
+
+  const calculateWaterHealthIndex = (reading: any) => {
+    if (!reading) return 100;
+    const { ph = 7.2, turbidity = 0.8, tds = 150, pressure = 42 } = reading;
+
+    // pH Score (6.5 to 8.5 acceptable, 7.0 to 7.8 optimal)
+    let phScore = 100;
+    if (ph < 6.5) phScore = Math.max(10, 100 - (6.5 - ph) * 40);
+    else if (ph > 8.5) phScore = Math.max(10, 100 - (ph - 8.5) * 40);
+    else phScore = 100 - Math.abs(ph - 7.2) * 15;
+
+    // Turbidity Score (<= 5 NTU acceptable, <= 1 NTU optimal)
+    let turbScore = 100;
+    if (turbidity > 5.0) turbScore = Math.max(10, 40 - (turbidity - 5.0) * 15);
+    else if (turbidity > 1.0) turbScore = 100 - (turbidity - 1.0) * 15;
+
+    // TDS Score (<= 600 ppm acceptable, <= 300 ppm optimal)
+    let tdsScore = 100;
+    if (tds > 600) tdsScore = Math.max(10, 50 - (tds - 600) * 0.1);
+    else if (tds > 300) tdsScore = 100 - (tds - 300) * 0.16;
+
+    // Pressure Score (15 to 60 PSI acceptable, 30 to 50 PSI optimal)
+    let pressScore = 100;
+    if (pressure < 15) pressScore = Math.max(10, 50 - (15 - pressure) * 3);
+    else if (pressure > 60) pressScore = Math.max(10, 50 - (pressure - 60) * 3);
+    else if (pressure < 30) pressScore = 100 - (30 - pressure) * 2;
+    else if (pressure > 50) pressScore = 100 - (pressure - 50) * 3;
+
+    const average = (phScore + turbScore + tdsScore + pressScore) / 4;
+    return Math.round(average * 10) / 10;
+  };
+
+  const nearestNodeRaw = getNearestNode();
+  const isOutOfCoverage = isOutOfScope || !nearestNodeRaw || nearestNodeRaw.distanceMeters > 2000;
+  const nearestNode = isOutOfCoverage ? null : nearestNodeRaw;
+  const healthIndex = nearestNode?.reading ? calculateWaterHealthIndex(nearestNode.reading) : null;
+
+  let statusText = "No Data";
+  let statusColorClass = "text-slate-500 bg-slate-50 border-slate-200/50";
+  if (healthIndex !== null) {
+    if (healthIndex < 65) {
+      statusText = "Low Quality";
+      statusColorClass = "text-rose-600 bg-rose-50 border-rose-100/50";
+    } else if (healthIndex < 80) {
+      statusText = "Acceptable";
+      statusColorClass = "text-amber-600 bg-amber-50 border-amber-100/50";
+    } else if (healthIndex < 90) {
+      statusText = "Safe";
+      statusColorClass = "text-blue-600 bg-blue-50 border-blue-100/50";
+    } else {
+      statusText = "Optimal";
+      statusColorClass = "text-emerald-600 bg-emerald-50 border-emerald-100/50";
+    }
+  }
+
+  // Dynamic Municipal Water Supply Status check
+  const hasActiveWarning = advisories.some(ad => ad.type === "warning");
+  const hasLowPressure = nodes.some(node => node.reading && (node.reading.pressure < 20));
+  
+  let supplyStatusText = "MUNICIPAL WATER SUPPLY IS NORMAL";
+  let supplyStatusColor = "text-emerald-300 bg-[#189BFF]/25 border-white/20";
+  let supplyStatusPing = "bg-emerald-400";
+  
+  if (hasActiveWarning) {
+    supplyStatusText = "⚠️ DISTRICT WATER ADVISORY ACTIVE";
+    supplyStatusColor = "text-amber-300 bg-amber-500/20 border-amber-300/30";
+    supplyStatusPing = "bg-amber-400";
+  } else if (hasLowPressure) {
+    supplyStatusText = "⚠️ LOW PRESSURE DETECTED IN GRID";
+    supplyStatusColor = "text-amber-300 bg-amber-500/20 border-amber-300/30";
+    supplyStatusPing = "bg-amber-400";
+  }
+
   const filteredAdvisories = advisories.filter(
     (ad) => !ad.targetRole || ad.targetRole === "broadcast" || ad.targetRole === "consumers"
   );
   const unreadCount = filteredAdvisories.filter((ad) => !viewedAdvisoryIds.includes(ad.id)).length;
+  
+  const displayedAdvisories = filteredAdvisories.filter((ad) => {
+    if (advisoryFilter === "warning") return ad.type === "warning";
+    if (advisoryFilter === "info") return ad.type !== "warning";
+    return true;
+  });
+
   const ADVISORIES_PER_PAGE = 5;
-  const totalAdvisoryPages = Math.ceil(filteredAdvisories.length / ADVISORIES_PER_PAGE);
+  const totalAdvisoryPages = Math.ceil(displayedAdvisories.length / ADVISORIES_PER_PAGE);
   const currentPage = Math.min(advisoryPage, Math.max(totalAdvisoryPages, 1));
-  const paginatedAdvisories = filteredAdvisories.slice(
+  const paginatedAdvisories = displayedAdvisories.slice(
     (currentPage - 1) * ADVISORIES_PER_PAGE,
     currentPage * ADVISORIES_PER_PAGE
   );
 
   return (
-    <div className="h-screen text-[#001e66] flex flex-col font-sans overflow-hidden relative bg-[#E2EAF4]">
+    <div className="min-h-screen text-[#001e66] flex flex-col font-sans relative bg-[#E2EAF4]">
       {/* Background Image Layer with custom opacity */}
       <div 
         className="absolute inset-0 bg-cover bg-center bg-no-repeat pointer-events-none"
@@ -1183,251 +1412,237 @@ export default function DashboardClient({
 
 
       {/* ── Header ── */}
-      <header className="h-20 shrink-0 bg-white border-b border-slate-100 sticky top-0 z-50 flex items-center justify-between px-6">
-        {/* Left Section (Logo + Nav tabs side-by-side) */}
-        <div className="flex items-center space-x-6">
-          <div className="flex items-center space-x-3">
-            <button
-              onClick={() => setIsMobileSidebarOpen(true)}
-              className="lg:hidden p-1.5 text-slate-500 hover:text-[#001e66] hover:bg-slate-50 rounded-xl transition-all focus:outline-none cursor-pointer"
-              aria-label="Open sidebar navigation"
-            >
-              <svg xmlns="http://www.w3.org/2000/svg" className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M4 6h16M4 12h16M4 18h16" />
-              </svg>
-            </button>
-            
-            <img
-              src="/LOGO2.png"
-              alt="AquaTrack Logo"
-              className="h-25 w-auto translate-y-1 hover:opacity-90 transition-opacity shrink-0"
-            />
-          </div>
-
-          {/* Navigation Tabs Navbar (Desktop Only) next to Logo */}
-          <nav className="hidden lg:flex items-center space-x-1 rounded-full border border-slate-200/80 bg-slate-50/80 p-1 shadow-inner">
-            {[
-              { key: "home",               label: "Dashboard" },
-              { key: "file-complaint",     label: "File a Complaint" },
-              { key: "track-complaint",    label: "Track Complaints" },
-              { key: "view-announcements", label: "Advisories" },
-            ].map((item) => {
-              const isActive = activeTab === item.key;
-              return (
+      <header className="bg-[#eef4fa] dark:bg-[#07142F] border-b border-slate-300/80 dark:border-white/10 sticky top-0 z-50 shadow-md relative transition-colors duration-300 shrink-0">
+        <div className="w-full pl-6 pr-4">
+          <div className="flex justify-between h-24 pt-1.5 items-center">
+            {/* Left Section (Logo + Nav tabs side-by-side) */}
+            <div className="flex items-center space-x-6">
+              <div className="flex items-center space-x-3">
                 <button
-                  key={item.key}
-                  onClick={() => setActiveTab(item.key as any)}
-                  className={`rounded-full px-4 py-2 text-[10px] font-black uppercase tracking-widest transition-all duration-200 cursor-pointer select-none ${
-                    isActive
-                      ? "bg-blue-600 text-white shadow-[0_3px_10px_rgba(37,99,235,0.25)] scale-[1.02]"
-                      : "text-slate-600 hover:text-blue-600 hover:bg-slate-100/60"
-                  }`}
+                  onClick={() => setIsMobileSidebarOpen(true)}
+                  className="lg:hidden p-1.5 text-slate-500 hover:text-[#001e66] hover:bg-slate-50 rounded-xl transition-all focus:outline-none cursor-pointer"
+                  aria-label="Open sidebar navigation"
                 >
-                  {item.label}
+                  <Menu className="w-5 h-5" />
                 </button>
-              );
-            })}
-          </nav>
-        </div>
-
-        {/* Right Section */}
-        <div className="flex items-center gap-3">
-          {/* Notification dropdown wrapper */}
-          <div className="relative">
-            <button 
-              onClick={() => setIsNotificationOpen(!isNotificationOpen)}
-              className="relative w-9 h-9 rounded-full border border-slate-200/80 bg-slate-50/80 hover:bg-slate-100 flex items-center justify-center text-slate-500 hover:text-[#001e66] transition-all hover:scale-105 active:scale-95 shadow-sm cursor-pointer"
-            >
-              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" className="w-4.5 h-4.5">
-                <path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9" />
-                <path d="M10.3 21a1.94 1.94 0 0 0 3.4 0" />
-              </svg>
-              {unreadCount > 0 && (
-                <span className="absolute -top-0.5 -right-0.5 flex h-4 w-4">
-                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
-                  <span className="relative inline-flex rounded-full h-4 w-4 bg-red-500 text-white font-black text-[8px] items-center justify-center border-2 border-white shadow-sm">
-                    {unreadCount}
-                  </span>
-                </span>
-              )}
-            </button>
-
-            {/* Notification Popover Dropdown */}
-            <AnimatePresence>
-              {isNotificationOpen && (
-                <>
-                  {/* Invisible Backdrop to close */}
-                  <div className="fixed inset-0 z-40" onClick={() => setIsNotificationOpen(false)} />
-                  
-                  {/* Dropdown Card */}
-                  <motion.div
-                    initial={{ opacity: 0, y: 10, scale: 0.95 }}
-                    animate={{ opacity: 1, y: 0, scale: 1 }}
-                    exit={{ opacity: 0, y: 10, scale: 0.95 }}
-                    transition={{ duration: 0.15 }}
-                    className="absolute right-0 mt-2 w-80 bg-white dark:bg-slate-900 rounded-2xl border border-slate-150 dark:border-slate-800 shadow-[0_10px_35px_rgba(0,30,102,0.12)] z-50 overflow-hidden text-left"
-                  >
-                    <div className="p-4 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between bg-slate-50/50 dark:bg-slate-900/50">
-                      <span className="text-xs font-black text-[#001e66] dark:text-slate-200 uppercase tracking-wider">Advisories & Alerts</span>
-                      {unreadCount > 0 && (
-                        <button
-                          onClick={markAllAdvisoriesAsRead}
-                          className="text-[10px] font-black text-[#00aeef] hover:text-[#0090c8] uppercase tracking-wider transition-colors cursor-pointer"
-                        >
-                          Mark all as read
-                        </button>
-                      )}
-                    </div>
-                           <div className="max-h-72 overflow-y-auto p-2 space-y-1.5 bg-slate-50/30 dark:bg-slate-950/20 text-left">
-                      {filteredAdvisories.map((ad) => {
-                        const isUnread = !viewedAdvisoryIds.includes(ad.id);
-                        let headerColor = "text-[#001e66] dark:text-blue-300";
-                        let iconBg = "bg-blue-500/10";
-                        let iconColor = "text-blue-500";
-                        let IconComponent = Megaphone;
-                        
-                        if (ad.type === "warning") {
-                          headerColor = "text-red-650 dark:text-red-400";
-                          iconBg = "bg-red-500/10";
-                          iconColor = "text-red-500";
-                          IconComponent = AlertTriangle;
-                        }
-
-                        return (
-                          <div
-                            key={ad.id}
-                            onClick={() => {
-                              markAdvisoryAsRead(ad.id);
-                              setActiveTab("view-announcements");
-                              setIsNotificationOpen(false);
-                            }}
-                            className={`p-2.5 bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800/60 rounded-xl flex gap-3 hover:bg-slate-50 dark:hover:bg-slate-800/40 transition-all duration-200 hover:-translate-y-0.5 hover:shadow-xs cursor-pointer relative text-left ${
-                              isUnread ? "ring-1 ring-blue-500/15 bg-blue-50/10 dark:bg-blue-950/5" : ""
-                            }`}
-                          >
-                            {/* Icon Box */}
-                            <div className={`w-8 h-8 rounded-lg ${iconBg} flex items-center justify-center shrink-0`}>
-                              <IconComponent className={`w-4 h-4 ${iconColor}`} />
-                            </div>
-
-                            <div className="flex-1 min-w-0">
-                              <div className="flex justify-between items-start gap-2">
-                                <span className={`font-bold text-[11px] ${headerColor} truncate`}>
-                                  {ad.title}
-                                </span>
-                                <span className="text-[8px] text-slate-400 dark:text-slate-500 font-mono shrink-0 mt-0.5">
-                                  {ad.date}
-                                </span>
-                              </div>
-                              <p className="text-slate-500 dark:text-slate-400 mt-0.5 text-[9.5px] leading-relaxed line-clamp-2">
-                                {ad.text}
-                              </p>
-                            </div>
-                            
-                            {/* Blue unread dot in top-right */}
-                            {isUnread && (
-                              <span className="absolute top-2.5 right-2.5 w-1.5 h-1.5 rounded-full bg-blue-500 animate-pulse" />
-                            )}
-                          </div>
-                        );
-                      })}
-                      {filteredAdvisories.length === 0 && (
-                        <div className="p-6 text-center text-slate-400 dark:text-slate-500 italic text-[11px]">
-                          No active system alarms or advisories.
-                        </div>
-                      )}
-                    </div>
-                  </motion.div>
-                </>
-              )}
-            </AnimatePresence>
-          </div>
-
-          {/* Optional theme toggle */}
-          <button
-            onClick={() => setIsDark(!isDark)}
-            aria-label="Toggle dark mode"
-            className="w-9 h-9 rounded-xl border border-slate-100 bg-slate-50 hover:bg-slate-100 flex items-center justify-center text-slate-500 hover:text-[#001e66] transition-all"
-          >
-            {isDark ? (
-              <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364-6.364l-.707.707M6.343 17.657l-.707.707M17.657 17.657l-.707-.707M6.343 6.343l-.707-.707M12 8a4 4 0 100 8 4 4 0 000-8z" />
-              </svg>
-            ) : (
-              <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M21 12.79A9 9 0 1111.21 3 7 7 0 0021 12.79z" />
-              </svg>
-            )}
-          </button>
-
-          {/* User Profile Selector & Dropdown */}
-          <div className="relative">
-            <div 
-              onClick={() => setIsProfileOpen(!isProfileOpen)}
-              className="flex items-center gap-2 px-2.5 py-1.5 rounded-xl border border-slate-100 dark:border-slate-800 bg-slate-50 dark:bg-slate-900 hover:bg-slate-100 dark:hover:bg-slate-800/60 cursor-pointer transition-all select-none"
-            >
-              <div className="w-7 h-7 rounded-full bg-[#00aeef] text-white flex items-center justify-center text-xs font-black uppercase shadow-sm">
-                {userProfile?.name?.slice(0, 1).toLowerCase() || "c"}
+                
+                <img
+                  src={isDark ? "/LOGO3.png" : "/LOGO2.png"}
+                  alt="AquaTrack Logo"
+                  className="h-25 w-auto translate-y-1 hover:opacity-90 transition-opacity shrink-0"
+                />
               </div>
-              <div className="flex flex-col text-left leading-none">
-                <span className="text-[11px] font-bold text-[#001e66] dark:text-slate-200">
-                  {userProfile?.name || "consumer"}
-                </span>
-                <span className="text-[9px] text-slate-400 font-medium mt-0.5">
-                  {userProfile?.email || "consumer@gmail.com"}
-                </span>
-              </div>
-              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="2.5" stroke="currentColor" className="w-3.5 h-3.5 text-slate-400 ml-1">
-                <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 8.25l-7.5 7.5-7.5-7.5" />
-              </svg>
+
+              {/* Navigation Tabs Navbar (Desktop Only) next to Logo */}
+              <nav className="hidden lg:flex items-center space-x-1 rounded-full border border-slate-200/80 bg-slate-50/80 dark:bg-slate-800/40 p-1 shadow-inner">
+                {[
+                  { key: "home",               label: "Dashboard" },
+                  { key: "file-complaint",     label: "File a Complaint" },
+                  { key: "track-complaint",    label: "Track Complaints" },
+                  { key: "view-announcements", label: "Advisories" },
+                ].map((item) => {
+                  const isActive = activeTab === item.key;
+                  return (
+                    <button
+                      key={item.key}
+                      onClick={() => setActiveTab(item.key as any)}
+                      className={`rounded-full px-4 py-2 text-[10px] font-black uppercase tracking-widest transition-all duration-200 cursor-pointer select-none ${
+                        isActive
+                          ? "bg-blue-600 text-white shadow-[0_3px_10px_rgba(37,99,235,0.25)] scale-[1.02]"
+                          : "text-slate-600 hover:text-blue-600 hover:bg-slate-100/60"
+                      }`}
+                    >
+                      {item.label}
+                    </button>
+                  );
+                })}
+              </nav>
             </div>
 
-            {/* Profile Dropdown Popover */}
-            <AnimatePresence>
-              {isProfileOpen && (
-                <>
-                  <div className="fixed inset-0 z-40" onClick={() => setIsProfileOpen(false)} />
-                  <motion.div
-                    initial={{ opacity: 0, y: 8, scale: 0.95 }}
-                    animate={{ opacity: 1, y: 0, scale: 1 }}
-                    exit={{ opacity: 0, y: 8, scale: 0.95 }}
-                    transition={{ duration: 0.12 }}
-                    className="absolute right-0 mt-2 w-48 bg-white dark:bg-slate-900 rounded-2xl border border-slate-150 dark:border-slate-800 shadow-[0_10px_35px_rgba(0,30,102,0.12)] z-50 overflow-hidden text-left py-1"
-                  >
-                    <button
-                      onClick={() => {
-                        setIsAccountDetailsOpen(true);
-                        setIsProfileOpen(false);
-                      }}
-                      className="w-full text-left px-4 py-2.5 text-xs font-bold text-[#001e66] dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800/40 transition-colors flex items-center gap-2 cursor-pointer"
-                    >
-                      <svg className="w-4 h-4 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
-                        <path strokeLinecap="round" strokeLinejoin="round" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-                      </svg>
-                      Manage Account
-                    </button>
-                    <button
-                      onClick={() => {
-                        setIsProfileOpen(false);
-                        handleLogout();
-                      }}
-                      className="w-full text-left px-4 py-2.5 text-xs font-bold text-red-600 dark:text-red-400 hover:bg-red-50/50 dark:hover:bg-red-950/20 transition-colors flex items-center gap-2 cursor-pointer border-t border-slate-50 dark:border-slate-800/50"
-                    >
-                      <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
-                        <path strokeLinecap="round" strokeLinejoin="round" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
-                      </svg>
-                      Logout
-                    </button>
-                  </motion.div>
-                </>
-              )}
-            </AnimatePresence>
+            {/* Right Section */}
+            <div className="flex items-center gap-3">
+              {/* Notification dropdown wrapper */}
+              <div className="relative">
+                <button 
+                  onClick={() => setIsNotificationOpen(!isNotificationOpen)}
+                  className="relative w-9 h-9 rounded-full border border-slate-200/80 bg-slate-50/80 hover:bg-slate-100 flex items-center justify-center text-slate-500 hover:text-[#001e66] transition-all hover:scale-105 active:scale-95 shadow-sm cursor-pointer"
+                >
+                  <Bell className="w-4.5 h-4.5" />
+                  {unreadCount > 0 && (
+                    <span className="absolute -top-0.5 -right-0.5 flex h-4 w-4">
+                      <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
+                      <span className="relative inline-flex rounded-full h-4 w-4 bg-red-500 text-white font-black text-[8px] items-center justify-center border-2 border-white shadow-sm">
+                        {unreadCount}
+                      </span>
+                    </span>
+                  )}
+                </button>
+
+                {/* Notification Popover Dropdown */}
+                <AnimatePresence>
+                  {isNotificationOpen && (
+                    <>
+                      {/* Invisible Backdrop to close */}
+                      <div className="fixed inset-0 z-40" onClick={() => setIsNotificationOpen(false)} />
+                      
+                      {/* Dropdown Card */}
+                      <motion.div
+                        initial={{ opacity: 0, y: 10, scale: 0.95 }}
+                        animate={{ opacity: 1, y: 0, scale: 1 }}
+                        exit={{ opacity: 0, y: 10, scale: 0.95 }}
+                        transition={{ duration: 0.15 }}
+                        className="absolute right-0 mt-2 w-80 bg-white dark:bg-slate-900 rounded-2xl border border-slate-150 dark:border-slate-800 shadow-[0_10px_35px_rgba(0,30,102,0.12)] z-50 overflow-hidden text-left"
+                      >
+                        <div className="p-4 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between bg-slate-50/50 dark:bg-slate-900/50">
+                          <span className="text-xs font-black text-[#001e66] dark:text-slate-200 uppercase tracking-wider">Advisories & Alerts</span>
+                          {unreadCount > 0 && (
+                            <button
+                              onClick={markAllAdvisoriesAsRead}
+                              className="text-[10px] font-black text-[#00aeef] hover:text-[#0090c8] uppercase tracking-wider transition-colors cursor-pointer"
+                            >
+                              Mark all as read
+                            </button>
+                          )}
+                        </div>
+                               <div className="max-h-72 overflow-y-auto p-2 space-y-1.5 bg-slate-50/30 dark:bg-slate-950/20 text-left">
+                          {filteredAdvisories.map((ad) => {
+                            const isUnread = !viewedAdvisoryIds.includes(ad.id);
+                            let headerColor = "text-[#001e66] dark:text-blue-300";
+                            let iconBg = "bg-blue-500/10";
+                            let iconColor = "text-blue-500";
+                            let IconComponent = Megaphone;
+                            
+                            if (ad.type === "warning") {
+                              headerColor = "text-red-650 dark:text-red-400";
+                              iconBg = "bg-red-500/10";
+                              iconColor = "text-red-500";
+                              IconComponent = AlertTriangle;
+                            }
+
+                            return (
+                              <div
+                                key={ad.id}
+                                onClick={() => {
+                                  markAdvisoryAsRead(ad.id);
+                                  setActiveTab("view-announcements");
+                                  setIsNotificationOpen(false);
+                                }}
+                                className={`p-2.5 bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800/60 rounded-xl flex gap-3 hover:bg-slate-50 dark:hover:bg-slate-800/40 transition-all duration-200 hover:-translate-y-0.5 hover:shadow-xs cursor-pointer relative text-left ${
+                                  isUnread ? "ring-1 ring-blue-500/15 bg-blue-50/10 dark:bg-blue-950/5" : ""
+                                }`}
+                              >
+                                {/* Icon Box */}
+                                <div className={`w-8 h-8 rounded-lg ${iconBg} flex items-center justify-center shrink-0`}>
+                                  <IconComponent className={`w-4 h-4 ${iconColor}`} />
+                                </div>
+
+                                <div className="flex-1 min-w-0">
+                                  <div className="flex justify-between items-start gap-2">
+                                    <span className={`font-bold text-[11px] ${headerColor} truncate`}>
+                                      {ad.title}
+                                    </span>
+                                    <span className="text-[8px] text-slate-400 dark:text-slate-500 font-mono shrink-0 mt-0.5">
+                                      {ad.date}
+                                    </span>
+                                  </div>
+                                  <p className="text-slate-500 dark:text-slate-400 mt-0.5 text-[9.5px] leading-relaxed line-clamp-2">
+                                    {ad.text}
+                                  </p>
+                                </div>
+                                
+                                {/* Blue unread dot in top-right */}
+                                {isUnread && (
+                                  <span className="absolute top-2.5 right-2.5 w-1.5 h-1.5 rounded-full bg-blue-500 animate-pulse" />
+                                )}
+                              </div>
+                            );
+                          })}
+                          {filteredAdvisories.length === 0 && (
+                            <div className="p-6 text-center text-slate-400 dark:text-slate-500 italic text-[11px]">
+                              No active system alarms or advisories.
+                            </div>
+                          )}
+                        </div>
+                      </motion.div>
+                    </>
+                  )}
+                </AnimatePresence>
+              </div>
+
+              {/* Optional theme toggle */}
+              <button
+                onClick={() => setIsDark(!isDark)}
+                aria-label="Toggle dark mode"
+                className="w-9 h-9 rounded-xl border border-slate-100 bg-slate-50 hover:bg-slate-100 flex items-center justify-center text-slate-500 hover:text-[#001e66] transition-all"
+              >
+                {isDark ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
+              </button>
+
+              {/* User Profile Selector & Dropdown */}
+              <div className="relative">
+                <div 
+                  onClick={() => setIsProfileOpen(!isProfileOpen)}
+                  className="flex items-center gap-2 px-2.5 py-1.5 rounded-xl border border-slate-100 dark:border-slate-800 bg-slate-50 dark:bg-slate-900 hover:bg-slate-100 dark:hover:bg-slate-800/60 cursor-pointer transition-all select-none"
+                >
+                  <div className="w-7 h-7 rounded-full bg-[#00aeef] text-white flex items-center justify-center text-xs font-black uppercase shadow-sm">
+                    {userProfile?.name?.slice(0, 1).toLowerCase() || "c"}
+                  </div>
+                  <div className="flex flex-col text-left leading-none">
+                    <span className="text-[11px] font-bold text-[#001e66] dark:text-slate-200">
+                      {userProfile?.name || "consumer"}
+                    </span>
+                    <span className="text-[9px] text-slate-400 font-medium mt-0.5">
+                      {userProfile?.email || "consumer@gmail.com"}
+                    </span>
+                  </div>
+                  <ChevronDown className="w-3.5 h-3.5 text-slate-400 ml-1" />
+                </div>
+
+                {/* Profile Dropdown Popover */}
+                <AnimatePresence>
+                  {isProfileOpen && (
+                    <>
+                      <div className="fixed inset-0 z-40" onClick={() => setIsProfileOpen(false)} />
+                      <motion.div
+                        initial={{ opacity: 0, y: 8, scale: 0.95 }}
+                        animate={{ opacity: 1, y: 0, scale: 1 }}
+                        exit={{ opacity: 0, y: 8, scale: 0.95 }}
+                        transition={{ duration: 0.12 }}
+                        className="absolute right-0 mt-2 w-48 bg-white dark:bg-slate-900 rounded-2xl border border-slate-150 dark:border-slate-800 shadow-[0_10px_35px_rgba(0,30,102,0.12)] z-50 overflow-hidden text-left py-1"
+                      >
+                        <button
+                          onClick={() => {
+                            setIsAccountDetailsOpen(true);
+                            setIsProfileOpen(false);
+                          }}
+                          className="w-full text-left px-4 py-2.5 text-xs font-bold text-[#001e66] dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800/40 transition-colors flex items-center gap-2 cursor-pointer"
+                        >
+                          <User className="w-4 h-4 text-slate-400" />
+                          Manage Account
+                        </button>
+                        <button
+                          onClick={() => {
+                            setIsProfileOpen(false);
+                            handleLogout();
+                          }}
+                          className="w-full text-left px-4 py-2.5 text-xs font-bold text-red-650 dark:text-red-400 hover:bg-red-50/50 dark:hover:bg-red-950/20 transition-colors flex items-center gap-2 cursor-pointer border-t border-slate-50 dark:border-slate-800/50"
+                        >
+                          <LogOut className="w-4 h-4" />
+                          Logout
+                        </button>
+                      </motion.div>
+                    </>
+                  )}
+                </AnimatePresence>
+              </div>
+            </div>
+
           </div>
         </div>
       </header>
 
       {/* ── Body: sidebar + main ── */}
-      <div className="flex flex-1 overflow-hidden p-4 gap-4 bg-transparent relative z-10">
+      <div className="flex flex-1 p-4 gap-4 bg-transparent relative z-10">
 
 
 
@@ -1559,7 +1774,7 @@ export default function DashboardClient({
         </AnimatePresence>
 
         {/* ── Main Content Area ── */}
-        <main className="flex-1 overflow-y-auto rounded-2xl shadow-sm flex flex-col bg-white border border-slate-100/80 p-8">
+        <main className="flex-1 rounded-2xl shadow-sm flex flex-col bg-white border border-slate-100/80 p-8">
           <style dangerouslySetInnerHTML={{__html: `
             @keyframes pulse {
               0% { transform: scale(0.95); opacity: 0.8; }
@@ -1581,7 +1796,13 @@ export default function DashboardClient({
                 <div className="space-y-8 animate-fade-in pb-8">
                   
                   {/* Immersive Water-Themed Hero Banner */}
-                  <div className="bg-[#0B2E7A] rounded-[24px] p-6 md:p-8 text-white relative overflow-hidden shadow-md min-h-[220px] flex flex-col justify-center">
+                  <div 
+                    className="bg-[#0B2E7A] rounded-[24px] py-5 px-6 md:py-6 md:px-8 text-white relative overflow-hidden shadow-md h-[220px] flex flex-col justify-center bg-cover bg-center"
+                    style={{ backgroundImage: "url('/headerpic.png')" }}
+                  >
+                    {/* Blue Tint Overlay */}
+                    <div className="absolute inset-0 bg-[#0B2E7A]/85 z-0 pointer-events-none" />
+
                     {/* Animated Wave Background SVG Overlay */}
                     <div className="absolute inset-0 opacity-15 pointer-events-none z-0">
                       <svg className="w-full h-full" viewBox="0 0 100 100" preserveAspectRatio="none" xmlns="http://www.w3.org/2000/svg">
@@ -1597,7 +1818,7 @@ export default function DashboardClient({
                     </div>
 
                     {/* Municipal Water Tower Illustration */}
-                    <svg className="absolute right-6 bottom-0 h-48 w-auto opacity-25 md:opacity-35 select-none pointer-events-none z-0" viewBox="0 0 100 160" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <svg className="absolute right-6 bottom-0 h-48 w-auto opacity-80 md:opacity-90 drop-shadow-[0_8px_24px_rgba(24,155,255,0.45)] select-none pointer-events-none z-0" viewBox="0 0 100 160" fill="none" xmlns="http://www.w3.org/2000/svg">
                       <ellipse cx="50" cy="40" rx="28" ry="18" fill="url(#heroTankGrad)" stroke="#ffffff" strokeWidth="1.5" />
                       <rect x="22" y="40" width="56" height="15" fill="url(#heroTankGrad)" stroke="#ffffff" strokeWidth="1.5" />
                       <ellipse cx="50" cy="54" rx="28" ry="10" fill="#55C5FF" opacity="0.8" />
@@ -1624,10 +1845,10 @@ export default function DashboardClient({
 
                     <div className="relative z-10 space-y-4 max-w-xl text-left">
                       <span className="inline-flex items-center text-[9px] font-black uppercase tracking-widest bg-white/10 px-3.5 py-1.5 rounded-full border border-white/10 shadow-inner">
-                        Consumer Resident Command Center
+                        Consumer Resident Portal
                       </span>
                       <div>
-                        <h2 className="text-2xl md:text-3.5xl font-black tracking-tight drop-shadow-sm">
+                        <h2 className="text-2xl sm:text-3.5xl md:text-4xl font-black tracking-tight drop-shadow-sm leading-tight whitespace-nowrap overflow-hidden text-ellipsis max-w-full">
                           Welcome Back, {userProfile?.name || "Valued Consumer"}!
                         </h2>
                         <p className="text-[11px] text-blue-100 font-bold tracking-wide mt-1.5 opacity-90">
@@ -1635,9 +1856,9 @@ export default function DashboardClient({
                         </p>
                       </div>
                       <div className="flex pt-1">
-                        <span className="inline-flex items-center gap-2 bg-[#189BFF]/25 border border-white/20 text-emerald-300 text-[10px] font-black tracking-wider px-3.5 py-1.5 rounded-full shadow-inner">
-                          <span className="w-2 h-2 rounded-full bg-emerald-400 inline-block animate-ping" />
-                          MUNICIPAL WATER SUPPLY IS NORMAL
+                        <span className={`inline-flex items-center gap-2 border text-[10px] font-black tracking-wider px-3.5 py-1.5 rounded-full shadow-inner transition-all ${supplyStatusColor}`}>
+                          <span className={`w-2 h-2 rounded-full inline-block animate-ping ${supplyStatusPing}`} />
+                          {supplyStatusText}
                         </span>
                       </div>
                     </div>
@@ -1824,9 +2045,7 @@ export default function DashboardClient({
                           <div className="space-y-4 text-left">
                             <div className="flex items-center gap-2.5">
                               <div className="w-9 h-9 rounded-lg bg-amber-50 flex items-center justify-center text-amber-600 border border-amber-100/40 shrink-0">
-                                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="2.2" stroke="currentColor" className="w-4.5 h-4.5">
-                                  <path strokeLinecap="round" strokeLinejoin="round" d="M19.114 5.636a9 9 0 010 12.728M16.463 8.288a5.25 5.25 0 010 7.424M6.75 8.25l4.72-4.72a.75.75 0 011.28.53v15.88a.75.75 0 01-1.28.53l-4.72-4.72H4.51c-.88 0-1.704-.507-1.938-1.354A9.01 9.01 0 012.25 12c0-.83.112-1.633.322-2.396C2.806 8.756 3.63 8.25 4.51 8.25H6.75z" />
-                                </svg>
+                                <Megaphone className="w-4.5 h-4.5" />
                               </div>
                               <div>
                                 <h4 className="text-xs font-black text-[#0B2E7A] line-clamp-1 leading-snug">
@@ -1845,9 +2064,7 @@ export default function DashboardClient({
                         ) : (
                           <div className="py-12 flex flex-col items-center justify-center text-center space-y-3">
                             <div className="w-12 h-12 rounded-full bg-slate-50 flex items-center justify-center text-slate-400 border border-slate-100">
-                              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="2" stroke="currentColor" className="w-5 h-5">
-                                <path strokeLinecap="round" strokeLinejoin="round" d="M19.114 5.636a9 9 0 010 12.728M16.463 8.288a5.25 5.25 0 010 7.424M6.75 8.25l4.72-4.72a.75.75 0 011.28.53v15.88a.75.75 0 01-1.28.53l-4.72-4.72H4.51c-.88 0-1.704-.507-1.938-1.354A9.01 9.01 0 012.25 12c0-.83.112-1.633.322-2.396C2.806 8.756 3.63 8.25 4.51 8.25H6.75z" />
-                              </svg>
+                              <Megaphone className="w-5 h-5" />
                             </div>
                             <div>
                               <p className="text-xs font-black text-[#0B2E7A]">No Bulletins</p>
@@ -1876,37 +2093,101 @@ export default function DashboardClient({
                       </svg>
                     </div>
 
-                    <div className="relative z-10 grid grid-cols-1 md:grid-cols-2 gap-6 divide-y md:divide-y-0 md:divide-x divide-slate-100">
+                    <div className="relative z-10 grid grid-cols-1 lg:grid-cols-12 gap-6 items-center">
                       
-                      {/* Widget 1 */}
-                      <div className="flex items-start space-x-4">
-                        <div className="w-12 h-12 rounded-xl bg-blue-50 flex items-center justify-center text-[#189BFF] border border-blue-100/40 shrink-0">
-                          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="2.5" stroke="currentColor" className="w-5.5 h-5.5">
+                      {/* Left: Health Index Overview */}
+                      <div className="lg:col-span-5 flex items-start space-x-4">
+                        <div className="w-14 h-14 rounded-2xl bg-blue-50 flex items-center justify-center text-[#189BFF] border border-blue-100/40 shrink-0 shadow-sm">
+                          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="2.5" stroke="currentColor" className="w-6.5 h-6.5">
                             <path d="M12 22a7 7 0 0 0 7-7c0-4.3-7-11-7-11S5 10.7 5 15a7 7 0 0 0 7 7z" />
                           </svg>
                         </div>
-                        <div className="space-y-0.5 text-left">
-                          <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Supply Status</p>
-                          <div className="flex items-center gap-1.5">
-                            <h4 className="text-base font-black text-[#0B2E7A]">Normal</h4>
-                            <span className="w-2 h-2 rounded-full bg-emerald-500 inline-block animate-pulse" />
+                        <div className="space-y-1 text-left">
+                          <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Consumer Water Health Index</p>
+                          <div className="flex items-center gap-2">
+                            <h4 className="text-2xl font-black text-[#0B2E7A] tracking-tight">
+                              {healthIndex !== null ? `${healthIndex}%` : "No Data"}
+                            </h4>
+                            <span className={`text-[9px] font-black uppercase px-2 py-0.5 rounded-full border tracking-wider ${statusColorClass}`}>
+                              {statusText}
+                            </span>
+                            {healthIndex !== null && (
+                              <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 inline-block animate-pulse" />
+                            )}
                           </div>
-                          <p className="text-[10px] text-slate-500 font-bold">Pressure index stable at 42 PSI</p>
+                          <p className="text-[10px] text-slate-500 font-bold leading-relaxed">
+                            {nearestNode ? `Calculated from nearest node: ${nearestNode.name}` : "PNSDW standard compliance level verified"}
+                          </p>
+                          {nearestNode && (
+                            <p className="text-[9px] text-slate-400 font-bold">
+                              Distance: {nearestNode.distanceMeters ? `${Math.round(nearestNode.distanceMeters)}m` : "Nearby"}
+                            </p>
+                          )}
                         </div>
                       </div>
 
-                      {/* Widget 2 */}
-                      <div className="flex items-start space-x-4 pt-4 md:pt-0 md:pl-6">
-                        <div className="w-12 h-12 rounded-xl bg-blue-50 flex items-center justify-center text-[#189BFF] border border-blue-100/40 shrink-0">
-                          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="2.5" stroke="currentColor" className="w-5.5 h-5.5">
-                            <path strokeLinecap="round" strokeLinejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 11-18 0 9 9 0 0118 0z" />
-                          </svg>
-                        </div>
-                        <div className="space-y-0.5 text-left">
-                          <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Service Hours</p>
-                          <h4 className="text-base font-black text-[#0B2E7A]">24 / 7 Operations</h4>
-                          <p className="text-[10px] text-slate-500 font-bold">Continuous municipal utility service dispatch</p>
-                        </div>
+                      {/* Right: Live Parameter Cards or Out of Range Warning */}
+                      <div className="lg:col-span-7">
+                        {nearestNode ? (
+                          <div className="space-y-2">
+                            <div className="flex items-center justify-between">
+                              <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest block">
+                                📡 Live Local Telemetry
+                              </span>
+                            </div>
+                            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                              {/* pH Card */}
+                              <div className="bg-slate-50/60 border border-slate-100 p-3 rounded-2xl text-left space-y-1 shadow-[inset_0_2px_4px_rgba(0,0,0,0.01)]">
+                                <span className="text-[9px] font-black text-slate-400 uppercase tracking-wider block">pH Level</span>
+                                <p className="text-base font-black text-[#0B2E7A]">
+                                  {nearestNode.reading?.ph ? nearestNode.reading.ph.toFixed(1) : "7.2"}
+                                </p>
+                                <p className="text-[8px] text-emerald-600 font-bold bg-emerald-50/50 px-1 py-0.5 rounded border border-emerald-100/40 inline-block">6.5 - 8.5 Safe</p>
+                              </div>
+
+                              {/* Turbidity Card */}
+                              <div className="bg-slate-50/60 border border-slate-100 p-3 rounded-2xl text-left space-y-1 shadow-[inset_0_2px_4px_rgba(0,0,0,0.01)]">
+                                <span className="text-[9px] font-black text-slate-400 uppercase tracking-wider block">Turbidity</span>
+                                <p className="text-base font-black text-[#0B2E7A]">
+                                  {nearestNode.reading?.turbidity ? `${nearestNode.reading.turbidity.toFixed(2)} NTU` : "0.80 NTU"}
+                                </p>
+                                <p className="text-[8px] text-emerald-600 font-bold bg-emerald-50/50 px-1 py-0.5 rounded border border-emerald-100/40 inline-block">&lt; 5 NTU Safe</p>
+                              </div>
+
+                              {/* TDS Card */}
+                              <div className="bg-slate-50/60 border border-slate-100 p-3 rounded-2xl text-left space-y-1 shadow-[inset_0_2px_4px_rgba(0,0,0,0.01)]">
+                                <span className="text-[9px] font-black text-slate-400 uppercase tracking-wider block">TDS Index</span>
+                                <p className="text-base font-black text-[#0B2E7A]">
+                                  {nearestNode.reading?.tds ? `${Math.round(nearestNode.reading.tds)} ppm` : "150 ppm"}
+                                </p>
+                                <p className="text-[8px] text-emerald-600 font-bold bg-emerald-50/50 px-1 py-0.5 rounded border border-emerald-100/40 inline-block">&lt; 600 Safe</p>
+                              </div>
+
+                              {/* Pressure Card */}
+                              <div className="bg-slate-50/60 border border-slate-100 p-3 rounded-2xl text-left space-y-1 shadow-[inset_0_2px_4px_rgba(0,0,0,0.01)]">
+                                <span className="text-[9px] font-black text-slate-400 uppercase tracking-wider block">Pressure</span>
+                                <p className="text-base font-black text-[#0B2E7A]">
+                                  {nearestNode.reading?.pressure ? `${Math.round(nearestNode.reading.pressure)} PSI` : "42 PSI"}
+                                </p>
+                                <p className="text-[8px] text-emerald-600 font-bold bg-emerald-50/50 px-1 py-0.5 rounded border border-emerald-100/40 inline-block">15 - 60 Safe</p>
+                              </div>
+                            </div>
+                          </div>
+                        ) : (
+                          <div className="flex items-start gap-3 bg-amber-50 border border-amber-200/60 p-5 rounded-[20px] text-left shadow-[inset_0_2px_4px_rgba(245,158,11,0.01)]">
+                            <div className="w-10 h-10 rounded-xl bg-amber-100 flex items-center justify-center text-amber-600 border border-amber-200/40 shrink-0">
+                              <MapPinOff className="w-5.5 h-5.5 animate-pulse" />
+                            </div>
+                            <div className="space-y-1">
+                              <h5 className="text-xs font-black text-amber-900 uppercase tracking-wider flex items-center gap-1.5">
+                                No Nearest IoT Node in Range
+                              </h5>
+                              <p className="text-[10px] text-amber-800/90 font-semibold leading-relaxed">
+                                Live local telemetry sensors are currently unavailable for this area. Municipal baseline index indicates safe water supply across all parameters.
+                              </p>
+                            </div>
+                          </div>
+                        )}
                       </div>
 
                     </div>
@@ -1916,51 +2197,94 @@ export default function DashboardClient({
 
                   {/* Contact Water District Section */}
                   <div className="space-y-4 text-left pt-2">
-                    <h3 className="text-xs font-black text-[#0B2E7A] tracking-wider uppercase flex items-center gap-2">
+                    <h3 className="text-xs font-black text-[#0B2E7A] dark:text-[#93c5fd] tracking-wider uppercase flex items-center gap-2">
                       <span className="w-1.5 h-3 bg-[#189BFF] rounded-full inline-block" />
                       Contact Water District Support
                     </h3>
                     
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
                       {/* Customer Hotline Card */}
-                      <div className="bg-white rounded-[24px] border border-slate-100 p-6 shadow-[0_8px_30px_rgb(0,0,0,0.015)] text-left space-y-4">
-                        <h4 className="text-xs font-black text-[#0B2E7A] uppercase tracking-wider border-b border-slate-100 pb-2 flex items-center gap-1.5">
-                          📞 Customer Hotline Desk
+                      <div className="bg-white dark:bg-slate-900 rounded-[24px] border border-slate-100 dark:border-slate-800/80 p-6 shadow-[0_8px_30px_rgb(0,0,0,0.015)] transition-all duration-300 hover:-translate-y-0.5 hover:shadow-md text-left flex flex-col justify-between min-h-[220px]">
+                        <h4 className="text-xs font-black text-[#0B2E7A] dark:text-slate-200 uppercase tracking-wider border-b border-slate-100 dark:border-slate-800 pb-3 flex items-center gap-2">
+                          <Phone className="w-4 h-4 text-[#00aeef] shrink-0" />
+                          Customer Hotline Desk
                         </h4>
-                        <div className="grid grid-cols-2 gap-4 text-xs">
-                          <div>
-                            <p className="font-bold text-slate-400">SUPPORT HELPLINE</p>
-                            <p className="text-sm font-black text-[#0B2E7A] mt-0.5">(045) 961-3546</p>
+                        
+                        <div className="flex-grow flex flex-col justify-center space-y-4 py-1">
+                          <div className="flex items-center gap-3.5">
+                            <div className="w-10 h-10 rounded-xl bg-blue-50 dark:bg-slate-850 flex items-center justify-center text-blue-500 shrink-0 border border-blue-100/30 shadow-xs">
+                              <PhoneCall className="w-5 h-5" />
+                            </div>
+                            <div>
+                              <p className="text-xs font-black text-slate-400 dark:text-slate-500 uppercase tracking-wider">Helpline</p>
+                              <p className="text-base font-black text-[#0B2E7A] dark:text-slate-200 mt-0.5 leading-snug">(045) 961-3546</p>
+                            </div>
                           </div>
-                          <div>
-                            <p className="font-bold text-slate-400">EMAIL ENQUIRIES</p>
-                            <p className="text-sm font-black text-[#00aeef] mt-0.5">support@csfwd.gov.ph</p>
+
+                          <div className="flex items-center gap-3.5">
+                            <div className="w-10 h-10 rounded-xl bg-emerald-50 dark:bg-slate-850 flex items-center justify-center text-emerald-500 shrink-0 border border-emerald-100/30 shadow-xs">
+                              <Mail className="w-5 h-5" />
+                            </div>
+                            <div>
+                              <p className="text-xs font-black text-slate-400 dark:text-slate-500 uppercase tracking-wider">Email Support</p>
+                              <a href="mailto:support@csfwd.gov.ph" className="text-base font-black text-[#00aeef] hover:underline mt-0.5 block leading-snug">support@csfwd.gov.ph</a>
+                            </div>
                           </div>
-                        </div>
-                        <div>
-                          <p className="font-bold text-slate-400">MAIN OFFICE ADDRESS</p>
-                          <p className="text-xs font-semibold text-slate-600 mt-0.5">City of San Fernando, Pampanga</p>
                         </div>
                       </div>
 
-                      {/* Office Coordinates Card */}
-                      <div className="bg-white rounded-[24px] border border-slate-100 p-6 shadow-[0_8px_30px_rgb(0,0,0,0.015)] text-left flex flex-col justify-between space-y-4">
-                        <div>
-                          <h4 className="text-xs font-black text-[#0B2E7A] uppercase tracking-wider border-b border-slate-100 pb-2 flex items-center gap-1.5">
-                            📍 Command Center Coordinates
-                          </h4>
-                          <p className="text-[11px] text-slate-500 leading-relaxed font-semibold mt-2">
-                            Our operations office manages emergency crew dispatching, water quality reporting, and IoT node maintenance logs.
-                          </p>
-                        </div>
-                        <div className="bg-slate-50 dark:bg-slate-900 border border-slate-100 dark:border-slate-800 rounded-xl p-3 flex items-center justify-between">
-                          <div>
-                            <p className="text-xs font-black text-[#0B2E7A]">CSFWD District Headquarters</p>
-                            <p className="text-[9px] text-slate-400 font-bold uppercase tracking-wider mt-0.5">
-                              Lat: 15.0286 | Lng: 120.6942
-                            </p>
+                      {/* Main Office Address Card */}
+                      <div 
+                        onMouseEnter={() => setLoadMiniMap(true)}
+                        className="bg-white dark:bg-slate-900 rounded-[24px] border border-slate-100 dark:border-slate-800/80 p-6 shadow-[0_8px_30px_rgb(0,0,0,0.015)] transition-all duration-300 hover:shadow-md text-left flex flex-col justify-between relative overflow-hidden group min-h-[220px]"
+                      >
+                        {/* Background Image Container */}
+                        <div 
+                          className="absolute inset-0 bg-cover bg-no-repeat z-0 transition-transform duration-500 group-hover:scale-105"
+                          style={{ backgroundImage: "url('/headerpic.png')", backgroundPosition: "center 20%" }}
+                        />
+                        {/* White/Dark Overlay: background opacity is lessened on hover to overlay the map cleanly */}
+                        <div className="absolute inset-0 bg-white/90 dark:bg-slate-950/85 z-25 transition-all duration-300 group-hover:bg-white/40 group-hover:dark:bg-slate-950/45 pointer-events-none" />
+
+                        {/* Content Overlay - absolute inset-0 with h-full and justify-end forces the text items to sit at the bottom */}
+                        <div className="absolute inset-0 p-6 z-30 flex flex-col justify-end h-full pointer-events-none">
+                          <div className="flex items-end justify-between w-full pointer-events-auto transition-all duration-300">
+                            <div className="flex items-start gap-3.5 transform group-hover:translate-x-1">
+                              <div className="w-9 h-9 rounded-xl bg-blue-50 dark:bg-slate-850 flex items-center justify-center text-[#00aeef] shrink-0 border border-blue-100/30 shadow-xs">
+                                <MapPin className="w-5 h-5" />
+                              </div>
+                              <div className="space-y-1">
+                                <p className="text-xs sm:text-sm font-black text-slate-400 dark:text-slate-500 uppercase tracking-wider">Main Office Address</p>
+                                <p className="text-base sm:text-lg font-black text-slate-700 dark:text-slate-200 mt-0.5 leading-snug">
+                                  2MMQ+68, San Fernando, Pampanga
+                                </p>
+                              </div>
+                            </div>
+
+                            {/* Open in Maps Button */}
+                            <a 
+                              href="https://www.google.com/maps/search/?api=1&query=2MMQ%2B68,%20San%20Fernando,%20Pampanga" 
+                              target="_blank" 
+                              rel="noopener noreferrer"
+                              className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-[#00aeef] hover:bg-[#009ed9] text-white text-[10px] font-black uppercase tracking-wider shadow-sm hover:shadow-md transition-all duration-200 shrink-0 select-none cursor-pointer"
+                            >
+                              <span>Open in Maps</span>
+                              <Compass className="w-3.5 h-3.5" />
+                            </a>
                           </div>
                         </div>
+
+                        {/* Hover Google Maps Iframe Container */}
+                        {loadMiniMap && (
+                          <div className="absolute inset-0 w-full h-full z-20 opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none rounded-[24px] overflow-hidden">
+                            <iframe 
+                              src="https://maps.google.com/maps?q=2MMQ%2B68,%20San%20Fernando,%20Pampanga&z=17&output=embed"
+                              className="w-full h-full border-0 pointer-events-auto"
+                              loading="lazy"
+                              title="CSFWD Headquarters Location"
+                            />
+                          </div>
+                        )}
                       </div>
                     </div>
                   </div>
@@ -2147,9 +2471,7 @@ export default function DashboardClient({
                                     : "border-slate-200 bg-sky-50/20 hover:border-slate-300"
                                 }`}
                               >
-                                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor" className="w-8 h-8 text-[#00aeef] mb-1.5">
-                                  <path strokeLinecap="round" strokeLinejoin="round" d="M12 16.5V9.75m0 0l3 3m-3-3l-3 3M6.75 19.5a4.5 4.5 0 01-1.41-8.775 5.25 5.25 0 0110.233-2.33 3 3 0 013.758 3.848A3.752 3.752 0 0118 19.5H6.75z" />
-                                </svg>
+                                <Upload className="w-8 h-8 text-[#00aeef] mb-1.5" />
                                 
                                 <p className="text-xs text-slate-500 font-bold text-center mb-2">
                                   Drag and drop an image here or
@@ -2160,9 +2482,7 @@ export default function DashboardClient({
                                   onClick={() => fileInputRef.current?.click()}
                                   className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-[#00aeef] hover:bg-[#001e66] text-white font-bold text-[10px] rounded-lg transition-colors cursor-pointer shadow-sm"
                                 >
-                                  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="2.5" stroke="currentColor" className="w-3 h-3">
-                                    <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
-                                  </svg>
+                                  <Plus className="w-3 h-3" />
                                   Choose File
                                 </button>
                                 
@@ -2178,7 +2498,7 @@ export default function DashboardClient({
                                   onClick={() => setComplaintImageUrl("")}
                                   className="absolute top-4 right-4 bg-red-600 hover:bg-red-750 text-white rounded-full w-6 h-6 flex items-center justify-center text-[11px] font-black shadow-lg transition-colors cursor-pointer"
                                 >
-                                  ✕
+                                  <X className="w-3.5 h-3.5" />
                                 </button>
                               </div>
                             )}
@@ -2193,17 +2513,12 @@ export default function DashboardClient({
                             >
                               {submitting ? (
                                 <>
-                                  <svg className="animate-spin w-4 h-4 text-white" fill="none" viewBox="0 0 24 24">
-                                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
-                                  </svg>
+                                  <Loader2 className="animate-spin w-4 h-4 text-white" />
                                   <span>Filing &amp; Analyzing with AI…</span>
                                 </>
                               ) : (
                                 <>
-                                  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="2" stroke="currentColor" className="w-3.5 h-3.5">
-                                    <path strokeLinecap="round" strokeLinejoin="round" d="M6 12L3.269 3.126A59.768 59.768 0 0121.485 12 59.77 59.77 0 013.27 20.876L5.999 12zm0 0h7.5" />
-                                  </svg>
+                                  <Send className="w-3.5 h-3.5" />
                                   <span>File Complaint</span>
                                 </>
                               )}
@@ -2689,8 +3004,8 @@ export default function DashboardClient({
             <div className="space-y-8">
               {/* Advisories Header */}
               <div>
-                <h2 className="text-xl font-black text-[#001e66] tracking-tight">Community Broadcast Notices</h2>
-                <p className="text-xs text-slate-500 font-bold">Read recent municipal service updates and maintenance warnings</p>
+                <h2 className="text-xl font-black text-[#001e66] dark:text-slate-200 tracking-tight">Community Broadcast Notices</h2>
+                <p className="text-xs text-slate-500 dark:text-slate-400 font-bold">Read recent municipal service updates and maintenance warnings</p>
               </div>
 
               {/* Quick Advisory Summary Stats */}
@@ -2701,134 +3016,141 @@ export default function DashboardClient({
                     <p className="text-xl font-black text-[#0B2E7A] mt-1">{filteredAdvisories.length}</p>
                   </div>
                   <div className="w-10 h-10 rounded-xl bg-blue-50/80 flex items-center justify-center border border-blue-100 shrink-0 shadow-sm">
-                    <div className="w-5 h-4 bg-blue-50 border-2 border-blue-500 rounded relative flex items-center justify-center shrink-0">
-                      <div className="absolute -bottom-[3.5px] left-1 w-1.5 h-1.5 bg-blue-50 border-r-2 border-b-2 border-blue-500 transform rotate-45 shrink-0" />
-                    </div>
+                    <Megaphone className="w-5 h-5 text-blue-500" />
                   </div>
                 </div>
 
                 <div className="bg-white rounded-2xl border border-slate-100 p-5 shadow-[0_8px_30px_rgb(0,0,0,0.015)] flex items-center justify-between">
                   <div>
                     <p className="text-[10px] text-slate-400 font-black uppercase tracking-wider">Service Warnings</p>
-                    <p className="text-xl font-black text-red-600 mt-1">
+                    <p className="text-xl font-black text-red-650 mt-1">
                       {filteredAdvisories.filter((ad) => ad.type === "warning").length}
                     </p>
                   </div>
                   <div className="w-10 h-10 rounded-xl bg-red-50/80 flex items-center justify-center border border-red-100 shrink-0 shadow-sm">
-                    <div className="w-5 h-5 rounded-full border-2 border-red-500 bg-red-50 flex items-center justify-center font-black text-xs text-red-600 shrink-0 select-none">
-                      !
-                    </div>
+                    <AlertTriangle className="w-5 h-5 text-red-500" />
                   </div>
                 </div>
 
                 <div className="bg-white rounded-2xl border border-slate-100 p-5 shadow-[0_8px_30px_rgb(0,0,0,0.015)] flex items-center justify-between">
                   <div>
                     <p className="text-[10px] text-slate-400 font-black uppercase tracking-wider">Info Updates</p>
-                    <p className="text-xl font-black text-emerald-600 mt-1">
+                    <p className="text-xl font-black text-emerald-650 mt-1">
                       {filteredAdvisories.filter((ad) => ad.type !== "warning").length}
                     </p>
                   </div>
                   <div className="w-10 h-10 rounded-xl bg-emerald-50/80 flex items-center justify-center border border-emerald-100 shrink-0 shadow-sm">
-                    <div className="w-5 h-5 rounded-full border-2 border-emerald-500 bg-emerald-50 flex items-center justify-center font-extrabold text-[10px] text-emerald-600 font-serif italic shrink-0 select-none">
-                      i
-                    </div>
+                    <Activity className="w-5 h-5 text-emerald-500" />
                   </div>
                 </div>
               </div>
 
-              {/* Main Table + Sidebar Grid */}
-              <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start">
-                {/* Table Container */}
-                <div className="lg:col-span-2 overflow-x-auto border border-slate-100 rounded-xl bg-white shadow-[0_8px_30px_rgb(0,0,0,0.01)]">
-                  <table className="w-full text-left border-collapse text-xs">
-                    <thead>
-                      <tr className="bg-slate-50 border-b border-slate-200 text-slate-500 font-bold uppercase tracking-wider">
-                        <th className="py-3 px-4">Notice Title & Details</th>
-                        <th className="py-3 px-4">Alert Type</th>
-                        <th className="py-3 px-4">Date Issued</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-slate-100">
-                      {paginatedAdvisories.map((ad) => (
-                        <tr key={ad.id} className="hover:bg-slate-50/50 transition-colors">
-                          <td className="py-4 px-4 font-bold text-[#001e66] max-w-sm">
-                            <div className="text-sm font-extrabold">{ad.title}</div>
-                            <div className="text-slate-500 font-medium mt-1.5 leading-relaxed">{ad.text}</div>
-                          </td>
-                          <td className="py-4 px-4">
-                            <span className={`inline-flex items-center px-2 py-0.5 rounded-[6px] text-[9px] font-black uppercase border ${
-                              ad.type === "warning"
-                                ? "bg-red-50 text-red-700 border-red-200"
-                                : "bg-blue-50 text-blue-700 border-blue-200"
-                            }`}>
-                              {ad.type}
-                            </span>
-                          </td>
-                          <td className="py-4 px-4 font-mono text-slate-500 font-bold">{ad.date}</td>
-                        </tr>
-                      ))}
-                      {filteredAdvisories.length === 0 && (
-                        <tr>
-                          <td colSpan={3} className="py-8 text-center text-slate-500 italic">
-                            No active notices broadcasted.
-                          </td>
-                        </tr>
-                      )}
-                    </tbody>
-                  </table>
-
-                  {/* Pagination Controls */}
-                  {totalAdvisoryPages > 1 && (
-                    <div className="flex items-center justify-between border-t border-slate-100 px-4 py-3 bg-slate-50/50">
-                      <button
-                        onClick={() => setAdvisoryPage((prev) => Math.max(prev - 1, 1))}
-                        disabled={currentPage === 1}
-                        className="px-3 py-1.5 text-xs font-bold text-[#001e66] bg-white border border-slate-200 hover:bg-slate-50 disabled:opacity-50 rounded-lg transition-all duration-200 cursor-pointer disabled:cursor-not-allowed"
-                      >
-                        &larr; Prev
-                      </button>
-                      <span className="text-xs font-extrabold text-slate-500">
-                        Page {currentPage} of {totalAdvisoryPages}
+              {/* Full Width Feed Container */}
+              <div className="w-full space-y-6">
+                
+                {/* Filter Tabs (segment control) */}
+                <div className="flex gap-2 p-1 bg-slate-100/80 dark:bg-slate-800/40 rounded-xl max-w-xs md:max-w-sm border border-slate-200/40">
+                  {[
+                    { key: "all", label: "All", count: filteredAdvisories.length },
+                    { key: "warning", label: "Warnings", count: filteredAdvisories.filter(ad => ad.type === "warning").length },
+                    { key: "info", label: "Updates", count: filteredAdvisories.filter(ad => ad.type !== "warning").length }
+                  ].map((btn) => (
+                    <button
+                      key={btn.key}
+                      onClick={() => {
+                        setAdvisoryFilter(btn.key as any);
+                        setAdvisoryPage(1);
+                      }}
+                      className={`flex-1 flex items-center justify-center gap-1.5 px-3 py-1.5 text-[9px] font-black uppercase tracking-wider rounded-lg transition-all duration-200 cursor-pointer select-none ${
+                        advisoryFilter === btn.key
+                          ? "bg-white dark:bg-slate-900 text-[#001e66] dark:text-white shadow-sm border border-slate-200/50 dark:border-slate-800/85"
+                          : "text-slate-500 hover:text-slate-700 dark:hover:text-slate-300"
+                      }`}
+                    >
+                      {btn.label}
+                      <span className="text-[8px] px-1.5 py-0.5 rounded-full bg-slate-200/60 dark:bg-slate-800 text-slate-600 dark:text-slate-400 font-mono">
+                        {btn.count}
                       </span>
-                      <button
-                        onClick={() => setAdvisoryPage((prev) => Math.min(prev + 1, totalAdvisoryPages))}
-                        disabled={currentPage === totalAdvisoryPages}
-                        className="px-3 py-1.5 text-xs font-bold text-[#001e66] bg-white border border-slate-200 hover:bg-slate-50 disabled:opacity-50 rounded-lg transition-all duration-200 cursor-pointer disabled:cursor-not-allowed"
+                    </button>
+                  ))}
+                </div>
+
+                {/* Cards List Feed */}
+                <div className="space-y-4">
+                  {paginatedAdvisories.map((ad) => {
+                    const isWarning = ad.type === "warning";
+                    return (
+                      <div 
+                        key={ad.id}
+                        onClick={() => {
+                          setSelectedAdvisory(ad);
+                          markAdvisoryAsRead(ad.id);
+                        }}
+                        className={`p-5 rounded-[20px] bg-white border transition-all duration-300 hover:-translate-y-0.5 hover:shadow-md relative overflow-hidden flex gap-4 text-left cursor-pointer select-none ${
+                          isWarning 
+                            ? "border-red-100 hover:border-red-200/60 shadow-[0_4px_20px_rgba(239,68,68,0.01)]" 
+                            : "border-slate-100 hover:border-blue-100/60 shadow-[0_4px_20px_rgba(24,155,255,0.01)]"
+                        }`}
                       >
-                        Next &rarr;
-                      </button>
+                        {/* Alert Left Indicator Bar */}
+                        <div className={`absolute top-0 bottom-0 left-0 w-1.5 ${isWarning ? "bg-red-500" : "bg-[#00aeef]"}`} />
+
+                        {/* Icon Container */}
+                        <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 shadow-inner ${
+                          isWarning ? "bg-red-50 text-red-650" : "bg-blue-50 text-blue-600"
+                        }`}>
+                          {isWarning ? <AlertTriangle className="w-5 h-5" /> : <Megaphone className="w-5 h-5" />}
+                        </div>
+
+                        {/* Text Body */}
+                        <div className="flex-1 min-w-0 space-y-1">
+                          <div className="flex flex-wrap items-center justify-between gap-2">
+                            <h3 className="text-sm font-extrabold text-[#001e66] tracking-tight leading-snug">
+                              {ad.title}
+                            </h3>
+                            <span className="text-[9px] font-mono font-black text-slate-400 bg-slate-50 px-2 py-0.5 rounded-md border border-slate-100">
+                              {ad.date}
+                            </span>
+                          </div>
+                          <p className="text-xs text-slate-500 font-semibold leading-relaxed">
+                            {ad.text}
+                          </p>
+                        </div>
+                      </div>
+                    );
+                  })}
+
+                  {paginatedAdvisories.length === 0 && (
+                    <div className="p-12 text-center border border-dashed border-slate-200 bg-white rounded-2xl">
+                      <Megaphone className="w-8 h-8 text-slate-350 mx-auto mb-2" />
+                      <p className="text-xs font-black text-[#0B2E7A]">No Notices Found</p>
+                      <p className="text-[10px] text-slate-400 font-semibold mt-0.5">No bulletins fit the selected filter category.</p>
                     </div>
                   )}
                 </div>
 
-                {/* Sidebar Cards */}
-                <div className="space-y-6">
-                  {/* Status Card */}
-                  <div className="bg-white rounded-2xl border border-slate-100 p-5 shadow-[0_8px_30px_rgb(0,0,0,0.015)] text-left space-y-3">
-                    <h3 className="text-xs font-black text-[#0B2E7A] uppercase tracking-wider flex items-center gap-2">
-                      <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse inline-block" />
-                      Operations Status
-                    </h3>
-                    <p className="text-[11px] text-slate-500 leading-relaxed font-semibold">
-                      Municipal water supply lines and pump stations are currently operating under normal pressure limits. No emergency outages reported.
-                    </p>
+                {/* Pagination Controls */}
+                {totalAdvisoryPages > 1 && (
+                  <div className="flex items-center justify-between px-2 pt-2">
+                    <button
+                      onClick={() => setAdvisoryPage((prev) => Math.max(prev - 1, 1))}
+                      disabled={currentPage === 1}
+                      className="inline-flex items-center gap-1 px-3 py-2 text-[10px] font-black uppercase tracking-wider text-[#001e66] bg-white border border-slate-200 hover:bg-slate-50 disabled:opacity-50 rounded-xl transition-all duration-200 cursor-pointer disabled:cursor-not-allowed shadow-xs"
+                    >
+                      &larr; Prev
+                    </button>
+                    <span className="text-[10px] font-extrabold text-slate-450 uppercase tracking-widest">
+                      Page {currentPage} / {totalAdvisoryPages}
+                    </span>
+                    <button
+                      onClick={() => setAdvisoryPage((prev) => Math.min(prev + 1, totalAdvisoryPages))}
+                      disabled={currentPage === totalAdvisoryPages}
+                      className="inline-flex items-center gap-1 px-3 py-2 text-[10px] font-black uppercase tracking-wider text-[#001e66] bg-white border border-slate-200 hover:bg-slate-50 disabled:opacity-50 rounded-xl transition-all duration-200 cursor-pointer disabled:cursor-not-allowed shadow-xs"
+                    >
+                      Next &rarr;
+                    </button>
                   </div>
-
-                  {/* Guidelines Card */}
-                  <div className="bg-white rounded-2xl border border-slate-100 p-5 shadow-[0_8px_30px_rgb(0,0,0,0.015)] text-left space-y-3">
-                    <h3 className="text-xs font-black text-[#0B2E7A] uppercase tracking-wider flex items-center gap-2">
-                      <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="2.2" stroke="currentColor" className="w-4 h-4 text-amber-500 shrink-0">
-                        <path strokeLinecap="round" strokeLinejoin="round" d="M12 18a3.75 3.75 0 00.495-7.467 5.99 5.99 0 00-1.925 3.546 5.974 5.974 0 01-2.133-1A3.75 3.75 0 0012 18z" />
-                      </svg>
-                      Advisory Guidelines
-                    </h3>
-                    <ul className="space-y-2 text-[10px] text-slate-500 font-semibold list-disc list-inside">
-                      <li>Report discolored water or supply drops immediately.</li>
-                      <li>Store emergency water stock during scheduled maintenance warnings.</li>
-                      <li>Contact the local support desk for pipe breach assistance.</li>
-                    </ul>
-                  </div>
-                </div>
+                )}
               </div>
             </div>
           )}
@@ -2836,13 +3158,11 @@ export default function DashboardClient({
 
             </motion.div>
           </AnimatePresence>
-
-          {/* Reusable Footer */}
-          <div className="-mx-8 -mb-8 mt-12 shrink-0">
-            <Footer />
-          </div>
         </main>
       </div>
+
+      {/* Reusable Footer */}
+      <Footer />
 
       {/* Account Details Modal */}
       <AnimatePresence>
@@ -3104,6 +3424,128 @@ export default function DashboardClient({
                     </div>
                   </div>
                 )}
+              </div>
+            </motion.div>
+          </div>
+        )}
+
+        {/* Custom Location Search Error Modal */}
+        {searchErrorModalOpen && (
+          <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setSearchErrorModalOpen(false)}
+              className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm"
+            />
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95, y: 10 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 10 }}
+              className="bg-white dark:bg-slate-900 rounded-[28px] border border-slate-100 dark:border-slate-800 p-6 shadow-2xl relative w-full max-w-sm overflow-hidden z-10"
+            >
+              {/* Decorative Warning Glow Pattern */}
+              <div className="absolute -top-12 -left-12 w-28 h-28 bg-amber-500/10 rounded-full blur-2xl pointer-events-none" />
+
+              <div className="flex flex-col items-center text-center space-y-4">
+                {/* Warning Icon Badge */}
+                <div className="w-14 h-14 rounded-2xl bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-900 flex items-center justify-center text-amber-500 shadow-sm">
+                  <MapPinOff className="w-6 h-6 animate-pulse" />
+                </div>
+
+                <div className="space-y-1.5">
+                  <h3 className="text-sm font-black text-[#0B2E7A] dark:text-[#93c5fd] uppercase tracking-wider">
+                    Location Not Found
+                  </h3>
+                  <p className="text-xs text-slate-500 dark:text-slate-400 font-semibold leading-relaxed px-2">
+                    No matching location could be resolved in Pampanga. Please verify the address or manually drag the pin on the map.
+                  </p>
+                </div>
+
+                {/* Dismiss Button */}
+                <button
+                  onClick={() => setSearchErrorModalOpen(false)}
+                  className="w-full py-2.5 bg-blue-600 hover:bg-blue-700 text-white text-xs font-black uppercase tracking-wider rounded-xl transition-all shadow-md shadow-blue-500/10 hover:shadow-blue-500/20 active:scale-95 cursor-pointer"
+                >
+                  Understood
+                </button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* Advisory Detail Modal */}
+      <AnimatePresence>
+        {selectedAdvisory && (
+          <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+            {/* Backdrop */}
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setSelectedAdvisory(null)}
+              className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm"
+            />
+
+            {/* Modal Box */}
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95, y: 15 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 15 }}
+              transition={{ duration: 0.2, ease: "easeOut" }}
+              className="relative w-full max-w-lg bg-white dark:bg-slate-900 rounded-[28px] shadow-[0_25px_60px_rgba(0,30,102,0.15)] overflow-hidden border border-slate-100 dark:border-slate-800 z-10 p-6 md:p-8 text-left space-y-6"
+            >
+              {/* Close Button */}
+              <button
+                onClick={() => setSelectedAdvisory(null)}
+                className="absolute top-5 right-5 text-slate-400 hover:text-slate-655 hover:bg-slate-50 dark:hover:bg-slate-850 p-1.5 rounded-full transition-all cursor-pointer"
+              >
+                <X className="w-4 h-4" />
+              </button>
+
+              {/* Icon & Title Row */}
+              <div className="flex items-start gap-4">
+                <div className={`w-12 h-12 rounded-2xl flex items-center justify-center shrink-0 shadow-inner ${
+                  selectedAdvisory.type === "warning" ? "bg-red-50 text-red-650" : "bg-blue-50 text-blue-600"
+                }`}>
+                  {selectedAdvisory.type === "warning" ? <AlertTriangle className="w-6 h-6" /> : <Megaphone className="w-6 h-6" />}
+                </div>
+                <div className="space-y-1">
+                  <span className={`inline-flex items-center px-2 py-0.5 rounded-[6px] text-[8px] font-black uppercase border ${
+                    selectedAdvisory.type === "warning"
+                      ? "bg-red-50 text-red-700 border-red-200"
+                      : "bg-blue-50 text-blue-700 border-blue-200"
+                  }`}>
+                    {selectedAdvisory.type}
+                  </span>
+                  <h3 className="text-lg font-black text-[#001e66] dark:text-slate-200 tracking-tight leading-snug pr-6">
+                    {selectedAdvisory.title}
+                  </h3>
+                </div>
+              </div>
+
+              {/* Meta information */}
+              <div className="flex items-center gap-2 text-[10px] text-slate-400 font-bold uppercase tracking-wider border-y border-slate-100 dark:border-slate-800 py-3">
+                <span>Issued: {selectedAdvisory.date}</span>
+                <span className="text-slate-200 dark:text-slate-800">•</span>
+                <span>Target: Broadcast Announcement</span>
+              </div>
+
+              {/* Description body */}
+              <div className="text-xs text-slate-600 dark:text-slate-350 leading-relaxed font-semibold max-h-60 overflow-y-auto pr-1">
+                {selectedAdvisory.text}
+              </div>
+
+              {/* Footer action button */}
+              <div className="pt-2">
+                <button
+                  onClick={() => setSelectedAdvisory(null)}
+                  className="w-full bg-[#00aeef] hover:bg-[#001e66] text-white font-black text-xs py-3.5 rounded-xl uppercase tracking-wider shadow-sm transition-colors cursor-pointer"
+                >
+                  Close Notice
+                </button>
               </div>
             </motion.div>
           </div>

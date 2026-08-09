@@ -11,7 +11,7 @@ import {
   Home, Map, AlertTriangle, Flame, Cpu, BarChart3, Users, 
   Megaphone, Settings, Bell, HelpCircle, Sun, Moon, ChevronDown, 
   Menu, X, User, LogOut, CheckCircle2, Wrench, WifiOff, ClipboardList, Activity,
-  Shield, PanelLeftClose, PanelLeftOpen
+  Shield, PanelLeftClose, PanelLeftOpen, Sparkles
 } from "lucide-react";
 
 // Import Modular Sections
