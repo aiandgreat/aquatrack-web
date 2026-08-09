@@ -3,8 +3,8 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.8";
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-const REDIS_URL = Deno.env.get("UPSTASH_REDIS_REST_URL")!;
-const REDIS_TOKEN = Deno.env.get("UPSTASH_REDIS_REST_TOKEN")!;
+const REDIS_URL = Deno.env.get("UPSTASH_REDIS_REST_URL") ?? "";
+const REDIS_TOKEN = Deno.env.get("UPSTASH_REDIS_REST_TOKEN") ?? "";
 
 const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
 
@@ -27,12 +27,18 @@ serve(async (req) => {
       return new Response("Invalid payload", { status: 400 });
     }
 
-    // 1. Hot cache update in Redis via HTTP Fetch to Upstash REST API
-    await fetch(`${REDIS_URL}/set/node:latest:${nodeId}`, {
-      headers: { Authorization: `Bearer ${REDIS_TOKEN}` },
-      method: "POST",
-      body: JSON.stringify(payload),
-    });
+    // 1. Hot cache update in Redis via HTTP Fetch to Upstash REST API (non-fatal: DB insert always proceeds)
+    try {
+      if (REDIS_URL && REDIS_TOKEN) {
+        await fetch(`${REDIS_URL}/set/node:latest:${nodeId}`, {
+          headers: { Authorization: `Bearer ${REDIS_TOKEN}` },
+          method: "POST",
+          body: JSON.stringify(payload),
+        });
+      }
+    } catch (redisErr) {
+      console.warn("[telemetry-ingest] Redis cache write failed (non-fatal):", redisErr);
+    }
 
     // 2. Threshold checks
     const hasAnomaly = pressure < 30 || ph < 6.5 || ph > 8.5 || turbidity > 5 || tds > 500;
