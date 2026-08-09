@@ -17,8 +17,8 @@ if (!globalForPrisma.pool) {
   globalForPrisma.pool = new Pool({
     connectionString,
     max: 1, // Cap to 1 connection per serverless route handler to prevent exceeding database limits
-    idleTimeoutMillis: 30000, // Reclaim connections after 30s idle
-    connectionTimeoutMillis: 30000, // Increase connection timeout to 30s to prevent network latency timeout errors
+    idleTimeoutMillis: 10000, // Reclaim connections after 10s idle (reduced from 30s to free up Supabase connection slots)
+    connectionTimeoutMillis: 5000, // Fail fast on connection issues (reduced from 30s to prevent long hangs)
   });
 }
 pool = globalForPrisma.pool;

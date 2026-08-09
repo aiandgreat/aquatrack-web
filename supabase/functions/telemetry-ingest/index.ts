@@ -44,10 +44,11 @@ serve(async (req) => {
     const hasAnomaly = pressure < 30 || ph < 6.5 || ph > 8.5 || turbidity > 5 || tds > 500;
     
     if (hasAnomaly) {
-      // Save anomalous reading to history
-      await supabase
+      // Save anomalous reading to history — must provide id since Postgres has no DEFAULT for the column
+      const { error: insertAnomalyErr } = await supabase
         .from("TelemetryReading")
-        .insert({ nodeId, ph, turbidity, tds, pressure });
+        .insert({ id: crypto.randomUUID(), nodeId, ph, turbidity, tds, pressure });
+      if (insertAnomalyErr) console.error("[telemetry-ingest] Failed to insert anomaly reading:", insertAnomalyErr);
 
       // Dynamic AI Spatial Diagnostics Correlation for existing unresolved complaints
       try {
@@ -151,9 +152,11 @@ serve(async (req) => {
         .update({ status: "ONLINE" })
         .eq("id", nodeId);
 
-      await supabase
+      // Must provide id since Postgres has no DEFAULT for the id column
+      const { error: insertNormalErr } = await supabase
         .from("TelemetryReading")
-        .insert({ nodeId, ph, turbidity, tds, pressure });
+        .insert({ id: crypto.randomUUID(), nodeId, ph, turbidity, tds, pressure });
+      if (insertNormalErr) console.error("[telemetry-ingest] Failed to insert normal reading:", insertNormalErr);
     }
 
     return new Response(JSON.stringify({ success: true, anomaly: hasAnomaly }), {

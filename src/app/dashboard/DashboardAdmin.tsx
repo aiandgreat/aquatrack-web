@@ -457,8 +457,25 @@ export default function DashboardAdmin({
           setProfileEmail(profile.email || currentSession.user.email || "");
           setProfilePhone(profile.phone || "");
           setProfileAddress(profile.address || "");
-          // Re-fetch current database values
-          await Promise.all([fetchUsers(), fetchNodes(), fetchComplaints(), fetchStats(), fetchAdvisories(), fetchDiagnosticAlerts()]);
+          // Single combined fetch replaces 6 separate HTTP round-trips on initial load
+          const dashRes = await fetch("/api/admin/dashboard");
+          const dashData = await dashRes.json();
+          if (dashData.success) {
+            if (dashData.users) setUsers(dashData.users);
+            if (dashData.nodes) {
+              setNodes(dashData.nodes);
+              if (dashData.nodes.length > 0) setSelectedSimNodeId(dashData.nodes[0].id);
+            }
+            if (dashData.complaints) setComplaints(dashData.complaints);
+            if (dashData.advisories) setAdvisories(dashData.advisories);
+            if (dashData.alerts) setDiagnosticAlerts(dashData.alerts);
+            if (dashData.stats) {
+              setStats({
+                ...dashData.stats,
+                complianceIndex: 0, // Keep at 0 per User request
+              });
+            }
+          }
         }
       } catch (err) {
         console.error("Auth verification failed:", err);
@@ -483,10 +500,19 @@ export default function DashboardAdmin({
           "postgres_changes",
           { event: "*", schema: "public", table: "Complaint" },
           (payload) => {
-            console.log("Realtime complaint update received:", payload);
-            fetchComplaints(); // Refresh the list dynamically!
-            fetchStats(); // Update dashboard metric counters!
-            fetchDiagnosticAlerts(); // Refresh diagnostic alerts
+            if (payload.eventType === "INSERT") {
+              // Prepend new complaint directly — avoids full fetchComplaints() HTTP round-trip
+              setComplaints((prev) => [payload.new as any, ...prev]);
+            } else if (payload.eventType === "UPDATE") {
+              // Patch the updated complaint in-place
+              setComplaints((prev) =>
+                prev.map((c) => (c.id === (payload.new as any).id ? { ...c, ...(payload.new as any) } : c))
+              );
+            } else if (payload.eventType === "DELETE") {
+              setComplaints((prev) => prev.filter((c) => c.id !== (payload.old as any).id));
+            }
+            fetchStats();
+            fetchDiagnosticAlerts();
           }
         )
         .subscribe();
@@ -498,9 +524,34 @@ export default function DashboardAdmin({
           { event: "INSERT", schema: "public", table: "TelemetryReading" },
           (payload) => {
             console.log("Realtime telemetry reading received:", payload);
-            fetchNodes(); // Re-fetch nodes to update live readings immediately!
-            fetchStats(); // Update dashboard metric averages!
-            fetchDiagnosticAlerts(); // Re-fetch diagnostic alerts to update Suggested Actions immediately!
+            const newReading = payload.new as {
+              nodeId: string;
+              ph: number;
+              turbidity: number;
+              tds: number;
+              pressure: number;
+              timestamp: string;
+            };
+            // Optimistically update the node in state directly from the realtime payload
+            // — avoids a 2s fetchNodes() HTTP round-trip on every telemetry insert
+            setNodes((prev) =>
+              prev.map((n) =>
+                n.id === newReading.nodeId
+                  ? {
+                      ...n,
+                      reading: {
+                        ph: newReading.ph,
+                        turbidity: newReading.turbidity,
+                        tds: newReading.tds,
+                        pressure: newReading.pressure,
+                        timestamp: newReading.timestamp,
+                      },
+                    }
+                  : n
+              )
+            );
+            fetchStats();
+            fetchDiagnosticAlerts();
           }
         )
         .subscribe();

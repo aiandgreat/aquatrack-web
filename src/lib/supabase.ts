@@ -19,7 +19,16 @@ export function getSupabaseClient(): SupabaseClient {
       );
     }
 
-    _client = createClient(url, key);
+    _client = createClient(url, key, {
+      realtime: {
+        params: {
+          eventsPerSecond: 10,
+        },
+      },
+      db: {
+        schema: "public",
+      },
+    });
   }
   return _client;
 }
