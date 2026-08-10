@@ -921,12 +921,22 @@ export default function DashboardAdmin({
     }
   };
 
-  const handleDownloadReport = async () => {
+  const handleDownloadReport = async (dateRange?: { from: Date; to: Date }) => {
     showFeedback("success", "Generating water analytics audit report...");
     
     let summaryText = "";
     try {
-      const res = await fetch("/api/admin/system-summary");
+      let summaryUrl = "/api/admin/system-summary";
+      if (dateRange) {
+        const formatLocalDate = (d: Date) => {
+          const y = d.getFullYear();
+          const m = String(d.getMonth() + 1).padStart(2, "0");
+          const day = String(d.getDate()).padStart(2, "0");
+          return `${y}-${m}-${day}`;
+        };
+        summaryUrl += `?from=${formatLocalDate(dateRange.from)}&to=${formatLocalDate(dateRange.to)}`;
+      }
+      const res = await fetch(summaryUrl);
       const json = await res.json();
       if (json.success) {
         summaryText = json.summary;
@@ -935,29 +945,83 @@ export default function DashboardAdmin({
       console.warn("Failed fetching summary for compliance report:", e);
     }
 
-    const readings = nodes.map((n, i) => {
-      // Apply realistic simulated offsets per node based on current simulator values
-      const phOffset = parseFloat(((i % 2 === 0 ? 0.15 : -0.1) * (i % 3 === 0 ? 1 : 0.6)).toFixed(2));
-      const turbidityOffset = parseFloat(((i % 2 === 0 ? 0.3 : -0.2) * (i % 3 === 0 ? 1.2 : 0.5)).toFixed(2));
-      const tdsOffset = i % 2 === 0 ? 12 : -15;
-      const pressureOffset = parseFloat(((i % 2 === 0 ? 2.1 : -1.6) * (i % 3 === 0 ? 1.4 : 0.8)).toFixed(1));
+    let targetReadings: Array<{
+      nodeName: string;
+      ph: number;
+      turbidity: number;
+      tds: number;
+      pressure: number;
+      timestamp: string;
+    }> = [];
 
-      return {
-        nodeName: n.name,
-        ph: Math.max(0, Math.min(14, simValues.ph + phOffset)),
-        turbidity: Math.max(0, simValues.turbidity + turbidityOffset),
-        tds: Math.max(0, simValues.tds + tdsOffset),
-        pressure: Math.max(0, simValues.pressure + pressureOffset),
-        timestamp: new Date().toISOString(),
-      };
-    });
+    // If dateRange filter is active, fetch the historical node averages over that range
+    if (dateRange) {
+      try {
+        const formatLocalDate = (d: Date) => {
+          const y = d.getFullYear();
+          const m = String(d.getMonth() + 1).padStart(2, "0");
+          const day = String(d.getDate()).padStart(2, "0");
+          return `${y}-${m}-${day}`;
+        };
+        const fromStr = formatLocalDate(dateRange.from);
+        const toStr = formatLocalDate(dateRange.to);
+        const res = await fetch(`/api/admin/nodes?from=${fromStr}&to=${toStr}`);
+        const json = await res.json();
+        if (json.success && json.nodes) {
+          targetReadings = json.nodes.map((n: any) => ({
+            nodeName: n.name,
+            ph: n.reading?.ph ?? 7.2,
+            turbidity: n.reading?.turbidity ?? 1.5,
+            tds: n.reading?.tds ?? 235,
+            pressure: n.reading?.pressure ?? 40.0,
+            timestamp: n.reading?.timestamp ?? new Date().toISOString(),
+          }));
+        }
+      } catch (err) {
+        console.warn("Failed to fetch historical node averages for PDF:", err);
+      }
+    }
+
+    // Fallback: use current simulator parameters if no date filter or fetch fails
+    if (targetReadings.length === 0) {
+      targetReadings = nodes.map((n, i) => {
+        const phOffset = parseFloat(((i % 2 === 0 ? 0.15 : -0.1) * (i % 3 === 0 ? 1 : 0.6)).toFixed(2));
+        const turbidityOffset = parseFloat(((i % 2 === 0 ? 0.3 : -0.2) * (i % 3 === 0 ? 1.2 : 0.5)).toFixed(2));
+        const tdsOffset = i % 2 === 0 ? 12 : -15;
+        const pressureOffset = parseFloat(((i % 2 === 0 ? 2.1 : -1.6) * (i % 3 === 0 ? 1.4 : 0.8)).toFixed(1));
+
+        return {
+          nodeName: n.name,
+          ph: Math.max(0, Math.min(14, simValues.ph + phOffset)),
+          turbidity: Math.max(0, simValues.turbidity + turbidityOffset),
+          tds: Math.max(0, simValues.tds + tdsOffset),
+          pressure: Math.max(0, simValues.pressure + pressureOffset),
+          timestamp: new Date().toISOString(),
+        };
+      });
+    }
+
+    // Filter complaints to match selected date range if active
+    let targetComplaints = complaints;
+    if (dateRange) {
+      const start = new Date(dateRange.from);
+      start.setHours(0, 0, 0, 0);
+      const end = new Date(dateRange.to);
+      end.setHours(23, 59, 59, 999);
+      targetComplaints = complaints.filter((c) => {
+        const d = new Date(c.createdAt);
+        return d >= start && d <= end;
+      });
+    }
 
     generateComplianceReport({
-      readings,
-      complaints,
+      readings: targetReadings,
+      complaints: targetComplaints,
       systemSummary: summaryText,
+      dateRange,
     });
   };
+
 
   const handleCreateAdvisory = async (e: React.FormEvent) => {
     e.preventDefault();

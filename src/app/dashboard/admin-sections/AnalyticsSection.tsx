@@ -1,9 +1,10 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
+import { createPortal } from "react-dom";
 import { ResponsiveContainer, LineChart, Line, XAxis, YAxis, Tooltip, CartesianGrid } from "recharts";
 import { Card, Title, Text } from "@tremor/react";
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 import { 
   BarChart3, 
   Download, 
@@ -17,7 +18,15 @@ import {
   AlertTriangle, 
   Activity, 
   Sparkles,
-  LayoutGrid
+  LayoutGrid,
+  Calendar,
+  X,
+  Filter,
+  CheckCircle2,
+  FileCheck,
+  Clock,
+  ChevronLeft,
+  ChevronRight
 } from "lucide-react";
 
 interface Complaint {
@@ -33,8 +42,17 @@ interface Complaint {
 }
 
 interface AnalyticsSectionProps {
-  handleDownloadReport: () => void;
+  handleDownloadReport: (dateRange?: { from: Date; to: Date }) => void;
   complaints?: Complaint[];
+}
+
+// Portal wrapper: renders children directly into document.body to escape all
+// ancestor stacking contexts (z-index, transforms, sticky/fixed parents).
+function ModalPortal({ children }: { children: React.ReactNode }) {
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => { setMounted(true); return () => setMounted(false); }, []);
+  if (!mounted) return null;
+  return createPortal(children, document.body);
 }
 
 // Category color mappings from spatial heatmaps
@@ -159,6 +177,217 @@ function ArcSlice({
   );
 }
 
+// ─── Drag-to-select Range Calendar ───────────────────────────────────────────
+const MONTHS = ["January","February","March","April","May","June","July","August","September","October","November","December"];
+const DAYS = ["Su","Mo","Tu","We","Th","Fr","Sa"];
+
+function RangeCalendar({
+  from,
+  to,
+  onFromChange,
+  onToChange,
+  maxDate,
+}: {
+  from: Date | null;
+  to: Date | null;
+  onFromChange: (d: Date | null) => void;
+  onToChange: (d: Date | null) => void;
+  maxDate?: Date | null;
+}) {
+  const today = new Date();
+  const [viewYear, setViewYear] = useState(today.getFullYear());
+  const [viewMonth, setViewMonth] = useState(today.getMonth());
+  // Drag state (refs avoid re-renders on every mousemove)
+  const isDragging = useRef(false);
+  const dragAnchor = useRef<Date | null>(null);
+  // Hover preview for drag
+  const [dragPreview, setDragPreview] = useState<Date | null>(null);
+
+  const firstDay = new Date(viewYear, viewMonth, 1).getDay();
+  const daysInMonth = new Date(viewYear, viewMonth + 1, 0).getDate();
+  const cells: (number | null)[] = Array(firstDay).fill(null);
+  for (let d = 1; d <= daysInMonth; d++) cells.push(d);
+
+  const prevMonth = () => {
+    if (viewMonth === 0) { setViewMonth(11); setViewYear(y => y - 1); }
+    else setViewMonth(m => m - 1);
+  };
+  const nextMonth = () => {
+    if (viewMonth === 11) { setViewMonth(0); setViewYear(y => y + 1); }
+    else setViewMonth(m => m + 1);
+  };
+
+  const sameDay = (a: Date, b: Date) =>
+    a.getDate() === b.getDate() && a.getMonth() === b.getMonth() && a.getFullYear() === b.getFullYear();
+
+  const isDisabled = (d: number) => {
+    const dt = new Date(viewYear, viewMonth, d);
+    if (maxDate && dt > maxDate) return true;
+    return false;
+  };
+
+  // Effective range for visual highlight (considers drag preview)
+  const effectiveTo = dragPreview || to;
+  const [rangeStart, rangeEnd] = (() => {
+    if (!from) return [null, null];
+    if (!effectiveTo) return [from, null];
+    return from <= effectiveTo ? [from, effectiveTo] : [effectiveTo, from];
+  })();
+
+  const getDay = (d: number) => new Date(viewYear, viewMonth, d);
+
+  const isRangeStart = (d: number) => !!rangeStart && sameDay(getDay(d), rangeStart);
+  const isRangeEnd   = (d: number) => !!rangeEnd   && sameDay(getDay(d), rangeEnd);
+  const isInRange    = (d: number) => {
+    if (!rangeStart || !rangeEnd) return false;
+    const dt = getDay(d);
+    return dt > rangeStart && dt < rangeEnd;
+  };
+  const isToday = (d: number) => sameDay(getDay(d), today);
+
+  // Stop drag globally if mouse released outside a cell
+  useEffect(() => {
+    const stop = () => {
+      if (!isDragging.current) return;
+      isDragging.current = false;
+      if (dragAnchor.current && dragPreview) {
+        const [s, e] = dragAnchor.current <= dragPreview
+          ? [dragAnchor.current, dragPreview]
+          : [dragPreview, dragAnchor.current];
+        onFromChange(s); onToChange(e);
+      }
+      dragAnchor.current = null;
+      setDragPreview(null);
+    };
+    window.addEventListener("mouseup", stop);
+    return () => window.removeEventListener("mouseup", stop);
+  }, [dragPreview, onFromChange, onToChange]);
+
+  const handleMouseDown = (d: number) => {
+    if (isDisabled(d)) return;
+    const dt = getDay(d);
+    isDragging.current = true;
+    dragAnchor.current = dt;
+    setDragPreview(null);
+    // Reset selection to this anchor
+    onFromChange(dt);
+    onToChange(null);
+  };
+
+  const handleMouseEnter = (d: number) => {
+    if (!isDragging.current || isDisabled(d)) return;
+    setDragPreview(getDay(d));
+  };
+
+  const handleMouseUp = (d: number) => {
+    if (!isDragging.current) return;
+    isDragging.current = false;
+    const dt = getDay(d);
+    const anchor = dragAnchor.current;
+    dragAnchor.current = null;
+    setDragPreview(null);
+
+    if (!anchor) return;
+
+    if (sameDay(dt, anchor)) {
+      // Pure click (no drag movement)
+      if (from && !to && !sameDay(dt, from)) {
+        // Second click on a different date → complete the range
+        const [s, e] = dt > from ? [from, dt] : [dt, from];
+        onFromChange(s); onToChange(e);
+      } else {
+        // First click or reset
+        onFromChange(dt); onToChange(null);
+      }
+    } else {
+      // Drag released on a different date → set range
+      const [s, e] = anchor <= dt ? [anchor, dt] : [dt, anchor];
+      onFromChange(s); onToChange(e);
+    }
+  };
+
+  const getCellStyle = (d: number) => {
+    const start = isRangeStart(d);
+    const end   = isRangeEnd(d);
+    const mid   = isInRange(d);
+    const single = start && end;
+    const disabled = isDisabled(d);
+
+    if (disabled) return "text-slate-300 cursor-not-allowed";
+
+    let cls = "cursor-pointer select-none transition-all text-[12px] font-semibold ";
+
+    if (single || (start && !rangeEnd)) {
+      cls += "bg-[#001e66] text-white rounded-lg shadow-sm ";
+    } else if (start) {
+      cls += "bg-[#001e66] text-white rounded-l-lg ";
+    } else if (end) {
+      cls += "bg-[#001e66] text-white rounded-r-lg ";
+    } else if (mid) {
+      cls += "bg-[#00aeef]/20 text-[#001e66] rounded-none ";
+    } else {
+      cls += "text-slate-700 hover:bg-slate-100 rounded-lg ";
+    }
+
+    if (isToday(d) && !start && !end && !mid) {
+      cls += "font-black underline decoration-[#00aeef] decoration-2 underline-offset-2 ";
+    }
+
+    return cls;
+  };
+
+  return (
+    <div className="w-full select-none" onMouseLeave={() => { if (isDragging.current) setDragPreview(null); }}>
+      {/* Month Navigation */}
+      <div className="flex items-center justify-between mb-3">
+        <button
+          type="button"
+          onClick={prevMonth}
+          className="p-1.5 rounded-lg hover:bg-slate-100 transition-colors"
+        >
+          <ChevronLeft className="w-4 h-4 text-[#001e66]" />
+        </button>
+        <span className="text-xs font-black text-[#001e66] tracking-wide">
+          {MONTHS[viewMonth]} {viewYear}
+        </span>
+        <button
+          type="button"
+          onClick={nextMonth}
+          className="p-1.5 rounded-lg hover:bg-slate-100 transition-colors"
+        >
+          <ChevronRight className="w-4 h-4 text-[#001e66]" />
+        </button>
+      </div>
+
+      {/* Day headers */}
+      <div className="grid grid-cols-7 mb-1">
+        {DAYS.map(d => (
+          <div key={d} className="text-center text-[9px] font-black text-slate-400 uppercase py-0.5">{d}</div>
+        ))}
+      </div>
+
+      {/* Day cells — gap-0 so range bg tiles flush */}
+      <div className="grid grid-cols-7">
+        {cells.map((day, idx) =>
+          day === null ? (
+            <div key={`e-${idx}`} />
+          ) : (
+            <div
+              key={day}
+              className={`w-full aspect-square flex items-center justify-center ${getCellStyle(day)}`}
+              onMouseDown={() => handleMouseDown(day)}
+              onMouseEnter={() => handleMouseEnter(day)}
+              onMouseUp={() => handleMouseUp(day)}
+            >
+              {day}
+            </div>
+          )
+        )}
+      </div>
+    </div>
+  );
+}
+
 export default function AnalyticsSection({
   handleDownloadReport,
   complaints = [],
@@ -167,27 +396,50 @@ export default function AnalyticsSection({
   const [loadingCharts, setLoadingCharts] = useState(true);
   const [hoveredSlice, setHoveredSlice] = useState<{ name: string; count: number; percentage: number } | null>(null);
 
-  // Fetch dynamic timeline chart data from the database
-  useEffect(() => {
-    const fetchReadings = async () => {
-      try {
-        setLoadingCharts(true);
-        const res = await fetch("/api/admin/analytics-readings");
-        const json = await res.json();
-        if (json.success && json.data && json.data.length > 0) {
-          setTimelineData(json.data);
-        } else {
-          setTimelineData(generatePast30DaysData());
-        }
-      } catch (err) {
-        console.warn("Failed to fetch database readings, falling back to mock baseline:", err);
-        setTimelineData(generatePast30DaysData());
-      } finally {
-        setLoadingCharts(false);
+  // ── Date Range Filter State ────────────────────────────────────────────────
+  const [filterOpen, setFilterOpen] = useState(false);
+  const [filterFrom, setFilterFrom] = useState<Date | null>(null);
+  const [filterTo, setFilterTo] = useState<Date | null>(null);
+  // Active applied range
+  const [appliedFrom, setAppliedFrom] = useState<Date | null>(null);
+  const [appliedTo, setAppliedTo] = useState<Date | null>(null);
+
+  // ── PDF Download Success Modal State ──────────────────────────────────────
+  const [showSuccessModal, setShowSuccessModal] = useState(false);
+  const [downloadedRange, setDownloadedRange] = useState("");
+
+  // ── Fetch dynamic timeline chart data ─────────────────────────────────────
+  const fetchReadings = async (from?: Date | null, to?: Date | null) => {
+    try {
+      setLoadingCharts(true);
+      let url = "/api/admin/analytics-readings";
+      if (from && to) {
+        const formatLocalDate = (d: Date) => {
+          const y = d.getFullYear();
+          const m = String(d.getMonth() + 1).padStart(2, "0");
+          const day = String(d.getDate()).padStart(2, "0");
+          return `${y}-${m}-${day}`;
+        };
+        const f = formatLocalDate(from);
+        const t = formatLocalDate(to);
+        url += `?from=${f}&to=${t}`;
       }
-    };
-    fetchReadings();
-  }, []);
+      const res = await fetch(url);
+      const json = await res.json();
+      if (json.success && json.data && json.data.length > 0) {
+        setTimelineData(json.data);
+      } else {
+        setTimelineData(generatePast30DaysData());
+      }
+    } catch (err) {
+      console.warn("Failed to fetch database readings, falling back to mock baseline:", err);
+      setTimelineData(generatePast30DaysData());
+    } finally {
+      setLoadingCharts(false);
+    }
+  };
+
+  useEffect(() => { fetchReadings(); }, []);
 
   // Gemini AI System Narrative Summary States
   const [aiSummary, setAiSummary] = useState<string>("");
@@ -315,10 +567,203 @@ export default function AnalyticsSection({
 
   const insights = getSummaryInsights();
 
+  // Helper: same calendar date (declared before rangeLabel which uses it)
+  const isSameDate = (a: Date, b: Date) =>
+    a.getDate() === b.getDate() && a.getMonth() === b.getMonth() && a.getFullYear() === b.getFullYear();
+
+  // ── Format date range label ────────────────────────────────────────────────
+  const fmtDate = (d: Date) => d.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
+  const rangeLabel = appliedFrom
+    ? appliedTo && !isSameDate(appliedFrom, appliedTo)
+      ? `${fmtDate(appliedFrom)} – ${fmtDate(appliedTo)}`
+      : fmtDate(appliedFrom)
+    : "Past 30 Days";
+
+  // Apply: single date uses same date as both from & to
+  const handleApplyFilter = () => {
+    if (!filterFrom) return;
+    const effectiveTo = filterTo || filterFrom;
+    setAppliedFrom(filterFrom);
+    setAppliedTo(effectiveTo);
+    fetchReadings(filterFrom, effectiveTo);
+    setFilterOpen(false);
+  };
+
+  const handleClearFilter = () => {
+    setFilterFrom(null);
+    setFilterTo(null);
+    setAppliedFrom(null);
+    setAppliedTo(null);
+    fetchReadings();
+    setFilterOpen(false);
+  };
+
+  const handleDownloadWithModal = async () => {
+    setDownloadedRange(rangeLabel);
+    await handleDownloadReport(appliedFrom && appliedTo ? { from: appliedFrom, to: appliedTo } : undefined);
+    setShowSuccessModal(true);
+  };
+
   return (
     <div className="space-y-8 text-left">
+
+      {/* ── Filter Modal (portal → renders into document.body) ─────────────── */}
+      <ModalPortal>
+        <AnimatePresence>
+          {filterOpen && (
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="fixed inset-0 z-[9999] flex items-end sm:items-center justify-center bg-black/50 backdrop-blur-md p-4"
+              onClick={(e) => { if (e.target === e.currentTarget) setFilterOpen(false); }}
+            >
+              <motion.div
+                initial={{ scale: 0.94, opacity: 0, y: 30 }}
+                animate={{ scale: 1, opacity: 1, y: 0 }}
+                exit={{ scale: 0.94, opacity: 0, y: 30 }}
+                transition={{ type: "spring", stiffness: 320, damping: 28 }}
+                className="bg-white rounded-3xl shadow-2xl border border-slate-200 w-full max-w-sm flex flex-col overflow-hidden"
+                style={{ maxHeight: "min(90svh, 580px)" }}
+              >
+                {/* Modal Header */}
+                <div className="flex items-center justify-between px-5 py-3.5 border-b border-slate-100 bg-gradient-to-r from-[#001e66] to-[#003399] shrink-0">
+                  <div className="flex items-center gap-2.5">
+                    <Calendar className="w-4.5 h-4.5 text-[#00aeef]" />
+                    <div>
+                      <h3 className="text-sm font-black text-white tracking-tight">Filter by Date</h3>
+                      <p className="text-[10px] text-blue-200 font-medium">Click a date or drag to select a range</p>
+                    </div>
+                  </div>
+                  <button
+                    onClick={() => setFilterOpen(false)}
+                    className="p-1.5 rounded-xl hover:bg-white/15 text-white transition-colors"
+                  >
+                    <X className="w-4 h-4" />
+                  </button>
+                </div>
+
+                {/* Calendar — scrollable body */}
+                <div className="flex-1 overflow-y-auto px-5 pt-4 pb-2">
+                  <RangeCalendar
+                    from={filterFrom}
+                    to={filterTo}
+                    onFromChange={setFilterFrom}
+                    onToChange={setFilterTo}
+                    maxDate={new Date()}
+                  />
+
+                  {/* Live selection summary */}
+                  <div className="mt-3 min-h-[36px]">
+                    {filterFrom ? (
+                      <div className="p-2.5 bg-[#001e66]/5 border border-[#001e66]/10 rounded-xl flex items-center gap-2">
+                        <Clock className="w-3.5 h-3.5 text-[#00aeef] shrink-0" />
+                        <span className="text-[11px] font-bold text-[#001e66]">
+                          {filterTo && !isSameDate(filterFrom, filterTo)
+                            ? <>{filterFrom.toLocaleDateString("en-US",{month:"short",day:"numeric",year:"numeric"})} &nbsp;→&nbsp; {filterTo.toLocaleDateString("en-US",{month:"short",day:"numeric",year:"numeric"})}</>
+                            : filterFrom.toLocaleDateString("en-US",{month:"long",day:"numeric",year:"numeric"})
+                          }
+                        </span>
+                      </div>
+                    ) : (
+                      <p className="text-[10px] text-slate-400 text-center italic pt-1">No date selected yet</p>
+                    )}
+                  </div>
+                </div>
+
+                {/* Footer */}
+                <div className="flex items-center gap-2 px-5 py-3.5 border-t border-slate-100 bg-slate-50 shrink-0">
+                  <button
+                    onClick={handleClearFilter}
+                    className="flex-1 py-2.5 rounded-xl text-xs font-bold text-slate-500 border border-slate-200 hover:bg-slate-100 transition-all"
+                  >
+                    Clear
+                  </button>
+                  <button
+                    disabled={!filterFrom}
+                    onClick={handleApplyFilter}
+                    className={`flex-1 py-2.5 rounded-xl text-xs font-bold text-white transition-all ${
+                      filterFrom
+                        ? "bg-[#001e66] hover:bg-[#00aeef] shadow-md cursor-pointer"
+                        : "bg-slate-300 cursor-not-allowed"
+                    }`}
+                  >
+                    Apply Filter
+                  </button>
+                </div>
+              </motion.div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </ModalPortal>
+
+      {/* ── PDF Download Success Modal (portal → renders into document.body) ──── */}
+      <ModalPortal>
+        <AnimatePresence>
+          {showSuccessModal && (
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/50 backdrop-blur-md p-4"
+              onClick={(e) => { if (e.target === e.currentTarget) setShowSuccessModal(false); }}
+            >
+              <motion.div
+                initial={{ scale: 0.85, opacity: 0, y: 24 }}
+                animate={{ scale: 1, opacity: 1, y: 0 }}
+                exit={{ scale: 0.85, opacity: 0, y: 24 }}
+                transition={{ type: "spring", stiffness: 340, damping: 30 }}
+                className="bg-white rounded-3xl shadow-2xl border border-slate-200 w-full max-w-sm overflow-hidden"
+              >
+                {/* Accent strip */}
+                <div className="h-1.5 w-full bg-gradient-to-r from-[#001e66] via-[#00aeef] to-[#ffd800]" />
+
+                <div className="p-7 flex flex-col items-center text-center gap-4">
+                  {/* Animated check */}
+                  <motion.div
+                    initial={{ scale: 0.5, opacity: 0 }}
+                    animate={{ scale: 1, opacity: 1 }}
+                    transition={{ delay: 0.1, type: "spring", stiffness: 300, damping: 22 }}
+                    className="w-16 h-16 rounded-full bg-[#001e66]/5 border-2 border-[#00aeef]/30 flex items-center justify-center"
+                  >
+                    <FileCheck className="w-8 h-8 text-[#001e66]" />
+                  </motion.div>
+
+                  <div>
+                    <h3 className="text-base font-black text-[#001e66] tracking-tight mb-1">Report Downloaded!</h3>
+                    <p className="text-xs text-slate-500 font-medium leading-relaxed">
+                      Your Water Analytics PDF has been successfully generated and saved to your downloads folder.
+                    </p>
+                  </div>
+
+                  {/* Range badge */}
+                  <div className="flex items-center gap-2 bg-[#001e66]/5 border border-[#001e66]/10 rounded-xl px-4 py-2.5 w-full justify-center">
+                    <Calendar className="w-3.5 h-3.5 text-[#00aeef] shrink-0" />
+                    <span className="text-[11px] font-black text-[#001e66] uppercase tracking-wider">{downloadedRange}</span>
+                  </div>
+
+                  {/* Meta info */}
+                  <div className="flex flex-wrap items-center gap-3 text-[10px] font-bold text-slate-400 w-full justify-center">
+                    <span className="flex items-center gap-1"><CheckCircle2 className="w-3 h-3 text-[#00aeef]" /> Telemetry Included</span>
+                    <span className="flex items-center gap-1"><CheckCircle2 className="w-3 h-3 text-[#00aeef]" /> Compliance Audited</span>
+                    <span className="flex items-center gap-1"><CheckCircle2 className="w-3 h-3 text-[#00aeef]" /> AI Summary</span>
+                  </div>
+
+                  <button
+                    onClick={() => setShowSuccessModal(false)}
+                    className="w-full mt-1 py-3 bg-[#001e66] hover:bg-[#00aeef] text-white text-xs font-black uppercase tracking-widest rounded-xl transition-all shadow-md hover:shadow-lg cursor-pointer border-none"
+                  >
+                    Close
+                  </button>
+                </div>
+              </motion.div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </ModalPortal>
+
       {/* Section Header */}
-      <div className="flex justify-between items-center pb-4 border-b border-slate-200">
+      <div className="flex flex-wrap justify-between items-center gap-3 pb-4 border-b border-slate-200">
         <div className="flex items-center gap-2.5">
           <div className="p-2 bg-blue-50 text-[#001e66] rounded-xl shadow-inner">
             <BarChart3 className="w-5 h-5 text-[#00aeef]" />
@@ -328,13 +773,34 @@ export default function AnalyticsSection({
             <p className="text-xs text-slate-500 font-medium">Verify overall district water telemetry analytics and compliance limits</p>
           </div>
         </div>
-        <button
-          onClick={handleDownloadReport}
-          className="flex items-center gap-1.5 bg-[#001e66] hover:bg-[#00aeef] text-white font-extrabold text-xs px-4 py-2.5 rounded-xl uppercase tracking-wider shadow-md hover:scale-105 active:scale-98 transition-all cursor-pointer border-none focus:outline-none"
-        >
-          <Download className="w-3.5 h-3.5" />
-          <span>Download Analytics PDF</span>
-        </button>
+        <div className="flex items-center gap-2 flex-wrap">
+          {/* Active range badge */}
+          {appliedFrom && appliedTo && (
+            <span className="flex items-center gap-1.5 bg-[#00aeef]/10 border border-[#00aeef]/30 text-[#001e66] text-[10px] font-black px-3 py-1.5 rounded-full tracking-wide">
+              <Calendar className="w-3 h-3" />
+              {rangeLabel}
+              <button onClick={handleClearFilter} className="ml-1 text-[#001e66]/50 hover:text-[#970006] transition-colors">
+                <X className="w-3 h-3" />
+              </button>
+            </span>
+          )}
+          {/* Filter button */}
+          <button
+            onClick={() => setFilterOpen(true)}
+            className="flex items-center gap-1.5 bg-white hover:bg-slate-50 border border-slate-200 text-[#001e66] font-extrabold text-xs px-3.5 py-2.5 rounded-xl uppercase tracking-wider shadow-sm hover:scale-105 active:scale-98 transition-all cursor-pointer focus:outline-none"
+          >
+            <Filter className="w-3.5 h-3.5" />
+            <span>Filter</span>
+          </button>
+          {/* Download button */}
+          <button
+            onClick={handleDownloadWithModal}
+            className="flex items-center gap-1.5 bg-[#001e66] hover:bg-[#00aeef] text-white font-extrabold text-xs px-4 py-2.5 rounded-xl uppercase tracking-wider shadow-md hover:scale-105 active:scale-98 transition-all cursor-pointer border-none focus:outline-none"
+          >
+            <Download className="w-3.5 h-3.5" />
+            <span>Download Analytics PDF</span>
+          </button>
+        </div>
       </div>
 
       {/* ── 1. Water Quality Timeline Recharts Line Chart with Dual Axis ─── */}
@@ -343,7 +809,7 @@ export default function AnalyticsSection({
           <div className="flex items-center gap-2">
             <TrendingUp className="w-4.5 h-4.5 text-[#00aeef] shrink-0" />
             <div>
-              <Title className="text-sm font-black text-[#001e66] uppercase tracking-wider">Water Quality Timelines (Past 30 Days)</Title>
+              <Title className="text-sm font-black text-[#001e66] uppercase tracking-wider">Water Quality Timelines — {rangeLabel}</Title>
               <Text className="text-xs text-slate-400 font-medium mt-0.5">Rolling averages of chemical and mineral parameters across CSFWD nodes</Text>
             </div>
           </div>
@@ -358,7 +824,7 @@ export default function AnalyticsSection({
           <ResponsiveContainer width="100%" height="100%">
             <LineChart data={timelineData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
               <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" vertical={false} />
-              <XAxis dataKey="date" tick={{ fill: "#64748b", fontSize: 10, fontWeight: "bold" }} axisLine={false} tickLine={false} />
+              <XAxis dataKey="date" interval={0} tick={{ fill: "#64748b", fontSize: 9, fontWeight: "bold" }} axisLine={false} tickLine={false} />
               <YAxis yAxisId="left" domain={[0, 14]} tick={{ fill: "#64748b", fontSize: 10, fontWeight: "bold" }} axisLine={false} tickLine={false} />
               <YAxis yAxisId="right" orientation="right" domain={[0, 500]} tick={{ fill: "#64748b", fontSize: 10, fontWeight: "bold" }} axisLine={false} tickLine={false} />
               <Tooltip
@@ -597,8 +1063,22 @@ export default function AnalyticsSection({
               <div className="h-3 bg-white/10 rounded w-4/5"></div>
             </div>
           ) : (
-            <p className="text-xs font-bold text-slate-100 leading-relaxed font-sans max-w-4xl">
-              {aiSummary}
+            <p className="text-xs font-bold text-slate-100 leading-relaxed font-sans max-w-4xl text-justify">
+              {(() => {
+                if (!aiSummary) return "";
+                const parts = aiSummary.split("**");
+                return parts.map((part, index) => {
+                  // Alternating parts: odd indices are inside '**' and should be bolded
+                  if (index % 2 === 1) {
+                    return (
+                      <strong key={index} className="font-extrabold text-[#00aeef]">
+                        {part}
+                      </strong>
+                    );
+                  }
+                  return part;
+                });
+              })()}
             </p>
           )}
 
