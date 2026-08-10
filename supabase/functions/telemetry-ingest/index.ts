@@ -54,29 +54,84 @@ serve(async (req) => {
       try {
         const { data: node } = await supabase
           .from("TelemetryNode")
-          .select("name, latitude, longitude")
+          .select("name, type, latitude, longitude")
           .eq("id", nodeId)
           .single();
 
         if (node) {
+          // Differential Diagnostic: If node is HOUSEHOLD_EDGE, cross-reference the nearest PUMP_STATION
+          let differentialNotes = "";
+          let isLocalPipelineBreach = false;
+          let nearestPumpName = "";
+
+          const calculateDistance = (lat1: number, lon1: number, lat2: number, lon2: number) => {
+            const R = 6371e3; // meters
+            const phi1 = (lat1 * Math.PI) / 180;
+            const phi2 = (lat2 * Math.PI) / 180;
+            const deltaPhi = ((lat2 - lat1) * Math.PI) / 180;
+            const deltaLambda = ((lon2 - lon1) * Math.PI) / 180;
+            const a = Math.sin(deltaPhi / 2) * Math.sin(deltaPhi / 2) +
+              Math.cos(phi1) * Math.cos(phi2) * Math.sin(deltaLambda / 2) * Math.sin(deltaLambda / 2);
+            const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+            return R * c;
+          };
+
+          if (node.type === "HOUSEHOLD_EDGE") {
+            const { data: pumpStations } = await supabase
+              .from("TelemetryNode")
+              .select("id, name, latitude, longitude")
+              .eq("type", "PUMP_STATION");
+
+            if (pumpStations && pumpStations.length > 0) {
+              let nearestPump = null;
+              let minDistance = Infinity;
+
+              for (const pump of pumpStations) {
+                const dist = calculateDistance(node.latitude, node.longitude, pump.latitude, pump.longitude);
+                if (dist < minDistance) {
+                  minDistance = dist;
+                  nearestPump = pump;
+                }
+              }
+
+              if (nearestPump) {
+                nearestPumpName = nearestPump.name;
+                
+                // Get latest reading from past 1 hour for the nearest pump
+                const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000).toISOString();
+                const { data: pumpReadings } = await supabase
+                  .from("TelemetryReading")
+                  .select("ph, turbidity, tds, pressure")
+                  .eq("nodeId", nearestPump.id)
+                  .gte("timestamp", oneHourAgo)
+                  .order("timestamp", { ascending: false })
+                  .limit(1);
+
+                if (pumpReadings && pumpReadings.length > 0) {
+                  const latestPumpReading = pumpReadings[0];
+                  const pumpIsNormal = latestPumpReading.pressure >= 30 &&
+                                       latestPumpReading.ph >= 6.5 && latestPumpReading.ph <= 8.5 &&
+                                       latestPumpReading.turbidity <= 5 &&
+                                       latestPumpReading.tds <= 500;
+                  if (pumpIsNormal) {
+                    isLocalPipelineBreach = true;
+                    differentialNotes = `[Differential Diagnosis] Nearest source pump station (${nearestPump.name}) is operating normally. Anomaly isolated to local pipeline network (leak/breach/contamination downstream of source).`;
+                  } else {
+                    differentialNotes = `[Differential Diagnosis] Nearest source pump station (${nearestPump.name}) is ALSO reporting anomalies (Systemic Source Failure). Downstream issues are cascading.`;
+                  }
+                } else {
+                  differentialNotes = `[Differential Diagnosis] Nearest source pump station (${nearestPump.name}) has no recent telemetry. Source status unclear.`;
+                }
+              }
+            }
+          }
+
           const { data: activeComplaints } = await supabase
             .from("Complaint")
             .select("id, category, summary, rawText, latitude, longitude")
             .neq("status", "RESOLVED");
 
           if (activeComplaints) {
-            const calculateDistance = (lat1: number, lon1: number, lat2: number, lon2: number) => {
-              const R = 6371e3; // meters
-              const phi1 = (lat1 * Math.PI) / 180;
-              const phi2 = (lat2 * Math.PI) / 180;
-              const deltaPhi = ((lat2 - lat1) * Math.PI) / 180;
-              const deltaLambda = ((lon2 - lon1) * Math.PI) / 180;
-              const a = Math.sin(deltaPhi / 2) * Math.sin(deltaPhi / 2) +
-                Math.cos(phi1) * Math.cos(phi2) * Math.sin(deltaLambda / 2) * Math.sin(deltaLambda / 2);
-              const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-              return R * c;
-            };
-
             const nearby = activeComplaints.filter((c: any) => {
               const dist = calculateDistance(c.latitude, c.longitude, node.latitude, node.longitude);
               return dist <= 500;
@@ -114,11 +169,36 @@ serve(async (req) => {
                   .in("status", ["PENDING", "ONGOING"])
                   .maybeSingle();
 
+                const finalRootCause = isLocalPipelineBreach 
+                  ? `Intermediary Pipeline Breach (${rootCause})` 
+                  : rootCause;
+                
+                const finalAction = isLocalPipelineBreach
+                  ? `Dispatch crew to inspect pipeline segment between ${node.name} and source ${nearestPumpName || "station"}.`
+                  : action;
+
+                // Recalculate distance for dynamic confidence
+                const distMeters = calculateDistance(comp.latitude, comp.longitude, node.latitude, node.longitude);
+
+                // Dynamic Confidence Score Algorithm:
+                // - Base is 98 for isolated pipeline breach, 90 for systemic failure
+                // - Distance Penalty: up to 10% penalty for 500m distance
+                // - Time Penalty: up to 10% penalty for 12 hours delay
+                // - Enforces a strict safety floor of 80% so alerts are never ignored
+                const baseConf = isLocalPipelineBreach ? 98 : 90;
+                const distPenalty = (distMeters / 500) * 10;
+                
+                const timeDiffHrs = Math.abs(Date.now() - new Date(comp.createdAt).getTime()) / (1000 * 60 * 60);
+                const timePenalty = Math.min(10, (timeDiffHrs / 12) * 10);
+
+                const calculatedConf = Math.round(baseConf - distPenalty - timePenalty);
+                const finalConfidenceScore = Math.max(80, Math.min(99, calculatedConf));
+
                 const geminiAnalysis = {
-                  rootCauseAnalysis: `Citizen reported: "${comp.summary || comp.rawText}". Nearest sensor node ${node.name} shows threshold breaches.`,
-                  probableRootCause: rootCause,
-                  confidenceScore: 95,
-                  recommendedAction: action
+                  rootCauseAnalysis: `Citizen reported: "${comp.summary || comp.rawText}". Nearest sensor node ${node.name} (${node.type}) shows threshold breaches. ${differentialNotes}`,
+                  probableRootCause: finalRootCause,
+                  confidenceScore: finalConfidenceScore,
+                  recommendedAction: finalAction
                 };
 
                 if (existingAlert) {
@@ -126,7 +206,7 @@ serve(async (req) => {
                     .from("DiagnosticAlert")
                     .update({ geminiAnalysis })
                     .eq("id", existingAlert.id);
-                  console.log(`[Edge Function] Updated existing DiagnosticAlert ${existingAlert.id} for node ${node.name} correlated with complaint ${comp.id}`);
+                  console.log(`[Edge Function] Updated existing DiagnosticAlert ${existingAlert.id} for node ${node.name} correlated with complaint ${comp.id} with dynamic confidence ${finalConfidenceScore}%`);
                 } else {
                   await supabase
                     .from("DiagnosticAlert")
@@ -136,7 +216,7 @@ serve(async (req) => {
                       geminiAnalysis,
                       status: "PENDING"
                     });
-                  console.log(`[Edge Function] Created DiagnosticAlert for node ${node.name} correlated with complaint ${comp.id}`);
+                  console.log(`[Edge Function] Created DiagnosticAlert for node ${node.name} correlated with complaint ${comp.id} with dynamic confidence ${finalConfidenceScore}%`);
                 }
               }
             }

@@ -401,11 +401,7 @@ Results are ordered by `distance_meters ASC`.
 
 **Deployed as**: `telemetry-ingest`
 **Runtime**: Deno (Supabase Edge Functions)
-**Trigger**: Called by `POST /api/admin/telemetry-ingest` (Next.js server-side proxy).
-
-**Payload**: `{ nodeId, ph, turbidity, tds, pressure }`
-
-**Processing flow**:
+**Trigger**: Called by `POST /api/admin/telemetry-ingest` (Next.js server-side proxy). 
 
 1. **Redis hot-cache write** — Stores the latest reading in Upstash Redis at key `node:latest:{nodeId}`.
 2. **Anomaly threshold check**:
@@ -413,7 +409,10 @@ Results are ordered by `distance_meters ASC`.
    - `ph < 6.5` or `ph > 8.5` → anomaly
    - `turbidity > 5 NTU` → anomaly
    - `tds > 500 PPM` → anomaly
-3. **If anomalous**: Inserts a `TelemetryReading` row. Fetches node coordinates. Finds all unresolved complaints within 500m using an inline Haversine function. For each category-matched nearby complaint, creates or updates a `DiagnosticAlert` with a `geminiAnalysis` JSON object. **Node `status` is NOT changed.**
+3. **If anomalous**: Inserts a `TelemetryReading` row. Fetches node coordinates. Finds all unresolved complaints within 500m using an inline Haversine function.
+   - **Automated Differential Diagnostic**: If the node is a `HOUSEHOLD_EDGE` (destination), it automatically queries the nearest `PUMP_STATION` node's latest telemetry from the past 1 hour. If the pump is normal, it diagnoses an **`Intermediary Pipeline Breach`** and updates the recommended action to inspect that specific segment. If the pump is also anomalous, it diagnoses a cascading **`Systemic Source Failure`**.
+   - **Dynamic Confidence Score**: Replaces static values with a dynamic decay formula based on distance proximity (using Haversine) and temporal delay (delay since complaint was filed). Clamps the final rating between a safe **80% minimum floor** and a **99% maximum ceiling**.
+   - Creates or updates a `DiagnosticAlert` with a `geminiAnalysis` JSON object containing these metrics. **Node `status` is NOT changed.**
 4. **If normal**: Sets node `status → ONLINE`. Inserts a `TelemetryReading` row.
 
 **Node status behavior**:

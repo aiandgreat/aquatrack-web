@@ -38,6 +38,57 @@ export async function POST(req: Request) {
       });
 
       if (node && (pressure < 30 || ph < 6.5 || ph > 8.5 || turbidity > 5 || tds > 500)) {
+        // Differential Diagnostic: If node is HOUSEHOLD_EDGE, cross-reference the nearest PUMP_STATION
+        let differentialNotes = "";
+        let isLocalPipelineBreach = false;
+        let nearestPumpName = "";
+
+        if (node.type === "HOUSEHOLD_EDGE") {
+          const pumpStations = await prisma.telemetryNode.findMany({
+            where: { type: "PUMP_STATION" }
+          });
+
+          let nearestPump = null;
+          let minDistance = Infinity;
+
+          for (const pump of pumpStations) {
+            const dist = calculateDistance(
+              { latitude: node.latitude, longitude: node.longitude },
+              { latitude: pump.latitude, longitude: pump.longitude }
+            );
+            if (dist < minDistance) {
+              minDistance = dist;
+              nearestPump = pump;
+            }
+          }
+
+          if (nearestPump) {
+            nearestPumpName = nearestPump.name;
+            const latestPumpReading = await prisma.telemetryReading.findFirst({
+              where: {
+                nodeId: nearestPump.id,
+                timestamp: { gte: new Date(Date.now() - 60 * 60 * 1000) } // Last 1 hour
+              },
+              orderBy: { timestamp: "desc" }
+            });
+
+            if (latestPumpReading) {
+              const pumpIsNormal = latestPumpReading.pressure >= 30 &&
+                                   latestPumpReading.ph >= 6.5 && latestPumpReading.ph <= 8.5 &&
+                                   latestPumpReading.turbidity <= 5 &&
+                                   latestPumpReading.tds <= 500;
+              if (pumpIsNormal) {
+                isLocalPipelineBreach = true;
+                differentialNotes = `[Differential Diagnosis] Nearest source pump station (${nearestPump.name}) is operating normally. Anomaly isolated to local pipeline network (leak/breach/contamination downstream of source).`;
+              } else {
+                differentialNotes = `[Differential Diagnosis] Nearest source pump station (${nearestPump.name}) is ALSO reporting anomalies (Systemic Source Failure). Downstream issues are cascading.`;
+              }
+            } else {
+              differentialNotes = `[Differential Diagnosis] Nearest source pump station (${nearestPump.name}) has no recent telemetry. Source status unclear.`;
+            }
+          }
+        }
+
         const activeComplaints = await prisma.complaint.findMany({
           where: {
             status: { not: "RESOLVED" }
@@ -83,11 +134,39 @@ export async function POST(req: Request) {
               }
             });
 
+            const finalRootCause = isLocalPipelineBreach 
+              ? `Intermediary Pipeline Breach (${rootCause})` 
+              : rootCause;
+            
+            const finalAction = isLocalPipelineBreach
+              ? `Dispatch crew to inspect pipeline segment between ${node.name} and source ${nearestPumpName || "station"}.`
+              : action;
+
+            // Recalculate distance for dynamic confidence
+            const distMeters = calculateDistance(
+              { latitude: comp.latitude, longitude: comp.longitude },
+              { latitude: node.latitude, longitude: node.longitude }
+            );
+
+            // Dynamic Confidence Score Algorithm:
+            // - Base is 98 for isolated pipeline breach, 90 for systemic failure
+            // - Distance Penalty: up to 10% penalty for 500m distance
+            // - Time Penalty: up to 10% penalty for 12 hours delay
+            // - Enforces a strict safety floor of 80% so alerts are never ignored
+            const baseConf = isLocalPipelineBreach ? 98 : 90;
+            const distPenalty = (distMeters / 500) * 10;
+            
+            const timeDiffHrs = Math.abs(Date.now() - new Date(comp.createdAt).getTime()) / (1000 * 60 * 60);
+            const timePenalty = Math.min(10, (timeDiffHrs / 12) * 10);
+
+            const calculatedConf = Math.round(baseConf - distPenalty - timePenalty);
+            const finalConfidenceScore = Math.max(80, Math.min(99, calculatedConf));
+
             const geminiAnalysis = {
-              rootCauseAnalysis: `Citizen reported: "${comp.summary || comp.rawText}". Nearest sensor node ${node.name} shows threshold breaches.`,
-              probableRootCause: rootCause,
-              confidenceScore: 95,
-              recommendedAction: action
+              rootCauseAnalysis: `Citizen reported: "${comp.summary || comp.rawText}". Nearest sensor node ${node.name} (${node.type}) shows threshold breaches. ${differentialNotes}`,
+              probableRootCause: finalRootCause,
+              confidenceScore: finalConfidenceScore,
+              recommendedAction: finalAction
             };
 
             if (existingAlert) {
@@ -95,7 +174,7 @@ export async function POST(req: Request) {
                 where: { id: existingAlert.id },
                 data: { geminiAnalysis: geminiAnalysis }
               });
-              console.log(`[Telemetry Ingest API] Updated existing DiagnosticAlert ${existingAlert.id} for node ${node.name} correlated with complaint ${comp.id}`);
+              console.log(`[Telemetry Ingest API] Updated existing DiagnosticAlert ${existingAlert.id} for node ${node.name} correlated with complaint ${comp.id} with dynamic confidence ${finalConfidenceScore}%`);
             } else {
               await prisma.diagnosticAlert.create({
                 data: {
@@ -105,7 +184,7 @@ export async function POST(req: Request) {
                   status: "PENDING"
                 }
               });
-              console.log(`[Telemetry Ingest API] Created DiagnosticAlert for node ${node.name} correlated with complaint ${comp.id}`);
+              console.log(`[Telemetry Ingest API] Created DiagnosticAlert for node ${node.name} correlated with complaint ${comp.id} with dynamic confidence ${finalConfidenceScore}%`);
             }
           }
         }
