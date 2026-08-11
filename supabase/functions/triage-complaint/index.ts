@@ -151,6 +151,7 @@ serve(async (req) => {
       const { error: insertError } = await supabase
         .from("DiagnosticAlert")
         .insert({
+          id: crypto.randomUUID(),
           nodeId: contextNode.id,
           complaintCount: 1,
           geminiAnalysis,
