@@ -547,6 +547,11 @@ The full schema is defined in [`prisma/schema.prisma`](./prisma/schema.prisma). 
 - **Hybrid Geocoding Pipeline:** Implemented an OSM Nominatim geocoding fallback for Mapbox searches in `DashboardClient.tsx`, successfully resolving local provincial landmarks (like "University of the Assumption") while filtering out invalid garbage searches.
 - **Systemic Root Cause Classification:** Configured the telemetry ingestion routes to prepend `"Systemic Source Anomaly"` to the probable root cause of pumping station failures, aligning with the `"Intermediary Pipeline Breach"` prefix used for local pipeline breaches.
 
+### Production Build & Triage Enhancements
+- **Verified Production Build:** Successfully compiled and validated the entire application using Next.js 16 (Turbopack) and React 19. All 25 system routes (static landing screens, dynamic administrative dashboards, and microservice APIs) resolved correctly without TypeScript or dependency warnings.
+- **Refined Kapampangan Dialect AI Triage:** Expanded the dialect translation mapping in the `triage-complaint` Edge Function prompt (`danum`, `kayna`, `ala danum`, `keni`, `karin`, `agus`, `gripo`, `mabau`) and added targeted test strings (e.g. *"Sobrang kayna ing danum keni"*) to resolve minor triage inaccuracy edge cases.
+- **Improved Spatial Diagnostics:** Fine-tuned the telemetry-ingest differential diagnostic output to format systemic pump failures clearly under `"Systemic Source Anomaly"` classifications.
+
 ---
 
 ## 📁 Related Repositories
