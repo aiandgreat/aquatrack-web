@@ -522,6 +522,24 @@ The full schema is defined in [`prisma/schema.prisma`](./prisma/schema.prisma). 
 - **Push Notification Copy Refinement:** Improved backend dispatches to use structured titles and emojis (`RESOLVED ✅`, `IN PROGRESS 🛠️`, `UNDER REVIEW 📋`) for consumer updates, and `"🚨 CSFWD Operation Dispatch"` for crew dispatches.
 - **In-App Notification Dropdowns:** Redesigned the Admin, Sub-Admin, and Client portals' notification popover lists using custom border cards, Lucide React icons, read status indicators, and hover transition scales.
 
+### Recent Platform Updates (August 11, 2026)
+
+### Interactive Drag-to-Select Calendar & Filter Modal
+- **Unified Range Selection:** Replaced the old two-step indicator process with a simplified single RangeCalendar modal, supporting drag-to-select ranges, visual cap-rounded selections, and single-day filtering.
+- **React Portal Mounting:** Rendered all filter and completion modals via React Portal directly in the document body. This solves deep layout stacking context z-index issues and applies backdrop blurs cleanly over the sidebar and navbar.
+
+### Precision Timezone Calibration
+- **GMT+8 Local Time Alignment:** Adjusted server-side queries to apply custom Philippine Time (UTC+8) offsets before normalizing to midnight, correcting rolling chart dates and resolving date-skipping bugs.
+- **Full-Day Telemetry Querying:** Configured endDate queries to close at `23:59:59.999 UTC` rather than `00:00:00.000 UTC` to include all records logged throughout the final day.
+
+### Synchronized Compliance Reporting Engine
+- **Filtered PDF Datasets:** Refactored the PDF compliance compiler to dynamically filter citizen complaints per barangay, identify regional hotspots, and map node averages strictly within the active date range.
+- **Dynamic AI Operational Summaries:** Updated the system-summary API endpoint to support date queries, prompting Google Gemini to dynamically compile custom summaries and recommended action items matching the filtered timeframe.
+
+### High-Concurrency Speed Optimizations
+- **Raised Pool Limits:** Upgraded connection limits from `1` to `4` in `prisma.ts`, eliminating timeout crashes caused by query starvation in concurrent `Promise.all` queries.
+- **Abort Controllers & Cache Headers:** Integrated React `useRef` AbortControllers to cancel obsolete requests during rapid calendar changes, and attached short-lived Cache-Control headers on telemetry data endpoints for instant dashboard tab switching.
+
 ---
 
 ## 📁 Related Repositories

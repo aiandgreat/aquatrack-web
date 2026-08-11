@@ -98,7 +98,14 @@ export async function GET(request: Request) {
       }
     }
 
-    return NextResponse.json({ success: true, data: chartData });
+    return NextResponse.json(
+      { success: true, data: chartData },
+      {
+        headers: {
+          "Cache-Control": "public, max-age=5, stale-while-revalidate=15",
+        },
+      }
+    );
   } catch (err: any) {
     return NextResponse.json(
       { success: false, error: err.message },

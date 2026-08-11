@@ -21,27 +21,48 @@ export async function GET(request: Request) {
       orderBy: { name: "asc" },
       include: {
         readings: {
-          where: startDate && endDate ? {
-            timestamp: {
-              gte: startDate,
-              lte: endDate,
-            },
-          } : undefined,
           orderBy: { timestamp: "desc" },
+          take: 1, // Only load 1 latest row per node for fallback
         },
       },
     });
 
+    let averagesMap: Record<string, { ph: number; turbidity: number; tds: number; pressure: number }> = {};
+
+    if (startDate && endDate) {
+      const averages = await prisma.telemetryReading.groupBy({
+        by: ["nodeId"],
+        where: {
+          timestamp: {
+            gte: startDate,
+            lte: endDate,
+          },
+        },
+        _avg: {
+          ph: true,
+          turbidity: true,
+          tds: true,
+          pressure: true,
+        },
+      });
+
+      averages.forEach((avg) => {
+        if (avg._avg.ph !== null) {
+          averagesMap[avg.nodeId] = {
+            ph: avg._avg.ph,
+            turbidity: avg._avg.turbidity ?? 1.5,
+            tds: avg._avg.tds ?? 235,
+            pressure: avg._avg.pressure ?? 40.0,
+          };
+        }
+      });
+    }
+
     // Format geom fields or exclude them to avoid circular references/issues in JSON serialization
     const serializedNodes = nodes.map(n => {
-      // If filtering dates, average all readings in that range
-      if (startDate && endDate && n.readings.length > 0) {
-        const group = n.readings;
-        const avgPh = group.reduce((sum, r) => sum + r.ph, 0) / group.length;
-        const avgTurbidity = group.reduce((sum, r) => sum + r.turbidity, 0) / group.length;
-        const avgTds = group.reduce((sum, r) => sum + r.tds, 0) / group.length;
-        const avgPressure = group.reduce((sum, r) => sum + r.pressure, 0) / group.length;
-
+      // If filtering dates and averages exist for this node, use them
+      if (startDate && endDate && averagesMap[n.id]) {
+        const avg = averagesMap[n.id];
         return {
           id: n.id,
           name: n.name,
@@ -50,10 +71,10 @@ export async function GET(request: Request) {
           longitude: n.longitude,
           status: n.status,
           reading: {
-            ph: parseFloat(avgPh.toFixed(2)),
-            turbidity: parseFloat(avgTurbidity.toFixed(2)),
-            tds: Math.round(avgTds),
-            pressure: parseFloat(avgPressure.toFixed(1)),
+            ph: parseFloat(avg.ph.toFixed(2)),
+            turbidity: parseFloat(avg.turbidity.toFixed(2)),
+            tds: Math.round(avg.tds),
+            pressure: parseFloat(avg.pressure.toFixed(1)),
             timestamp: endDate!.toISOString(),
           },
         };

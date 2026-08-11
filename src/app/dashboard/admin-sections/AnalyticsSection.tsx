@@ -408,8 +408,18 @@ export default function AnalyticsSection({
   const [showSuccessModal, setShowSuccessModal] = useState(false);
   const [downloadedRange, setDownloadedRange] = useState("");
 
+  // Abort controllers to cancel stale fetch requests during rapid interaction
+  const abortReadingsRef = useRef<AbortController | null>(null);
+  const abortSummaryRef = useRef<AbortController | null>(null);
+
   // ── Fetch dynamic timeline chart data ─────────────────────────────────────
   const fetchReadings = async (from?: Date | null, to?: Date | null) => {
+    if (abortReadingsRef.current) {
+      abortReadingsRef.current.abort();
+    }
+    abortReadingsRef.current = new AbortController();
+    const signal = abortReadingsRef.current.signal;
+
     try {
       setLoadingCharts(true);
       let url = "/api/admin/analytics-readings";
@@ -424,53 +434,100 @@ export default function AnalyticsSection({
         const t = formatLocalDate(to);
         url += `?from=${f}&to=${t}`;
       }
-      const res = await fetch(url);
+      const res = await fetch(url, { signal });
       const json = await res.json();
       if (json.success && json.data && json.data.length > 0) {
         setTimelineData(json.data);
       } else {
         setTimelineData(generatePast30DaysData());
       }
-    } catch (err) {
+    } catch (err: any) {
+      if (err.name === "AbortError") return;
       console.warn("Failed to fetch database readings, falling back to mock baseline:", err);
       setTimelineData(generatePast30DaysData());
     } finally {
-      setLoadingCharts(false);
+      if (!signal.aborted) {
+        setLoadingCharts(false);
+      }
     }
   };
 
-  useEffect(() => { fetchReadings(); }, []);
-
-  // Gemini AI System Narrative Summary States
   const [aiSummary, setAiSummary] = useState<string>("");
   const [loadingAiSummary, setLoadingAiSummary] = useState<boolean>(true);
 
   // Fetch AI generated system summary
-  useEffect(() => {
-    const fetchSummary = async () => {
-      try {
-        setLoadingAiSummary(true);
-        const res = await fetch("/api/admin/system-summary");
-        const json = await res.json();
-        if (json.success) {
-          setAiSummary(json.summary);
-        } else {
-          throw new Error(json.error || "Failed loading summary");
-        }
-      } catch (err) {
-        console.warn("Could not query Gemini System Summary:", err);
-        // Direct compute fallback
-        const activeCount = complaints.filter(c => c.status !== "RESOLVED").length;
-        setAiSummary(`As of today, water quality timelines for the City of San Fernando Water District remain within optimal ranges. Pumping station telemetry lists normal mineral profiles. Total water pipeline line losses calculated over 30 days equate to 1.2%, significantly below the 5% warning mark. Standard cross-check validation yields ${activeCount} Verified active telemetry concerns.`);
-      } finally {
+  const fetchSummary = async (from?: Date | null, to?: Date | null) => {
+    if (abortSummaryRef.current) {
+      abortSummaryRef.current.abort();
+    }
+    abortSummaryRef.current = new AbortController();
+    const signal = abortSummaryRef.current.signal;
+
+    try {
+      setLoadingAiSummary(true);
+      let url = "/api/admin/system-summary";
+      if (from && to) {
+        const formatLocalDate = (d: Date) => {
+          const y = d.getFullYear();
+          const m = String(d.getMonth() + 1).padStart(2, "0");
+          const day = String(d.getDate()).padStart(2, "0");
+          return `${y}-${m}-${day}`;
+        };
+        url += `?from=${formatLocalDate(from)}&to=${formatLocalDate(to)}`;
+      }
+      const res = await fetch(url, { signal });
+      const json = await res.json();
+      if (json.success) {
+        setAiSummary(json.summary);
+      } else {
+        throw new Error(json.error || "Failed loading summary");
+      }
+    } catch (err: any) {
+      if (err.name === "AbortError") return;
+      console.warn("Could not query Gemini System Summary:", err);
+      // Direct compute fallback (uses filtered activeComplaints and range text)
+      const dateText = from && to ? "during the selected period" : "over 30 days";
+      setAiSummary(`As of today, water quality timelines for the City of San Fernando Water District remain within optimal ranges ${dateText}. Pumping station telemetry lists normal mineral profiles. Total water pipeline line losses calculated equate to 1.2%, significantly below the 5% warning mark. Standard cross-check validation yields ${totalActiveCount} Verified active telemetry concerns.`);
+    } finally {
+      if (!signal.aborted) {
         setLoadingAiSummary(false);
       }
+    }
+  };
+
+  // Mount logic: fetch timeline and system summary concurrently
+  useEffect(() => {
+    Promise.all([
+      fetchReadings(),
+      fetchSummary()
+    ]);
+
+    return () => {
+      if (abortReadingsRef.current) abortReadingsRef.current.abort();
+      if (abortSummaryRef.current) abortSummaryRef.current.abort();
     };
-    fetchSummary();
+  }, []);
+
+  // Only re-trigger when database complaints array changes (via realtime updates)
+  useEffect(() => {
+    fetchSummary(appliedFrom, appliedTo);
   }, [complaints]);
 
+  // Filter complaints based on the applied date range
+  const filteredComplaints = React.useMemo(() => {
+    if (!appliedFrom || !appliedTo) return complaints;
+    const start = new Date(appliedFrom);
+    start.setHours(0, 0, 0, 0);
+    const end = new Date(appliedTo);
+    end.setHours(23, 59, 59, 999);
+    return complaints.filter((c) => {
+      const d = new Date(c.createdAt);
+      return d >= start && d <= end;
+    });
+  }, [complaints, appliedFrom, appliedTo]);
+
   // Extract unique active complaints (excluding resolved cases)
-  const activeComplaints = complaints.filter(c => c.status !== "RESOLVED");
+  const activeComplaints = filteredComplaints.filter(c => c.status !== "RESOLVED");
   const totalActiveCount = activeComplaints.length;
 
   // List of target Barangays in CSFWD jurisdiction (all 35 barangays of San Fernando)
@@ -585,7 +642,13 @@ export default function AnalyticsSection({
     const effectiveTo = filterTo || filterFrom;
     setAppliedFrom(filterFrom);
     setAppliedTo(effectiveTo);
-    fetchReadings(filterFrom, effectiveTo);
+    
+    // Concurrently fetch chart readings and summary for target date range
+    Promise.all([
+      fetchReadings(filterFrom, effectiveTo),
+      fetchSummary(filterFrom, effectiveTo)
+    ]);
+    
     setFilterOpen(false);
   };
 
@@ -594,7 +657,13 @@ export default function AnalyticsSection({
     setFilterTo(null);
     setAppliedFrom(null);
     setAppliedTo(null);
-    fetchReadings();
+    
+    // Concurrently clear filters and restore 30-day baseline
+    Promise.all([
+      fetchReadings(),
+      fetchSummary()
+    ]);
+    
     setFilterOpen(false);
   };
 
