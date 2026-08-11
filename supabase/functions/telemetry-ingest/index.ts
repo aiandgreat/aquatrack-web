@@ -27,7 +27,7 @@ serve(async (req) => {
       return new Response("Invalid payload", { status: 400 });
     }
 
-    // 1. Hot cache update in Redis via HTTP Fetch to Upstash REST API (non-fatal: DB insert always proceeds)
+    // 1. Hot cache update in Redis via HTTP Fetch (non-fatal)
     try {
       if (REDIS_URL && REDIS_TOKEN) {
         await fetch(`${REDIS_URL}/set/node:latest:${nodeId}`, {
@@ -44,13 +44,12 @@ serve(async (req) => {
     const hasAnomaly = pressure < 30 || ph < 6.5 || ph > 8.5 || turbidity > 5 || tds > 500;
     
     if (hasAnomaly) {
-      // Save anomalous reading to history — must provide id since Postgres has no DEFAULT for the column
       const { error: insertAnomalyErr } = await supabase
         .from("TelemetryReading")
         .insert({ id: crypto.randomUUID(), nodeId, ph, turbidity, tds, pressure });
       if (insertAnomalyErr) console.error("[telemetry-ingest] Failed to insert anomaly reading:", insertAnomalyErr);
 
-      // Dynamic AI Spatial Diagnostics Correlation for existing unresolved complaints
+      // Dynamic AI Spatial Diagnostics Correlation
       try {
         const { data: node } = await supabase
           .from("TelemetryNode")
@@ -59,9 +58,8 @@ serve(async (req) => {
           .single();
 
         if (node) {
-          // Differential Diagnostic: If node is HOUSEHOLD_EDGE, cross-reference the nearest PUMP_STATION
           let differentialNotes = "";
-          let isLocalPipelineBreach = false;
+          let isSourceNormal = false;
           let nearestPumpName = "";
 
           const calculateDistance = (lat1: number, lon1: number, lat2: number, lon2: number) => {
@@ -96,8 +94,6 @@ serve(async (req) => {
 
               if (nearestPump) {
                 nearestPumpName = nearestPump.name;
-                
-                // Get latest reading from past 1 hour for the nearest pump
                 const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000).toISOString();
                 const { data: pumpReadings } = await supabase
                   .from("TelemetryReading")
@@ -114,10 +110,10 @@ serve(async (req) => {
                                        latestPumpReading.turbidity <= 5 &&
                                        latestPumpReading.tds <= 500;
                   if (pumpIsNormal) {
-                    isLocalPipelineBreach = true;
-                    differentialNotes = `[Differential Diagnosis] Nearest source pump station (${nearestPump.name}) is operating normally. Anomaly isolated to local pipeline network (leak/breach/contamination downstream of source).`;
+                    isSourceNormal = true;
+                    differentialNotes = `[Differential Diagnosis] Nearest source pump station (${nearestPump.name}) is operating normally. Anomaly isolated to local pipeline network segment downstream of source.`;
                   } else {
-                    differentialNotes = `[Differential Diagnosis] Nearest source pump station (${nearestPump.name}) is ALSO reporting anomalies (Systemic Source Failure). Downstream issues are cascading.`;
+                    differentialNotes = `[Differential Diagnosis] Nearest source pump station (${nearestPump.name}) is ALSO reporting anomalies (Systemic Source Failure). Issues are cascading downstream.`;
                   }
                 } else {
                   differentialNotes = `[Differential Diagnosis] Nearest source pump station (${nearestPump.name}) has no recent telemetry. Source status unclear.`;
@@ -128,40 +124,123 @@ serve(async (req) => {
 
           const { data: activeComplaints } = await supabase
             .from("Complaint")
-            .select("id, category, summary, rawText, latitude, longitude")
+            .select("id, category, summary, rawText, latitude, longitude, createdAt")
             .neq("status", "RESOLVED");
 
-          if (activeComplaints) {
-            const nearby = activeComplaints.filter((c: any) => {
-              const dist = calculateDistance(c.latitude, c.longitude, node.latitude, node.longitude);
-              return dist <= 500;
-            });
+          if (activeComplaints && activeComplaints.length > 0) {
+            const nearby = activeComplaints
+              .map((c: any) => ({
+                ...c,
+                distance: calculateDistance(c.latitude, c.longitude, node.latitude, node.longitude)
+              }))
+              .filter((c: any) => c.distance <= 500);
 
-            for (const comp of nearby) {
-              let isMatch = false;
-              let rootCause = "";
-              let action = "";
+            if (nearby.length > 0) {
+              const matchedCorrelations: Array<{
+                complaint: any;
+                category: string;
+                baseRootCause: string;
+                anomalyPrefix: string;
+                action: string;
+                priorityWeight: number;
+              }> = [];
 
-              if (pressure < 30 && comp.category === "PIPELINE_BREACH_PRESSURE_DROP") {
-                isMatch = true;
-                rootCause = "Low water pressure breach (Leak or Pipe Breach)";
-                action = "Inspect main supply pressure valves and scan for pipeline leaks.";
-              } else if (turbidity > 5 && comp.category === "HIGH_TURBIDITY") {
-                isMatch = true;
-                rootCause = "Elevated turbidity / muddy water quality anomaly";
-                action = "Flush supply lines and check sedimentation tanks.";
-              } else if (tds > 500 && comp.category === "HIGH_MINERAL_CONTENT_TDS") {
-                isMatch = true;
-                rootCause = "High mineral content / TDS levels exceeded";
-                action = "Inspect filtration system and run chemical analysis.";
-              } else if ((ph < 6.5 || ph > 8.5) && comp.category === "CHEMICAL_DISCOLORATION_CONTAMINATION") {
-                isMatch = true;
-                rootCause = "pH level deviation (possible contamination)";
-                action = "Isolate pipeline segment and treat water source.";
+              for (const comp of nearby) {
+                // 1. Turbidity Match
+                if (turbidity > 5 && comp.category === "HIGH_TURBIDITY") {
+                  matchedCorrelations.push({
+                    complaint: comp,
+                    category: comp.category,
+                    baseRootCause: "Elevated Turbidity / Sediment Contamination",
+                    anomalyPrefix: isSourceNormal ? "Localized Pipeline Sedimentation / Infiltration" : "Systemic Source Sedimentation Failure",
+                    action: "Flush supply lines, clear downstream filters, and check sedimentation tanks.",
+                    priorityWeight: 80 + Math.min(20, turbidity - 5)
+                  });
+                }
+
+                // 2. Pressure Breach Match
+                if (pressure < 30 && comp.category === "PIPELINE_BREACH_PRESSURE_DROP") {
+                  matchedCorrelations.push({
+                    complaint: comp,
+                    category: comp.category,
+                    baseRootCause: "Low Water Pressure Breach",
+                    anomalyPrefix: isSourceNormal ? "Intermediary Pipeline Breach" : "Systemic Source Pressure Drop",
+                    action: isSourceNormal 
+                      ? `Dispatch crew to inspect pipeline segment between ${node.name} and source ${nearestPumpName || "station"} for physical leaks.` 
+                      : "Inspect main supply pressure valves and pump station operations.",
+                    priorityWeight: 100 + (30 - pressure)
+                  });
+                }
+
+                // 3. pH Deviation Match
+                if ((ph < 6.5 || ph > 8.5) && comp.category === "CHEMICAL_DISCOLORATION_CONTAMINATION") {
+                  const phDeviation = ph < 6.5 ? (6.5 - ph) : (ph - 8.5);
+                  matchedCorrelations.push({
+                    complaint: comp,
+                    category: comp.category,
+                    baseRootCause: `pH Level Deviation (${ph < 6.5 ? "Acidic" : "Alkaline"})`,
+                    anomalyPrefix: isSourceNormal ? "Localized Pipe Contamination" : "Systemic Chemical Contamination",
+                    action: "Isolate local pipeline segment and treat water source.",
+                    priorityWeight: 90 + (phDeviation * 10)
+                  });
+                }
+
+                // 4. TDS Mineral Match
+                if (tds > 500 && comp.category === "HIGH_MINERAL_CONTENT_TDS") {
+                  matchedCorrelations.push({
+                    complaint: comp,
+                    category: comp.category,
+                    baseRootCause: "High Mineral Content (TDS Exceeded)",
+                    anomalyPrefix: isSourceNormal ? "Localized Pipe Mineral Leaching" : "Systemic Source Mineral Intrusion",
+                    action: "Inspect filtration systems and run chemical composition analysis.",
+                    priorityWeight: 70 + Math.min(20, (tds - 500) / 50)
+                  });
+                }
               }
 
-              if (isMatch) {
-                // Check if active alert already exists
+              if (matchedCorrelations.length > 0) {
+                // Rank correlations by weight first, then by nearest proximity
+                matchedCorrelations.sort((a, b) => {
+                  if (b.priorityWeight !== a.priorityWeight) {
+                    return b.priorityWeight - a.priorityWeight;
+                  }
+                  return a.complaint.distance - b.complaint.distance;
+                });
+
+                const primaryMatch = matchedCorrelations[0];
+                const comp = primaryMatch.complaint;
+
+                const uniqueMatchedComplaintIds = new Set(matchedCorrelations.map(m => m.complaint.id));
+                const totalMatchedComplaints = uniqueMatchedComplaintIds.size;
+
+                const finalRootCause = `${primaryMatch.anomalyPrefix} (${primaryMatch.baseRootCause})`;
+
+                const distMeters = comp.distance;
+                const baseConf = isSourceNormal ? 98 : 90;
+                const distPenalty = (distMeters / 500) * 10;
+                
+                const timeDiffHrs = Math.abs(Date.now() - new Date(comp.createdAt).getTime()) / (1000 * 60 * 60);
+                const timePenalty = Math.min(10, (timeDiffHrs / 12) * 10);
+
+                const multiComplaintBonus = Math.min(5, (totalMatchedComplaints - 1) * 2);
+
+                const calculatedConf = Math.round(baseConf - distPenalty - timePenalty + multiComplaintBonus);
+                const finalConfidenceScore = Math.max(80, Math.min(99, calculatedConf));
+
+                const secondaryAnomalies = matchedCorrelations.filter(m => m.category !== primaryMatch.category);
+                let multiAnomalyNote = "";
+                if (secondaryAnomalies.length > 0) {
+                  const secondaryCauses = secondaryAnomalies.map(s => s.baseRootCause).join(", ");
+                  multiAnomalyNote = ` Concurrent secondary anomalies detected: [${secondaryCauses}].`;
+                }
+
+                const geminiAnalysis = {
+                  rootCauseAnalysis: `Citizen reported: "${comp.summary || comp.rawText}". Sensor node ${node.name} (${node.type}) confirmed threshold breach.${multiAnomalyNote} ${differentialNotes}`,
+                  probableRootCause: finalRootCause,
+                  confidenceScore: finalConfidenceScore,
+                  recommendedAction: primaryMatch.action
+                };
+
                 const { data: existingAlert } = await supabase
                   .from("DiagnosticAlert")
                   .select("id")
@@ -169,55 +248,26 @@ serve(async (req) => {
                   .in("status", ["PENDING", "ONGOING"])
                   .maybeSingle();
 
-                const finalRootCause = isLocalPipelineBreach 
-                  ? `Intermediary Pipeline Breach (${rootCause})` 
-                  : `Systemic Source Anomaly (${rootCause})`;
-                
-                const finalAction = isLocalPipelineBreach
-                  ? `Dispatch crew to inspect pipeline segment between ${node.name} and source ${nearestPumpName || "station"}.`
-                  : action;
-
-                // Recalculate distance for dynamic confidence
-                const distMeters = calculateDistance(comp.latitude, comp.longitude, node.latitude, node.longitude);
-
-                // Dynamic Confidence Score Algorithm:
-                // - Base is 98 for isolated pipeline breach, 90 for systemic failure
-                // - Distance Penalty: up to 10% penalty for 500m distance
-                // - Time Penalty: up to 10% penalty for 12 hours delay
-                // - Enforces a strict safety floor of 80% so alerts are never ignored
-                const baseConf = isLocalPipelineBreach ? 98 : 90;
-                const distPenalty = (distMeters / 500) * 10;
-                
-                const timeDiffHrs = Math.abs(Date.now() - new Date(comp.createdAt).getTime()) / (1000 * 60 * 60);
-                const timePenalty = Math.min(10, (timeDiffHrs / 12) * 10);
-
-                const calculatedConf = Math.round(baseConf - distPenalty - timePenalty);
-                const finalConfidenceScore = Math.max(80, Math.min(99, calculatedConf));
-
-                const geminiAnalysis = {
-                  rootCauseAnalysis: `Citizen reported: "${comp.summary || comp.rawText}". Nearest sensor node ${node.name} (${node.type}) shows threshold breaches. ${differentialNotes}`,
-                  probableRootCause: finalRootCause,
-                  confidenceScore: finalConfidenceScore,
-                  recommendedAction: finalAction
-                };
-
                 if (existingAlert) {
                   await supabase
                     .from("DiagnosticAlert")
-                    .update({ geminiAnalysis })
+                    .update({
+                      complaintCount: totalMatchedComplaints,
+                      geminiAnalysis
+                    })
                     .eq("id", existingAlert.id);
-                  console.log(`[Edge Function] Updated existing DiagnosticAlert ${existingAlert.id} for node ${node.name} correlated with complaint ${comp.id} with dynamic confidence ${finalConfidenceScore}%`);
+                  console.log(`[Edge Function] Updated DiagnosticAlert ${existingAlert.id} for node ${node.name} (${finalRootCause})`);
                 } else {
                   await supabase
                     .from("DiagnosticAlert")
                     .insert({
                       id: crypto.randomUUID(),
                       nodeId,
-                      complaintCount: 1,
+                      complaintCount: totalMatchedComplaints,
                       geminiAnalysis,
                       status: "PENDING"
                     });
-                  console.log(`[Edge Function] Created DiagnosticAlert for node ${node.name} correlated with complaint ${comp.id} with dynamic confidence ${finalConfidenceScore}%`);
+                  console.log(`[Edge Function] Created DiagnosticAlert for node ${node.name} (${finalRootCause})`);
                 }
               }
             }
@@ -227,13 +277,11 @@ serve(async (req) => {
         console.error("Error during edge function spatial correlation:", err);
       }
     } else {
-      // Normal readings: revert status to ONLINE and record normal readings to history
       await supabase
         .from("TelemetryNode")
         .update({ status: "ONLINE" })
         .eq("id", nodeId);
 
-      // Must provide id since Postgres has no DEFAULT for the id column
       const { error: insertNormalErr } = await supabase
         .from("TelemetryReading")
         .insert({ id: crypto.randomUUID(), nodeId, ph, turbidity, tds, pressure });

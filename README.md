@@ -552,6 +552,44 @@ The full schema is defined in [`prisma/schema.prisma`](./prisma/schema.prisma). 
 - **Refined Kapampangan Dialect AI Triage:** Expanded the dialect translation mapping in the `triage-complaint` Edge Function prompt (`danum`, `kayna`, `ala danum`, `keni`, `karin`, `agus`, `gripo`, `mabau`) and added targeted test strings (e.g. *"Sobrang kayna ing danum keni"*) to resolve minor triage inaccuracy edge cases.
 - **Improved Spatial Diagnostics:** Fine-tuned the telemetry-ingest differential diagnostic output to format systemic pump failures clearly under `"Systemic Source Anomaly"` classifications.
 
+### Recent Platform Updates (August 12, 2026)
+
+### AI Diagnostic Disambiguation & Classification Rules
+- **Strict TDS vs. pH Category Disambiguation:** Updated prompt rules across both the Next.js `/api/triage` route and the Supabase `triage-complaint` Deno Edge Function to explicitly separate `HIGH_MINERAL_CONTENT_TDS` from `CHEMICAL_DISCOLORATION_CONTAMINATION`. High TDS readings ($>500\text{ ppm}$) and mineralized/yellowish water are now strictly classified as `"Localized Pipe Mineral Leaching (High Mineral Content (TDS Exceeded))"` and will no longer default to pH level deviations.
+- **Unified Diagnostic Naming Standards:** Aligned root cause classification strings across the entire platform:
+  - **Localized Downstream Faults:** `"Intermediary Pipeline Breach (<Parameter Classification>)"`
+  - **Upstream Pump Station Faults:** `"Systemic Source Anomaly (<Parameter Classification>)"`
+- **Cleaned Diagnostic Analysis Text:** Updated the `geminiAnalysis` object construction in the `triage-complaint` Edge Function to output clean, concise `rootCauseAnalysis` strings without redundant `"Citizen reported:"` summary prefixes.
+
+### Feature 7 Differential Diagnostics Verification
+- **Full Parameter Suite Testing:** Verified end-to-end differential diagnostic classification across all four core water quality parameters:
+  - **Low Pressure:** `pressure < 30 PSI`
+  - **Elevated Turbidity:** `turbidity > 5.0 NTU`
+  - **High Mineral / TDS:** `tds > 500 ppm`
+  - **Chemical / pH Anomaly:** `ph < 6.5` or `ph > 8.5`
+- **Dynamic Spatial & Temporal Confidence Calibration:** Verified that confidence scores ($80\%\text{--}97\%$) adjust dynamically based on Haversine geofence distance ($\le 500\text{m}$) and telemetry freshness ($\le 15\text{-min}$ lookback), while priority levels (`HIGH` vs. `MEDIUM`) independently evaluate citizen report urgency keywords.
+
+### Interactive Drag-to-Select Calendar & Filter Modal
+- **Unified Range Selection:** Replaced the old two-step indicator process with a simplified single `RangeCalendar` modal, supporting drag-to-select ranges, visual cap-rounded selections, and single-day filtering.
+- **React Portal Mounting:** Rendered all filter and completion modals via React Portal directly in the document body. This solves deep layout stacking context z-index issues and applies backdrop blurs cleanly over the sidebar and navbar.
+
+### Precision Timezone Calibration
+- **GMT+8 Local Time Alignment:** Adjusted server-side queries to apply custom Philippine Time (UTC+8) offsets before normalizing to midnight, correcting rolling chart dates and resolving date-skipping bugs.
+- **Full-Day Telemetry Querying:** Configured `endDate` queries to close at `23:59:59.999 UTC` rather than `00:00:00.000 UTC` to include all records logged throughout the final day.
+
+### Synchronized Compliance Reporting Engine
+- **Filtered PDF Datasets:** Refactored the PDF compliance compiler to dynamically filter citizen complaints per barangay, identify regional hotspots, and map node averages strictly within the active date range.
+- **Dynamic AI Operational Summaries:** Updated the system-summary API endpoint to support date queries, prompting Google Gemini to dynamically compile custom summaries and recommended action items matching the filtered timeframe.
+
+### High-Concurrency Speed Optimizations & Search Enhancements
+- **Raised Pool Limits:** Upgraded connection limits from `1` to `4` in `prisma.ts`, eliminating timeout crashes caused by query starvation in concurrent `Promise.all` queries.
+- **Abort Controllers & Cache Headers:** Integrated React `useRef` AbortControllers to cancel obsolete requests during rapid calendar changes, and attached short-lived Cache-Control headers on telemetry data endpoints for instant dashboard tab switching.
+- **Hybrid Geocoding Pipeline:** Implemented an OSM Nominatim geocoding fallback for Mapbox searches in `DashboardClient.tsx`, successfully resolving local provincial landmarks (like "University of the Assumption") while filtering out invalid garbage searches.
+
+### Production Build & Triage Enhancements
+- **Verified Production Build:** Successfully compiled and validated the entire application using Next.js 16 (Turbopack) and React 19. All 25 system routes resolved correctly without TypeScript or dependency warnings.
+- **Refined Kapampangan Dialect AI Triage:** Expanded the dialect translation mapping in the `triage-complaint` Edge Function prompt (`danum`, `kayna`, `ala danum`, `keni`, `karin`, `agus`, `gripo`, `mabau`, `dilo`, `taya`) to ensure accurate translation of regional dialect complaints.
+
 ---
 
 ## 📁 Related Repositories
@@ -560,3 +598,5 @@ The full schema is defined in [`prisma/schema.prisma`](./prisma/schema.prisma). 
 |---|---|
 | [`aquatrack-web`](https://github.com/aiandgreat/aquatrack-web) | This repository — Next.js web platform (Admin + Resident portals). |
 | [`aquatrack-mob`](https://github.com/AaronPublic/aquatrack-mob) | React Native / Expo mobile app — Field Technician sub-admin portal. |
+
+taskkill /F /IM node.exe

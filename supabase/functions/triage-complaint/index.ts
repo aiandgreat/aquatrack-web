@@ -18,7 +18,7 @@ serve(async (req) => {
     const bodyText = await req.text();
     if (!bodyText) return new Response("Missing body", { status: 400 });
 
-    let payload: { complaintId?: string; latitude?: number; longitude?: number; };
+    let payload: { complaintId?: string; latitude?: number; longitude?: number; rawText?: string };
     try {
       payload = JSON.parse(bodyText);
     } catch {
@@ -28,7 +28,6 @@ serve(async (req) => {
     const { complaintId, latitude, longitude, rawText } = payload;
     if (!complaintId) return new Response("Missing ID", { status: 400 });
 
-    // Run database operations in parallel to save latency
     const complaintPromise = rawText
       ? Promise.resolve({ data: { rawText }, error: null })
       : supabase.from("Complaint").select("*").eq("id", complaintId).single();
@@ -51,28 +50,47 @@ serve(async (req) => {
       console.error("Spatial error:", spatialError);
     }
 
-    // 3. Prepare AI triage request
     const contextNode = nearbyNodes?.[0];
-    const systemPrompt = `You are a municipal water district engineer. Parse the following citizen report. Note that the report may be written in English, Tagalog, Taglish, or Kapampangan dialect. Use this Kapampangan translation guide to translate accurately to English:
-    - "danum" = water
-    - "kayna" / "mayna" / "kumayna" / "mababa agus" = weak water flow / low water pressure / slow flow of water
-    - "ala danum" / "alang danum" / "marang" = no water / dry faucet (maps to PIPELINE_BREACH_PRESSURE_DROP, high urgency)
-    - "matuling" / "kule matuling" = black / dark water (highly critical, maps to CHEMICAL_DISCOLORATION_CONTAMINATION or HIGH_TURBIDITY)
-    - "dilo" / "kule dilo" / "kulasisi" = yellow / yellowish water (maps to HIGH_MINERAL_CONTENT_TDS or HIGH_TURBIDITY)
-    - "malutu" / "kule malutu" = red / reddish / rusty water
-    - "taya" / "kule taya" = brown / muddy water
-    - "malino" = clear water
-    - "keni" / "keti" = here
-    - "karin" / "keta" = there
-    - "mabau" = smelly / bad odor
-    - "agus" = flow / stream
-    - "gripo" = faucet / tap
+    const systemPrompt = `You are a municipal water district engineer parsing a citizen report (in English, Tagalog, Taglish, or Kapampangan).
 
-    Additional context: "Sobrang kayna ing danum keni" translates to "The water flow/pressure here is extremely weak."
-    
-    Translate the report to English, capturing all details including water discoloration, flow, and duration. Classify category (PIPELINE_BREACH_PRESSURE_DROP, HIGH_TURBIDITY, HIGH_MINERAL_CONTENT_TDS, CHEMICAL_DISCOLORATION_CONTAMINATION, UNCLASSIFIED_INFRASTRUCTURE_ANOMALY) and urgency (LOW, MEDIUM, HIGH, CRITICAL). Summarize in one sentence.`;
-    
-    // Call Gemini API (Structured JSON output)
+Kapampangan Guide:
+- "danum" = water
+- "kayna" / "mayna" / "kumayna" / "mababa agus" = weak water flow / low water pressure
+- "ala danum" / "alang danum" / "marang" = no water / dry faucet
+- "matuling" / "kule matuling" = dark water
+- "dilo" / "kule dilo" / "kulasisi" = yellow / yellowish water (HIGH_MINERAL_CONTENT_TDS or HIGH_TURBIDITY)
+- "malutu" / "kule malutu" = red / rust water
+- "taya" / "kule taya" = brown / muddy water (HIGH_TURBIDITY)
+- "mabau" = smelly / bad odor
+- "agus" = flow / stream
+- "gripo" = faucet / tap
+
+Categories:
+- PIPELINE_BREACH_PRESSURE_DROP
+- HIGH_TURBIDITY
+- HIGH_MINERAL_CONTENT_TDS
+- CHEMICAL_DISCOLORATION_CONTAMINATION
+- UNCLASSIFIED_INFRASTRUCTURE_ANOMALY
+
+Standardized probableRootCause mapping rules:
+- If HIGH_TURBIDITY: "Localized Pipeline Sedimentation / Infiltration (Elevated Turbidity / Sediment Contamination)"
+- If PIPELINE_BREACH_PRESSURE_DROP: "Intermediary Pipeline Breach (Low Water Pressure Breach)"
+- If HIGH_MINERAL_CONTENT_TDS: "Localized Pipe Mineral Leaching (High Mineral Content (TDS Exceeded))"
+- If CHEMICAL_DISCOLORATION_CONTAMINATION: "Localized Pipe Contamination (pH Level Deviation / Discoloration)"
+- Otherwise: "Unclassified Infrastructure Anomaly"
+
+Standardized recommendedAction mapping rules:
+- If HIGH_TURBIDITY: "Flush supply lines, clear downstream filters, and check sedimentation tanks."
+- If PIPELINE_BREACH_PRESSURE_DROP: "Dispatch crew to inspect pipeline segment for physical leaks."
+- If HIGH_MINERAL_CONTENT_TDS: "Inspect filtration systems and run chemical composition analysis."
+- If CHEMICAL_DISCOLORATION_CONTAMINATION: "Isolate local pipeline segment and treat water source."
+
+Disambiguation Rule for Water Quality vs Minerals:
+- Do NOT classify high TDS or yellowish/salty water as pH deviation. If the anomaly is high mineral content or TDS exceedance, strictly assign category HIGH_MINERAL_CONTENT_TDS.
+- Only assign CHEMICAL_DISCOLORATION_CONTAMINATION if there is an explicit pH imbalance or chemical odor/contamination reported.
+
+Translate the report to English, assign category, urgency (LOW, MEDIUM, HIGH, CRITICAL), summary (1 sentence), probableRootCause, and recommendedAction based on the rules above.`;
+
     const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.5-flash-lite:generateContent?key=${GEMINI_API_KEY}`;
     const aiResponse = await fetch(geminiUrl, {
       method: "POST",
@@ -94,7 +112,7 @@ serve(async (req) => {
               confidenceScore: { type: "NUMBER" },
               recommendedAction: { type: "STRING" }
             },
-            required: ["category", "urgency", "summary"]
+            required: ["category", "urgency", "summary", "probableRootCause", "recommendedAction"]
           }
         }
       })
@@ -118,12 +136,11 @@ serve(async (req) => {
       urgency: string;
       translatedText?: string;
       summary: string;
-      probableRootCause?: string;
+      probableRootCause: string;
       confidenceScore?: number;
-      recommendedAction?: string;
+      recommendedAction: string;
     } = JSON.parse(resultText);
 
-    // 4. Update the complaint in Database
     const { error: updateError } = await supabase
       .from("Complaint")
       .update({
@@ -139,13 +156,12 @@ serve(async (req) => {
       throw new Error(`Failed to update complaint: ${updateError.message}`);
     }
 
-    // 5. If spatial correlation matched, create a DiagnosticAlert
     if (contextNode) {
       const geminiAnalysis = {
-        rootCauseAnalysis: `Citizen reported: "${result.summary}". Nearest sensor node ${contextNode.name} shows threshold breaches.`,
-        probableRootCause: result.probableRootCause || "Localized pipe breach",
-        confidenceScore: result.confidenceScore || 80,
-        recommendedAction: result.recommendedAction || "Inspect node valves"
+        rootCauseAnalysis: `Nearest sensor node ${contextNode.name} identified showing threshold breaches.`,
+        probableRootCause: result.probableRootCause,
+        confidenceScore: result.confidenceScore || 85,
+        recommendedAction: result.recommendedAction
       };
 
       const { error: insertError } = await supabase

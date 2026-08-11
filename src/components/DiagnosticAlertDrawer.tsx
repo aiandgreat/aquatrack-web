@@ -1,25 +1,27 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useMemo } from "react";
 import { sortCrewsByProximity } from "../lib/spatial-sorting";
 import { 
   AlertTriangle, 
   Activity, 
   MapPin, 
-  CheckCircle2, 
   ClipboardList, 
-  Navigation,
   Compass
 } from "lucide-react";
 
 interface Alert {
   id: string;
   node: { name: string; latitude: number; longitude: number };
-  geminiAnalysis: {
-    probableRootCause: string;
-    confidenceScore: number;
-    recommendedAction: string;
-  };
+  // Supports both nested geminiAnalysis and top-level fallbacks
+  probableRootCause?: string;
+  recommendedAction?: string;
+  geminiAnalysis?: {
+    rootCauseAnalysis?: string;
+    probableRootCause?: string;
+    confidenceScore?: number;
+    recommendedAction?: string;
+  } | string;
 }
 
 interface Crew {
@@ -37,6 +39,40 @@ interface DiagnosticAlertDrawerProps {
 
 export default function DiagnosticAlertDrawer({ alert, crews, onDispatch }: DiagnosticAlertDrawerProps) {
   const [dispatchingId, setDispatchingId] = useState<string | null>(null);
+
+  // 1. Safely parse geminiAnalysis regardless of whether Supabase returns a JSON Object or String
+  const analysis = useMemo(() => {
+    if (!alert.geminiAnalysis) {
+      return {
+        probableRootCause: alert.probableRootCause || "Unknown Anomaly Detected",
+        confidenceScore: 85,
+        recommendedAction: alert.recommendedAction || "Inspect node for localized pipeline issues.",
+        rootCauseAnalysis: null,
+      };
+    }
+
+    if (typeof alert.geminiAnalysis === "string") {
+      try {
+        return JSON.parse(alert.geminiAnalysis);
+      } catch (err) {
+        console.error("Failed to parse geminiAnalysis JSON string:", err);
+        return {
+          probableRootCause: alert.probableRootCause || "Diagnostic Parsing Error",
+          confidenceScore: 80,
+          recommendedAction: alert.recommendedAction || "Inspect node valves and line integrity.",
+          rootCauseAnalysis: null,
+        };
+      }
+    }
+
+    return alert.geminiAnalysis;
+  }, [alert]);
+
+  // Extract variables with full fallbacks
+  const probableRootCause = analysis.probableRootCause || alert.probableRootCause || "Localized Pipeline Anomaly";
+  const confidenceScore = analysis.confidenceScore ?? 85;
+  const recommendedAction = analysis.recommendedAction || alert.recommendedAction || "Inspect node valves and water lines.";
+  const rootCauseAnalysis = analysis.rootCauseAnalysis;
 
   const alertLocation = { lat: alert.node.latitude, lng: alert.node.longitude };
   const sortedCrews = sortCrewsByProximity(alertLocation, crews);
@@ -84,18 +120,18 @@ export default function DiagnosticAlertDrawer({ alert, crews, onDispatch }: Diag
             Probable Root Cause
           </span>
           <span className="inline-flex items-center rounded-lg bg-white dark:bg-slate-900 px-2.5 py-1 text-[10px] font-black text-rose-700 dark:text-rose-400 border border-rose-200 dark:border-rose-900/50 shadow-sm">
-            Confidence: {alert.geminiAnalysis.confidenceScore}%
+            Confidence: {confidenceScore}%
           </span>
         </div>
-        <p className="mt-3 text-xs leading-relaxed text-slate-700 dark:text-slate-200 font-medium">
-          {alert.geminiAnalysis.probableRootCause}
+        <p className="mt-3 text-xs leading-relaxed text-slate-700 dark:text-slate-200 font-bold">
+          {probableRootCause}
         </p>
         
         {/* Visual score slider track */}
         <div className="mt-4 h-2 w-full rounded-full bg-slate-100 dark:bg-slate-900 overflow-hidden shadow-inner">
           <div
             className="h-full rounded-full bg-gradient-to-r from-rose-500 to-[#00aeef] transition-all duration-700"
-            style={{ width: `${alert.geminiAnalysis.confidenceScore}%` }}
+            style={{ width: `${confidenceScore}%` }}
           />
         </div>
       </div>
@@ -107,7 +143,7 @@ export default function DiagnosticAlertDrawer({ alert, crews, onDispatch }: Diag
           <span>Recommended Action</span>
         </div>
         <p className="mt-3 text-xs leading-relaxed text-slate-650 dark:text-slate-300 italic font-medium pl-2.5 border-l-2 border-slate-300 dark:border-slate-700">
-          "{alert.geminiAnalysis.recommendedAction}"
+          "{recommendedAction}"
         </p>
       </div>
 
