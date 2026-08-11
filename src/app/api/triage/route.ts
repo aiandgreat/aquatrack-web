@@ -30,14 +30,21 @@ export async function POST(req: Request) {
       prompt: `You are an AI engineer for a municipal water district. Analyze this citizen complaint: "${text}".
       
       Instruction: The report may be written in English, Tagalog, Taglish, or Kapampangan dialect. Use this Kapampangan translation guide to translate accurately to English:
+      - "danum" = water
+      - "kayna" / "mayna" / "kumayna" / "mababa agus" = weak water flow / low water pressure / slow flow of water
+      - "ala danum" / "alang danum" / "marang" = no water / dry faucet (maps to PIPELINE_BREACH_PRESSURE_DROP, high urgency)
       - "matuling" / "kule matuling" = black / dark water (highly critical, maps to CHEMICAL_DISCOLORATION_CONTAMINATION or HIGH_TURBIDITY)
       - "dilo" / "kule dilo" / "kulasisi" = yellow / yellowish water (maps to HIGH_MINERAL_CONTENT_TDS or HIGH_TURBIDITY)
       - "malutu" / "kule malutu" = red / reddish / rusty water
       - "taya" / "kule taya" = brown / muddy water
       - "malino" = clear water
-      - "ala danum" / "alang danum" = no water / dry faucet (maps to PIPELINE_BREACH_PRESSURE_DROP, high urgency)
-      - "malati agus" / "mababa agus" = low water pressure / weak flow
+      - "keni" / "keti" = here
+      - "karin" / "keta" = there
       - "mabau" = smelly / bad odor
+      - "agus" = flow / stream
+      - "gripo" = faucet / tap
+      
+      Additional context: "Sobrang kayna ing danum keni" translates to "The water flow/pressure here is extremely weak."
       
       Translate it accurately to English, capturing all details including water discoloration, flow, and duration.
       

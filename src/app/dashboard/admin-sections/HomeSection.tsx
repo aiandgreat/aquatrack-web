@@ -74,7 +74,7 @@ interface HomeSectionProps {
   nodes?: TelemetryNode[];
   diagnosticAlerts?: any[];
   crews?: any[];
-  handleDispatchAlert?: (alertId: string, crewId: string) => void;
+  handleDispatchAlert?: (alertId: string, crewId: string, complaintId: string) => void;
   setActiveTab?: (tab: string) => void;
 }
 
@@ -87,7 +87,7 @@ export default function HomeSection({
   nodes = [],
   diagnosticAlerts = [],
   crews = [],
-  handleDispatchAlert = () => {},
+  handleDispatchAlert = (_alertId: string, _crewId: string, _complaintId: string) => {},
   setActiveTab,
 }: HomeSectionProps) {
   const [expandedCard, setExpandedCard] = useState<"compliance" | "sensors" | "reports" | "advisories" | null>(null);

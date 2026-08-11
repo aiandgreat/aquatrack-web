@@ -452,9 +452,14 @@ Results are ordered by `distance_meters ASC`.
    | `malutu` | Red / rusty water | — |
    | `taya` / `kule taya` | Brown / muddy water | `HIGH_TURBIDITY` |
    | `malino` | Clear water | — |
+   | `danum` | Water | — |
+   | `kayna` / `mayna` / `kumayna` | Weak water flow / low pressure | `PIPELINE_BREACH_PRESSURE_DROP` |
    | `ala danum` / `alang danum` | No water / dry faucet | `PIPELINE_BREACH_PRESSURE_DROP` |
    | `malati agus` / `mababa agus` | Low pressure / weak flow | `PIPELINE_BREACH_PRESSURE_DROP` |
    | `mabau` | Smelly / bad odor | — |
+   | `keni` / `keti` | Here | — |
+   | `agus` | Flow / stream | — |
+   | `gripo` | Faucet / tap | — |
 
 3. **DB update** — Writes `translatedText`, `summary`, `category`, `urgency`, `aiStatus = "SUCCESS"` back to the `Complaint` row.
 4. **DiagnosticAlert creation** — If a nearby anomalous node was found, inserts a `DiagnosticAlert` linking the node to the complaint with the Gemini analysis.
@@ -536,9 +541,11 @@ The full schema is defined in [`prisma/schema.prisma`](./prisma/schema.prisma). 
 - **Filtered PDF Datasets:** Refactored the PDF compliance compiler to dynamically filter citizen complaints per barangay, identify regional hotspots, and map node averages strictly within the active date range.
 - **Dynamic AI Operational Summaries:** Updated the system-summary API endpoint to support date queries, prompting Google Gemini to dynamically compile custom summaries and recommended action items matching the filtered timeframe.
 
-### High-Concurrency Speed Optimizations
+### High-Concurrency Speed Optimizations & Search Enhancements
 - **Raised Pool Limits:** Upgraded connection limits from `1` to `4` in `prisma.ts`, eliminating timeout crashes caused by query starvation in concurrent `Promise.all` queries.
 - **Abort Controllers & Cache Headers:** Integrated React `useRef` AbortControllers to cancel obsolete requests during rapid calendar changes, and attached short-lived Cache-Control headers on telemetry data endpoints for instant dashboard tab switching.
+- **Hybrid Geocoding Pipeline:** Implemented an OSM Nominatim geocoding fallback for Mapbox searches in `DashboardClient.tsx`, successfully resolving local provincial landmarks (like "University of the Assumption") while filtering out invalid garbage searches.
+- **Systemic Root Cause Classification:** Configured the telemetry ingestion routes to prepend `"Systemic Source Anomaly"` to the probable root cause of pumping station failures, aligning with the `"Intermediary Pipeline Breach"` prefix used for local pipeline breaches.
 
 ---
 

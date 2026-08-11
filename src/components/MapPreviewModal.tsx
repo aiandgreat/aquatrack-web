@@ -25,7 +25,7 @@ interface MapPreviewModalProps {
   nodes?: any[];
   crews?: any[];
   aiTriageStrictness?: number;
-  onDispatch?: (alertId: string, crewId: string) => void;
+  onDispatch?: (alertId: string, crewId: string, complaintId: string) => void;
 }
 
 export default function MapPreviewModal({ 
@@ -261,7 +261,7 @@ export default function MapPreviewModal({
                 <DiagnosticAlertDrawer
                   alert={matchedAlert}
                   crews={crews}
-                  onDispatch={(crewId) => onDispatch && onDispatch(matchedAlert.id, crewId)}
+                  onDispatch={(crewId) => onDispatch && complaint && onDispatch(matchedAlert.id, crewId, complaint.id)}
                 />
               </div>
             </div>

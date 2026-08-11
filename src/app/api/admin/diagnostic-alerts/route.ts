@@ -62,15 +62,87 @@ export async function GET() {
 
 export async function PUT(req: Request) {
   try {
-    const { id, status } = await req.json();
+    const { id, status, crewId, complaintId, emailAlertsEnabled } = await req.json();
     if (!id || !status) {
       return NextResponse.json({ error: "Missing parameters" }, { status: 400 });
     }
 
+    // 1. Update the DiagnosticAlert status
     const updated = await prisma.diagnosticAlert.update({
       where: { id },
-      data: { status }
+      data: { status },
     });
+
+    // 2. If a technician and a specific complaint were provided, assign only that complaint
+    if (crewId && complaintId) {
+      const complaint = await prisma.complaint.findUnique({
+        where: { id: complaintId },
+        select: { id: true, userId: true, category: true, summary: true, urgency: true, assignedToId: true },
+      });
+
+      if (complaint) {
+        // Assign the technician and set status to DISPATCHED for this specific complaint
+        await prisma.complaint.update({
+          where: { id: complaintId },
+          data: { assignedToId: crewId, status: "DISPATCHED" },
+        });
+
+        // Fire notifications (fire-and-forget)
+        try {
+          const { sendFcmNotification } = await import("../../../../lib/fcm-sender");
+
+          const technician = await prisma.user.findUnique({
+            where: { id: crewId },
+            select: { pushToken: true, email: true, name: true },
+          });
+
+          const ticketName = complaint.summary || complaint.category || "Reported Issue";
+
+          // Notify the resident that their ticket is now dispatched
+          if (complaint.userId) {
+            const resident = await prisma.user.findUnique({
+              where: { id: complaint.userId },
+              select: { pushToken: true },
+            });
+            if (resident?.pushToken) {
+              await sendFcmNotification(
+                [resident.pushToken],
+                "AquaTrack Alert: Ticket Update",
+                `The status of your ticket regarding "${ticketName}" has been updated to: DISPATCHED 🚒.`,
+                { type: "complaint_status", complaintId: complaint.id, status: "DISPATCHED" }
+              );
+            }
+          }
+
+          // Notify the technician of the new assignment
+          if (technician?.pushToken) {
+            await sendFcmNotification(
+              [technician.pushToken],
+              "🚨 CSFWD Operation Dispatch",
+              `New emergency assignment: "${ticketName}". Please open your Technician Console to review details.`,
+              { type: "new_assignment", complaintId: complaint.id }
+            );
+          }
+
+          // Send Brevo email to the technician
+          if (emailAlertsEnabled !== false && technician?.email) {
+            const { sendReactEmailNotification } = await import("../../../../lib/resend");
+            await sendReactEmailNotification(
+              technician.email,
+              `New Incident Assignment - ${ticketName}`,
+              {
+                crewName: technician.name,
+                incidentId: `AQ-${complaint.id.slice(0, 8).toUpperCase()}`,
+                urgency: complaint.urgency || "MEDIUM",
+                description: complaint.summary || complaint.category || "Reported water district anomaly.",
+              }
+            );
+          }
+        } catch (notifErr) {
+          console.error("[DIAGNOSTIC-ALERTS API] Notification error:", notifErr);
+        }
+      }
+    }
 
     return NextResponse.json({ success: true, alert: updated });
   } catch (err: any) {

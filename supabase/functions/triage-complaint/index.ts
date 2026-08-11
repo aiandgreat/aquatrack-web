@@ -54,14 +54,21 @@ serve(async (req) => {
     // 3. Prepare AI triage request
     const contextNode = nearbyNodes?.[0];
     const systemPrompt = `You are a municipal water district engineer. Parse the following citizen report. Note that the report may be written in English, Tagalog, Taglish, or Kapampangan dialect. Use this Kapampangan translation guide to translate accurately to English:
+    - "danum" = water
+    - "kayna" / "mayna" / "kumayna" / "mababa agus" = weak water flow / low water pressure / slow flow of water
+    - "ala danum" / "alang danum" / "marang" = no water / dry faucet (maps to PIPELINE_BREACH_PRESSURE_DROP, high urgency)
     - "matuling" / "kule matuling" = black / dark water (highly critical, maps to CHEMICAL_DISCOLORATION_CONTAMINATION or HIGH_TURBIDITY)
     - "dilo" / "kule dilo" / "kulasisi" = yellow / yellowish water (maps to HIGH_MINERAL_CONTENT_TDS or HIGH_TURBIDITY)
     - "malutu" / "kule malutu" = red / reddish / rusty water
     - "taya" / "kule taya" = brown / muddy water
     - "malino" = clear water
-    - "ala danum" / "alang danum" = no water / dry faucet (maps to PIPELINE_BREACH_PRESSURE_DROP, high urgency)
-    - "malati agus" / "mababa agus" = low water pressure / weak flow
+    - "keni" / "keti" = here
+    - "karin" / "keta" = there
     - "mabau" = smelly / bad odor
+    - "agus" = flow / stream
+    - "gripo" = faucet / tap
+
+    Additional context: "Sobrang kayna ing danum keni" translates to "The water flow/pressure here is extremely weak."
     
     Translate the report to English, capturing all details including water discoloration, flow, and duration. Classify category (PIPELINE_BREACH_PRESSURE_DROP, HIGH_TURBIDITY, HIGH_MINERAL_CONTENT_TDS, CHEMICAL_DISCOLORATION_CONTAMINATION, UNCLASSIFIED_INFRASTRUCTURE_ANOMALY) and urgency (LOW, MEDIUM, HIGH, CRITICAL). Summarize in one sentence.`;
     

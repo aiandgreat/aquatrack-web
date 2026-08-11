@@ -171,7 +171,7 @@ serve(async (req) => {
 
                 const finalRootCause = isLocalPipelineBreach 
                   ? `Intermediary Pipeline Breach (${rootCause})` 
-                  : rootCause;
+                  : `Systemic Source Anomaly (${rootCause})`;
                 
                 const finalAction = isLocalPipelineBreach
                   ? `Dispatch crew to inspect pipeline segment between ${node.name} and source ${nearestPumpName || "station"}.`

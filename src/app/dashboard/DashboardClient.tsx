@@ -1002,12 +1002,76 @@ export default function DashboardClient({
     }
   };
 
+  const getLevenshteinDistance = (a: string, b: string): number => {
+    const matrix: number[][] = [];
+    for (let i = 0; i <= b.length; i++) {
+      matrix[i] = [i];
+    }
+    for (let j = 0; j <= a.length; j++) {
+      matrix[0][j] = j;
+    }
+    for (let i = 1; i <= b.length; i++) {
+      for (let j = 1; j <= a.length; j++) {
+        if (b.charAt(i - 1) === a.charAt(j - 1)) {
+          matrix[i][j] = matrix[i - 1][j - 1];
+        } else {
+          matrix[i][j] = Math.min(
+            matrix[i - 1][j - 1] + 1,
+            matrix[i][j - 1] + 1,
+            matrix[i - 1][j] + 1
+          );
+        }
+      }
+    }
+    return matrix[b.length][a.length];
+  };
+
+  const SAN_FERNANDO_DICTIONARY = [
+    "Assumption", "University", "Sindalan", "Calulut", "Dolores", "Alasas", 
+    "Baliti", "Bulaon", "Carmen", "Pilar", "Rosario", "Juliana", "Lara", 
+    "Lourdes", "Magliman", "Maimpis", "Malino", "Malpitic", "Pandaras", 
+    "Panipuan", "Bulu", "Quebiawan", "Saguin", "Agustin", "Felipe", 
+    "Isidro", "Jose", "Juan", "Nicolas", "Pedro", "Cutud", "Lucia", 
+    "Teresita", "Niño", "Rosario", "Telabastagan", "Pampanga", "San", 
+    "Fernando", "Water", "District", "Pump", "Station", "Reservoir",
+    "Campus"
+  ];
+
+  const correctTypos = (query: string): string => {
+    const words = query.split(/\s+/);
+    const correctedWords = words.map(word => {
+      const cleanWord = word.replace(/[.,\/#!$%\^&\*;:{}=\-_`~()]/g, "");
+      if (cleanWord.length < 4) return word;
+      
+      let bestMatch = cleanWord;
+      let minDistance = 3; // Correct up to 2 character typos
+      
+      for (const dictWord of SAN_FERNANDO_DICTIONARY) {
+        const dist = getLevenshteinDistance(cleanWord.toLowerCase(), dictWord.toLowerCase());
+        if (dist < minDistance) {
+          minDistance = dist;
+          bestMatch = dictWord;
+        }
+      }
+      
+      if (bestMatch !== cleanWord) {
+        if (word[0] === word[0].toUpperCase()) {
+          return bestMatch.charAt(0).toUpperCase() + bestMatch.slice(1);
+        }
+        return bestMatch.toLowerCase();
+      }
+      return word;
+    });
+    return correctedWords.join(" ");
+  };
+
   const handleAddressSearch = async () => {
     if (!addressSearchQuery.trim()) return;
+    const correctedQuery = correctTypos(addressSearchQuery.trim());
     userHasManuallyPinnedRef.current = true;
     setBarangayLoading(true);
     try {
-      let query = addressSearchQuery.trim();
+      let query = correctedQuery;
       // Safely strip duplicate suffixes if already present in the user query
       const suffixes = ["Philippines", "Pampanga"];
       for (const suffix of suffixes) {
@@ -1022,37 +1086,63 @@ export default function DashboardClient({
       const geocodeUrl = `https://api.mapbox.com/geocoding/v5/mapbox.places/${encodeURIComponent(fullQuery)}.json?access_token=${mapboxgl.accessToken || process.env.NEXT_PUBLIC_MAPBOX_TOKEN || ""}&limit=1`;
       
       const res = await fetch(geocodeUrl);
+      let mapboxMatched = false;
+      let matchedFeature = null;
+
       if (res.ok) {
         const data = await res.json();
         if (data.features && data.features.length > 0) {
-          const matched = data.features[0];
+          const firstFeature = data.features[0];
+          const placeTypes = firstFeature.place_type || [];
+          const isBroad = placeTypes.includes("region") || placeTypes.includes("country");
           
-          // Mapbox fallback protection: if match relevance is too low, treat as location not found
-          if (matched.relevance !== undefined && matched.relevance < 0.8) {
-            setSearchErrorModalOpen(true);
-            return;
+          if (!(firstFeature.relevance !== undefined && firstFeature.relevance < 0.4) && !isBroad) {
+            mapboxMatched = true;
+            matchedFeature = firstFeature;
           }
+        }
+      }
 
-          const lng = matched.center[0];
-          const lat = matched.center[1];
-          const latStr = lat.toFixed(6);
-          const lngStr = lng.toFixed(6);
-          
-          setCustomLat(latStr);
-          setCustomLng(lngStr);
-          setGpsPinpointActive(true);
-          
-          const map = clientMapRef.current;
-          const marker = clientMarkerRef.current;
-          if (map && marker) {
-            marker.setLngLat([lng, lat]);
-            map.easeTo({ center: [lng, lat], zoom: 17 });
+      const applyLocation = (lat: number, lng: number) => {
+        const latStr = lat.toFixed(6);
+        const lngStr = lng.toFixed(6);
+        setCustomLat(latStr);
+        setCustomLng(lngStr);
+        setGpsPinpointActive(true);
+        
+        const map = clientMapRef.current;
+        const marker = clientMarkerRef.current;
+        if (map && marker) {
+          marker.setLngLat([lng, lat]);
+          map.easeTo({ center: [lng, lat], zoom: 17 });
+        }
+      };
+
+      if (mapboxMatched && matchedFeature) {
+        const lng = matchedFeature.center[0];
+        const lat = matchedFeature.center[1];
+        applyLocation(lat, lng);
+      } else {
+        // Fallback to Nominatim OpenStreetMap API
+        const nominatimUrl = `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(fullQuery)}&format=json&limit=1`;
+        const nomRes = await fetch(nominatimUrl, {
+          headers: {
+            "User-Agent": "AquaTrack-Client-Portal"
+          }
+        });
+        if (nomRes.ok) {
+          const nomData = await nomRes.json();
+          if (nomData && nomData.length > 0) {
+            const nomMatch = nomData[0];
+            const lat = parseFloat(nomMatch.lat);
+            const lng = parseFloat(nomMatch.lon);
+            applyLocation(lat, lng);
+          } else {
+            setSearchErrorModalOpen(true);
           }
         } else {
           setSearchErrorModalOpen(true);
         }
-      } else {
-        setSearchErrorModalOpen(true);
       }
     } catch (err) {
       console.error("Address search failed:", err);
@@ -2314,85 +2404,100 @@ export default function DashboardClient({
                     {/* Left Card: Form Inputs / Success State */}
                     <div className="bg-white rounded-2xl border border-slate-200/60 shadow-sm p-6 flex flex-col justify-between h-full gap-5 overflow-y-auto">
                       {submitSuccess ? (
-                        <div className="space-y-5 my-auto animate-fade-in">
-                          <div className="flex items-center space-x-3 text-emerald-600">
-                            <span className="text-3xl">🎉</span>
+                        <div className="space-y-6 my-auto animate-fade-in py-2">
+                          {/* Success Banner */}
+                          <div className="flex items-start gap-3.5 p-4 rounded-2xl bg-emerald-50/50 dark:bg-emerald-950/20 border border-emerald-100/65 dark:border-emerald-900/30">
+                            <div className="p-2 rounded-xl bg-emerald-100 dark:bg-emerald-900/40 text-emerald-600 dark:text-emerald-400 shrink-0">
+                              <CheckCircle2 className="w-5 h-5" />
+                            </div>
                             <div>
-                              <h3 className="text-sm font-black uppercase tracking-wider text-emerald-800 leading-none">
+                              <h3 className="text-xs font-black uppercase tracking-wider text-emerald-800 dark:text-emerald-400 leading-none">
                                 Report Logged Successfully
                               </h3>
-                              <p className="text-[10px] text-slate-500 font-bold mt-1.5">
+                              <p className="text-[10px] text-slate-500 dark:text-slate-400 font-bold mt-2">
                                 Your water issue ticket has been registered and is active in the dispatch queue.
                               </p>
                             </div>
                           </div>
 
-                          <div className="border-t border-b border-slate-100 py-4 space-y-4 text-xs">
-                            <div>
-                              <strong className="text-slate-450 uppercase tracking-widest text-[9px] block mb-1">
+                          {/* Ticket Details Panel */}
+                          <div className="bg-[#f8fafc] dark:bg-slate-900/40 border border-slate-200/60 dark:border-slate-800/80 rounded-2xl p-5 space-y-4 shadow-inner">
+                            {/* AI Summary */}
+                            <div className="space-y-1.5">
+                              <span className="text-slate-450 dark:text-slate-500 uppercase tracking-widest text-[8px] font-black block">
                                 Report Summary (AI Diagnostics)
-                              </strong>
-                              <p className="text-[#001e66] font-extrabold text-sm italic leading-relaxed">
+                              </span>
+                              <p className="text-[#001e66] dark:text-slate-200 font-extrabold text-sm italic leading-relaxed">
                                 "{aiAnalysis?.summary || "Resident reported water quality concern."}"
                               </p>
                             </div>
 
-                            <div>
-                              <strong className="text-slate-450 uppercase tracking-widest text-[9px] block mb-1">
-                                Your Detailed Description
-                              </strong>
-                              <p className="text-slate-600 bg-slate-50 p-3.5 rounded-xl border border-slate-200 font-semibold leading-relaxed whitespace-pre-wrap max-h-32 overflow-y-auto">
-                                {lastSubmittedComplaint?.rawText}
-                              </p>
-                            </div>
-
-                            {lastSubmittedComplaint?.imageUrl && (
+                            {/* Info Grid */}
+                            <div className="grid grid-cols-2 gap-x-4 gap-y-3.5 pt-3.5 border-t border-slate-200/50 dark:border-slate-800/50">
                               <div>
-                                <strong className="text-slate-450 uppercase tracking-widest text-[9px] block mb-1.5">
-                                  Attached Photo
-                                </strong>
-                                <div className="w-40 h-28 rounded-xl overflow-hidden border border-slate-200">
-                                  <img src={lastSubmittedComplaint.imageUrl} alt="Submitted incident" className="w-full h-full object-cover" />
-                                </div>
-                              </div>
-                            )}
-
-                            <div className="grid grid-cols-2 gap-4 font-mono text-xxs border-t border-slate-100 pt-4">
-                              <div>
-                                <strong className="text-slate-400 uppercase tracking-widest block mb-0.5 text-[8px]">Barangay</strong>
-                                <span className="font-bold text-slate-700">
+                                <span className="text-slate-450 dark:text-slate-500 uppercase tracking-widest text-[8px] font-black block mb-0.5">Barangay</span>
+                                <span className="text-xs font-extrabold text-slate-700 dark:text-slate-300">
                                   {lastSubmittedComplaint?.barangay || "San Fernando"}
                                 </span>
                               </div>
                               <div>
-                                <strong className="text-slate-400 uppercase tracking-widest block mb-0.5 text-[8px]">Coordinates</strong>
-                                <span className="font-bold text-slate-700">
-                                  {lastSubmittedComplaint?.latitude.toFixed(6)}, {lastSubmittedComplaint?.longitude.toFixed(6)}
-                                </span>
-                              </div>
-                              <div>
-                                <strong className="text-slate-400 uppercase tracking-widest block mb-0.5 text-[8px]">Urgency</strong>
-                                <span className="font-black text-rose-600 uppercase">
+                                <span className="text-slate-450 dark:text-slate-500 uppercase tracking-widest text-[8px] font-black block mb-0.5">Urgency</span>
+                                <span className={`text-xs font-black uppercase ${
+                                  aiAnalysis?.urgency === "CRITICAL" ? "text-rose-600 dark:text-rose-500" :
+                                  aiAnalysis?.urgency === "HIGH" ? "text-orange-500 dark:text-orange-400" :
+                                  "text-[#00aeef]"
+                                }`}>
                                   {aiAnalysis?.urgency || "MEDIUM"}
                                 </span>
                               </div>
-                              <div>
-                                <strong className="text-slate-400 uppercase tracking-widest block mb-0.5 text-[8px]">Category</strong>
-                                <span className="font-bold text-slate-700 uppercase">
+                              <div className="col-span-2">
+                                <span className="text-slate-450 dark:text-slate-500 uppercase tracking-widest text-[8px] font-black block mb-0.5">Category</span>
+                                <span className="text-xs font-extrabold text-slate-700 dark:text-slate-300 uppercase tracking-wide">
                                   {aiAnalysis?.category?.replace(/_/g, " ") || "UNCLASSIFIED"}
                                 </span>
                               </div>
+                              {lastSubmittedComplaint?.latitude && lastSubmittedComplaint?.longitude && (
+                                <div className="col-span-2">
+                                  <span className="text-slate-450 dark:text-slate-500 uppercase tracking-widest text-[8px] font-black block mb-0.5">Coordinates</span>
+                                  <span className="text-[10px] font-bold text-slate-500 dark:text-slate-400 font-mono">
+                                    {lastSubmittedComplaint.latitude.toFixed(6)}, {lastSubmittedComplaint.longitude.toFixed(6)}
+                                  </span>
+                                </div>
+                              )}
                             </div>
+
+                            {/* Raw Description */}
+                            <div className="space-y-1.5 pt-3.5 border-t border-slate-200/50 dark:border-slate-800/50">
+                              <span className="text-slate-450 dark:text-slate-500 uppercase tracking-widest text-[8px] font-black block">
+                                Submitted Description
+                              </span>
+                              <p className="text-slate-600 dark:text-slate-300 text-xs font-medium leading-relaxed whitespace-pre-wrap max-h-24 overflow-y-auto bg-white dark:bg-slate-950/60 p-3 rounded-xl border border-slate-100 dark:border-slate-900 shadow-sm">
+                                {lastSubmittedComplaint?.rawText}
+                              </p>
+                            </div>
+
+                            {/* Attached Photo */}
+                            {lastSubmittedComplaint?.imageUrl && (
+                              <div className="space-y-1.5 pt-3.5 border-t border-slate-200/50 dark:border-slate-800/50">
+                                <span className="text-slate-450 dark:text-slate-500 uppercase tracking-widest text-[8px] font-black block mb-1">
+                                  Attached Evidence Photo
+                                </span>
+                                <div className="relative group w-36 h-24 rounded-xl overflow-hidden border border-slate-250 dark:border-slate-800 shadow-sm shrink-0">
+                                  <img src={lastSubmittedComplaint.imageUrl} alt="Submitted incident" className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105" />
+                                </div>
+                              </div>
+                            )}
                           </div>
 
-                          <div className="flex gap-3 pt-2">
+                          {/* Action Buttons */}
+                          <div className="flex flex-col sm:flex-row gap-3 pt-2">
                             <button
                               onClick={() => {
                                 setSubmitSuccess(false);
                                 setAiAnalysis(null);
                                 setLastSubmittedComplaint(null);
                               }}
-                              className="flex-1 bg-slate-100 hover:bg-slate-200 text-[#001e66] font-black text-xs py-3 px-6 rounded-xl uppercase tracking-wider transition-all cursor-pointer text-center border border-slate-200/50"
+                              className="flex-1 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-[#001e66] dark:text-slate-200 font-black text-xs py-3 px-6 rounded-xl uppercase tracking-wider transition-all cursor-pointer text-center border border-slate-200/50 dark:border-slate-700/50"
                             >
                               File Another Report
                             </button>

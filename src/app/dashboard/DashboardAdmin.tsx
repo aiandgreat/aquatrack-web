@@ -652,17 +652,20 @@ export default function DashboardAdmin({
     }
   };
 
-  const handleDispatchAlert = async (alertId: string, crewId: string) => {
+  const handleDispatchAlert = async (alertId: string, crewId: string, complaintId: string) => {
     try {
       const res = await fetch("/api/admin/diagnostic-alerts", {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ id: alertId, status: "RESOLVED" }),
+        body: JSON.stringify({ id: alertId, status: "RESOLVED", crewId, complaintId, emailAlertsEnabled }),
       });
       const data = await res.json();
       if (data.success) {
-        showFeedback("success", "Technician dispatched to sensor node!");
+        showFeedback("success", "Technician dispatched and complaints assigned!");
         fetchDiagnosticAlerts();
+        fetchComplaints();
+        // Close the map preview modal after a short delay so the success toast is visible first
+        setTimeout(() => setPreviewComplaint(null), 800);
       } else {
         showFeedback("error", data.error || "Failed to dispatch technician");
       }
