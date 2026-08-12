@@ -104,8 +104,17 @@ Translate the report to English, assign category, urgency (LOW, MEDIUM, HIGH, CR
           responseSchema: {
             type: "OBJECT",
             properties: {
-              category: { type: "STRING" },
-              urgency: { type: "STRING" },
+              category: {
+                type: "STRING",
+                enum: [
+                  "PIPELINE_BREACH_PRESSURE_DROP",
+                  "HIGH_TURBIDITY",
+                  "HIGH_MINERAL_CONTENT_TDS",
+                  "CHEMICAL_DISCOLORATION_CONTAMINATION",
+                  "UNCLASSIFIED_INFRASTRUCTURE_ANOMALY"
+                ]
+              },
+              urgency: { type: "STRING", enum: ["LOW", "MEDIUM", "HIGH", "CRITICAL"] },
               translatedText: { type: "STRING" },
               summary: { type: "STRING" },
               probableRootCause: { type: "STRING" },

@@ -11,7 +11,8 @@ import {
   AlertTriangle, 
   ShieldCheck, 
   Activity,
-  Globe
+  Globe,
+  Search
 } from "lucide-react";
 import { SAN_FERNANDO_POLYGON } from "../../../lib/san-fernando-boundary";
 
@@ -76,10 +77,10 @@ const BARANGAY_COORDS: Record<string, [number, number]> = {
 };
 
 function getHeatColor(count: number): string {
-  if (count === 0) return "bg-slate-100 border-slate-200 text-slate-400";
+  if (count === 0) return "bg-slate-100 dark:bg-slate-800/70 border-slate-200 dark:border-slate-700 text-slate-400 dark:text-slate-400";
   if (count >= 16) return "bg-red-500 border-red-600 text-white";
   if (count >= 10) return "bg-orange-500 border-orange-600 text-white";
-  return "bg-yellow-300 border-yellow-400 text-yellow-900";
+  return "bg-yellow-300 border-yellow-400 text-yellow-900 dark:bg-yellow-500/90 dark:border-yellow-500 dark:text-yellow-950";
 }
 
 function getHeatLabel(count: number): string {
@@ -618,16 +619,16 @@ export default function HeatmapsSection({ complaints = [] }: HeatmapsSectionProp
       <style>{pulseStyle}</style>
 
       {/* Header */}
-      <div className="pb-4 border-b border-slate-200 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+      <div className="pb-4 border-b border-slate-200 dark:border-slate-800 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
-          <h2 className="text-lg font-black text-[#001e66] tracking-tight">Spatial Incident Heatmap</h2>
-          <p className="text-xs text-slate-500 font-bold">
+          <h2 className="text-lg font-black text-[#001e66] dark:text-slate-100 tracking-tight">Spatial Incident Heatmap</h2>
+          <p className="text-xs text-slate-500 dark:text-slate-400 font-bold">
             Live complaint density across all 35 barangays of City of San Fernando, Pampanga
           </p>
         </div>
         
         {/* Pulsing Legend */}
-        <div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-[10px] font-black text-[#001e66]">
+        <div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-[10px] font-black text-[#001e66] dark:text-slate-300">
           <div className="flex items-center gap-1.5">
             <span className="w-2.5 h-2.5 rounded-full bg-red-500 inline-block shadow-sm shadow-red-500/50" /> Pipeline Breach
           </div>
@@ -651,14 +652,14 @@ export default function HeatmapsSection({ complaints = [] }: HeatmapsSectionProp
         <div ref={mapContainerRef} className="absolute inset-0 w-full h-full" />
         
         {/* Style Toggle Button overlay */}
-        <div className="absolute top-3 left-3 z-10 flex gap-1 bg-white/95 backdrop-blur-sm p-1 rounded-xl border border-slate-200 shadow-lg">
+        <div className="absolute top-3 left-3 z-10 flex gap-1 bg-white/95 dark:bg-slate-900/95 backdrop-blur-sm p-1 rounded-xl border border-slate-200 dark:border-slate-800 shadow-lg">
           <button
             type="button"
             onClick={() => setMapStyle("streets")}
             className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[9px] font-black uppercase tracking-wider transition-all border-none focus:outline-none cursor-pointer ${
               mapStyle === "streets" 
-                ? "bg-[#001e66] text-white shadow-sm" 
-                : "text-slate-600 hover:text-[#001e66] hover:bg-slate-100"
+                ? "bg-[#001e66] dark:bg-[#00aeef] text-white dark:text-[#001e66] shadow-sm" 
+                : "text-slate-600 dark:text-slate-300 hover:text-[#001e66] dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800"
             }`}
           >
             <Sun className="w-3 h-3" />
@@ -669,8 +670,8 @@ export default function HeatmapsSection({ complaints = [] }: HeatmapsSectionProp
             onClick={() => setMapStyle("dark")}
             className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[9px] font-black uppercase tracking-wider transition-all border-none focus:outline-none cursor-pointer ${
               mapStyle === "dark" 
-                ? "bg-[#001e66] text-white shadow-sm" 
-                : "text-slate-600 hover:text-[#001e66] hover:bg-slate-100"
+                ? "bg-[#001e66] dark:bg-[#00aeef] text-white dark:text-[#001e66] shadow-sm" 
+                : "text-slate-600 dark:text-slate-300 hover:text-[#001e66] dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800"
             }`}
           >
             <Moon className="w-3 h-3" />
@@ -681,8 +682,8 @@ export default function HeatmapsSection({ complaints = [] }: HeatmapsSectionProp
             onClick={() => setMapStyle("standard")}
             className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[9px] font-black uppercase tracking-wider transition-all border-none focus:outline-none cursor-pointer ${
               mapStyle === "standard" 
-                ? "bg-[#001e66] text-white shadow-sm" 
-                : "text-slate-600 hover:text-[#001e66] hover:bg-slate-100"
+                ? "bg-[#001e66] dark:bg-[#00aeef] text-white dark:text-[#001e66] shadow-sm" 
+                : "text-slate-600 dark:text-slate-300 hover:text-[#001e66] dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800"
             }`}
           >
             <Globe className="w-3 h-3" />
@@ -698,13 +699,13 @@ export default function HeatmapsSection({ complaints = [] }: HeatmapsSectionProp
       {/* Summary KPI Row */}
       <div className="grid grid-cols-3 gap-4">
         {[
-          { label: "Total Complaints", value: totalComplaints, color: "text-[#001e66]" },
-          { label: "Hotspot Barangays", value: hotspotCount, color: "text-red-600" },
-          { label: "Barangays Monitored", value: 35, color: "text-emerald-600" },
+          { label: "Total Complaints", value: totalComplaints, color: "text-[#001e66] dark:text-slate-100" },
+          { label: "Hotspot Barangays", value: hotspotCount, color: "text-red-600 dark:text-red-400" },
+          { label: "Barangays Monitored", value: 35, color: "text-emerald-600 dark:text-emerald-400" },
         ].map((kpi) => (
-          <div key={kpi.label} className="bg-slate-50 border border-slate-200 rounded-xl p-4 text-center shadow-sm">
+          <div key={kpi.label} className="bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-4 text-center shadow-sm">
             <div className={`text-2xl font-black ${kpi.color}`}>{kpi.value}</div>
-            <div className="text-[10px] font-bold text-slate-500 uppercase tracking-wider mt-1">{kpi.label}</div>
+            <div className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mt-1">{kpi.label}</div>
           </div>
         ))}
       </div>
@@ -801,15 +802,7 @@ export default function HeatmapsSection({ complaints = [] }: HeatmapsSectionProp
                 placeholder="Search barangay..."
                 className="w-full pl-9 pr-4 py-2 text-xs font-bold rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 focus:outline-none focus:ring-2 focus:ring-[#00aeef]/30 focus:border-[#00aeef] transition-all text-[#001e66] dark:text-slate-100 placeholder:text-slate-400"
               />
-              <svg
-                className="absolute left-3 top-2.5 w-4 h-4 text-slate-400"
-                fill="none"
-                viewBox="0 0 24 24"
-                stroke="currentColor"
-                strokeWidth="2.5"
-              >
-                <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-              </svg>
+              <Search className="absolute left-3 top-2.5 w-4 h-4 text-slate-400 dark:text-slate-500" />
             </div>
 
             {/* Right: Sorting Select & Reset */}
@@ -833,7 +826,7 @@ export default function HeatmapsSection({ complaints = [] }: HeatmapsSectionProp
                     setSeverityFilter("all");
                     setSortBy("alphabetical");
                   }}
-                  className="px-3 py-1.5 text-[10px] font-black uppercase tracking-wider text-slate-500 hover:text-slate-700 bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl transition-all cursor-pointer"
+                  className="px-3 py-1.5 text-[10px] font-black uppercase tracking-wider text-slate-500 dark:text-slate-300 hover:text-slate-700 dark:hover:text-slate-100 bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl transition-all cursor-pointer"
                 >
                   Clear Filters
                 </button>
@@ -868,7 +861,7 @@ export default function HeatmapsSection({ complaints = [] }: HeatmapsSectionProp
 
           <h3 className="text-xs font-black text-slate-400 uppercase tracking-wider pt-2 flex items-center justify-between">
             <span>City Barangay Grid — Click cell to zoom map</span>
-            <span className="text-[10px] text-slate-500 font-bold normal-case">Showing {filteredBarangays.length} of {barangays.length} barangays</span>
+            <span className="text-[10px] text-slate-500 dark:text-slate-400 font-bold normal-case">Showing {filteredBarangays.length} of {barangays.length} barangays</span>
           </h3>
 
           {filteredBarangays.length === 0 ? (
@@ -886,7 +879,7 @@ export default function HeatmapsSection({ complaints = [] }: HeatmapsSectionProp
                     onClick={() => setSelectedBarangay(isSelected ? null : brgy)}
                     title={`${brgy.name}: ${brgy.count} complaint${brgy.count !== 1 ? "s" : ""}`}
                     className={`relative border-2 rounded-xl p-2 flex flex-col items-center justify-center gap-1 transition-all cursor-pointer hover:scale-105 hover:shadow-md ${colorClass} ${
-                      isSelected ? "ring-2 ring-offset-1 ring-[#001e66] scale-105 shadow-md" : ""
+                      isSelected ? "ring-2 ring-offset-1 ring-offset-slate-50 dark:ring-offset-slate-950 ring-[#001e66] dark:ring-[#00aeef] scale-105 shadow-md" : ""
                     }`}
                     style={{ minHeight: "72px" }}
                   >
@@ -903,33 +896,33 @@ export default function HeatmapsSection({ complaints = [] }: HeatmapsSectionProp
       )}
 
       {/* Top Barangay Leaderboard */}
-      <div className="bg-slate-50 border border-slate-200 rounded-2xl p-5 space-y-4 shadow-sm">
-        <h3 className="text-sm font-black text-[#001e66] uppercase tracking-wider">
+      <div className="bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-5 space-y-4 shadow-sm">
+        <h3 className="text-sm font-black text-[#001e66] dark:text-slate-100 uppercase tracking-wider">
           Top Incident Hotspots
         </h3>
         {topBarangays.length === 0 ? (
-          <p className="text-xs text-slate-400 italic">No complaints recorded yet.</p>
+          <p className="text-xs text-slate-400 dark:text-slate-400 italic">No complaints recorded yet.</p>
         ) : (
           <div className="space-y-3">
             {topBarangays.map((brgy, idx) => (
               <div key={brgy.name} className="space-y-1">
-                <div className="flex justify-between text-xs font-bold text-[#001e66]">
+                <div className="flex justify-between text-xs font-bold text-[#001e66] dark:text-slate-200">
                   <span className="flex items-center gap-2">
-                    <span className="w-5 h-5 bg-[#001e66] text-white rounded-md flex items-center justify-center text-[9px] font-black">
+                    <span className="w-5 h-5 bg-[#001e66] dark:bg-[#00aeef] text-white dark:text-[#001e66] rounded-md flex items-center justify-center text-[9px] font-black">
                       {idx + 1}
                     </span>
                     Brgy. {brgy.name}
                   </span>
-                  <span className="text-slate-500">
+                  <span className="text-slate-500 dark:text-slate-400">
                     {brgy.count} report{brgy.count !== 1 ? "s" : ""} · {getHeatLabel(brgy.count)}
                   </span>
                 </div>
-                <div className="w-full bg-slate-200 h-2 rounded-full overflow-hidden">
+                <div className="w-full bg-slate-200 dark:bg-slate-800 h-2 rounded-full overflow-hidden">
                   <div
                     className={`h-2 rounded-full transition-all duration-500 ${
                       getHeatLabel(brgy.count) === "CRITICAL" ? "bg-red-500" :
                       getHeatLabel(brgy.count) === "MODERATE" ? "bg-orange-500" :
-                      "bg-yellow-300"
+                      "bg-yellow-300 dark:bg-yellow-400"
                     }`}
                     style={{ width: `${maxCount > 0 ? (brgy.count / maxCount) * 100 : 0}%` }}
                   />

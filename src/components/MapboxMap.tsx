@@ -705,7 +705,7 @@ export default function MapboxMap({
       // Inner visible dot
       el.innerHTML = `
         <div class="marker-dot w-5 h-5 rounded-full bg-rose-600 border-2 border-white flex items-center justify-center shadow-lg transition-all duration-200">
-          <span class="w-2.5 h-2.5 rounded-full bg-white animate-pulse"></span>
+          <span class="w-2.5 h-2.5 rounded-full marker-pulse animate-pulse"></span>
         </div>
       `;
 

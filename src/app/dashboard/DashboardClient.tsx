@@ -3,6 +3,7 @@
 import React, { useState, useEffect, useRef } from "react";
 import Link from "next/link";
 import Footer from "../../components/Footer";
+import LogoutConfirmModal from "../../components/LogoutConfirmModal";
 import { getSupabaseClient, uploadComplaintPhoto } from "../../lib/supabase";
 import { motion, AnimatePresence } from "framer-motion";
 import { 
@@ -35,7 +36,13 @@ import {
   UserCog,
   Droplet,
   Camera,
-  Send
+  Send,
+  ChevronRight,
+  FileText,
+  Search,
+  Crosshair,
+  Wrench,
+  Lock
 } from "lucide-react";
 import mapboxgl from "mapbox-gl";
 import "mapbox-gl/dist/mapbox-gl.css";
@@ -139,6 +146,7 @@ export default function DashboardClient({
   const [isProfileOpen, setIsProfileOpen] = useState(false);
   const [isAccountDetailsOpen, setIsAccountDetailsOpen] = useState(false);
   const [accountModalTab, setAccountModalTab] = useState<"profile" | "security">("profile");
+  const [showLogoutModal, setShowLogoutModal] = useState(false);
 
   // Profile Editable states
   const [profileName, setProfileName] = useState("");
@@ -269,7 +277,11 @@ export default function DashboardClient({
   };
 
   useEffect(() => {
-    const initialDark = document.documentElement.classList.contains("dark") || localStorage.getItem("theme") === "dark";
+    const stored = localStorage.getItem("theme");
+    const prefersDark =
+      typeof window.matchMedia === "function" &&
+      window.matchMedia("(prefers-color-scheme: dark)").matches;
+    const initialDark = stored ? stored === "dark" : prefersDark;
     setIsDark(initialDark);
   }, []);
 
@@ -307,6 +319,7 @@ export default function DashboardClient({
 
   const clientMapRef = useRef<mapboxgl.Map | null>(null);
   const clientMarkerRef = useRef<mapboxgl.Marker | null>(null);
+  const isDarkRef = useRef(isDark);
   const userHasManuallyPinnedRef = useRef(false);
   const isInitialMapCenterRef = useRef(true);
   const [submitSuccess, setSubmitSuccess] = useState(false);
@@ -462,7 +475,9 @@ export default function DashboardClient({
 
     const map = new mapboxgl.Map({
       container: el,
-      style: "mapbox://styles/mapbox/streets-v12",
+      style: isDarkRef.current
+        ? "mapbox://styles/mapbox/dark-v11"
+        : "mapbox://styles/mapbox/streets-v12",
       center: [lng, lat],
       zoom: gpsPinpointActive ? 17 : 15.5,
       pitch: 50,
@@ -690,6 +705,16 @@ export default function DashboardClient({
       }
     }
   }, [customLat, customLng]);
+
+  // Keep the File a Complaint map in sync with the app dark mode theme
+  useEffect(() => {
+    isDarkRef.current = isDark;
+    const map = clientMapRef.current;
+    if (!map) return;
+    map.setStyle(
+      isDark ? "mapbox://styles/mapbox/dark-v11" : "mapbox://styles/mapbox/streets-v12"
+    );
+  }, [isDark]);
 
   // Accurate point-in-polygon check against the 788-vertex OSM boundary of
   // the City of San Fernando, Pampanga (imported from @/lib/geo-utils)
@@ -1345,7 +1370,7 @@ export default function DashboardClient({
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-[#F8FAFC] flex flex-col items-center justify-center">
+      <div className="min-h-screen bg-[#F8FAFC] dark:bg-[#090d16] flex flex-col items-center justify-center">
         {/* Top accent bar */}
         <div className="absolute inset-x-0 top-0 h-0.5 bg-[#001e66] z-50" aria-hidden="true" />
         <div className="text-center space-y-5">
@@ -1493,10 +1518,10 @@ export default function DashboardClient({
   );
 
   return (
-    <div className="min-h-screen text-[#001e66] flex flex-col font-sans relative bg-[#E2EAF4]">
+    <div className="min-h-screen text-[#001e66] dark:text-slate-100 flex flex-col font-sans relative bg-[#E2EAF4] dark:bg-[#090d16]">
       {/* Background Image Layer with custom opacity */}
       <div 
-        className="absolute inset-0 bg-cover bg-center bg-no-repeat pointer-events-none"
+        className="absolute inset-0 bg-cover bg-center bg-no-repeat pointer-events-none dark:opacity-20"
         style={{ backgroundImage: "url('/BG.jpg')", opacity: 0.5 }}
       />
 
@@ -1510,7 +1535,7 @@ export default function DashboardClient({
               <div className="flex items-center space-x-3">
                 <button
                   onClick={() => setIsMobileSidebarOpen(true)}
-                  className="lg:hidden p-1.5 text-slate-500 hover:text-[#001e66] hover:bg-slate-50 rounded-xl transition-all focus:outline-none cursor-pointer"
+                  className="lg:hidden p-1.5 text-slate-500 dark:text-slate-300 hover:text-[#001e66] dark:hover:text-[#00aeef] hover:bg-slate-50 dark:hover:bg-white/10 rounded-xl transition-all focus:outline-none cursor-pointer"
                   aria-label="Open sidebar navigation"
                 >
                   <Menu className="w-5 h-5" />
@@ -1524,7 +1549,7 @@ export default function DashboardClient({
               </div>
 
               {/* Navigation Tabs Navbar (Desktop Only) next to Logo */}
-              <nav className="hidden lg:flex items-center space-x-1 rounded-full border border-slate-200/80 bg-slate-50/80 dark:bg-slate-800/40 p-1 shadow-inner">
+              <nav className="hidden lg:flex items-center space-x-1 rounded-full border border-slate-200/80 dark:border-white/10 bg-slate-50/80 dark:bg-slate-900/60 p-2 shadow-inner">
                 {[
                   { key: "home",               label: "Dashboard" },
                   { key: "file-complaint",     label: "File a Complaint" },
@@ -1538,8 +1563,8 @@ export default function DashboardClient({
                       onClick={() => setActiveTab(item.key as any)}
                       className={`rounded-full px-4 py-2 text-[10px] font-black uppercase tracking-widest transition-all duration-200 cursor-pointer select-none ${
                         isActive
-                          ? "bg-blue-600 text-white shadow-[0_3px_10px_rgba(37,99,235,0.25)] scale-[1.02]"
-                          : "text-slate-600 hover:text-blue-600 hover:bg-slate-100/60"
+                          ? "bg-[#001e66] dark:bg-[#00aeef] text-white dark:text-[#001e66] shadow-sm dark:shadow-[0_2px_8px_rgba(0,174,239,0.15)] scale-[1.02]"
+                          : "text-slate-600 dark:text-slate-300 hover:text-[#001e66] dark:hover:text-white hover:bg-slate-100/60 dark:hover:bg-white/10"
                       }`}
                     >
                       {item.label}
@@ -1555,7 +1580,7 @@ export default function DashboardClient({
               <div className="relative">
                 <button 
                   onClick={() => setIsNotificationOpen(!isNotificationOpen)}
-                  className="relative w-9 h-9 rounded-full border border-slate-200/80 bg-slate-50/80 hover:bg-slate-100 flex items-center justify-center text-slate-500 hover:text-[#001e66] transition-all hover:scale-105 active:scale-95 shadow-sm cursor-pointer"
+                  className="relative w-9 h-9 rounded-full border border-slate-200/80 dark:border-white/10 bg-slate-50/80 dark:bg-white/5 hover:bg-slate-100 dark:hover:bg-white/10 flex items-center justify-center text-slate-500 dark:text-slate-400 hover:text-[#001e66] dark:hover:text-[#00aeef] transition-all hover:scale-105 active:scale-95 shadow-sm cursor-pointer"
                 >
                   <Bell className="w-4.5 h-4.5" />
                   {unreadCount > 0 && (
@@ -1663,7 +1688,7 @@ export default function DashboardClient({
               <button
                 onClick={() => setIsDark(!isDark)}
                 aria-label="Toggle dark mode"
-                className="w-9 h-9 rounded-xl border border-slate-100 bg-slate-50 hover:bg-slate-100 flex items-center justify-center text-slate-500 hover:text-[#001e66] transition-all"
+                className="w-9 h-9 rounded-xl border border-slate-200/80 dark:border-white/10 bg-slate-50/80 dark:bg-white/5 hover:bg-slate-100 dark:hover:bg-white/10 flex items-center justify-center text-slate-500 dark:text-[#00aeef] hover:text-[#001e66] dark:hover:text-[#00aeef] transition-all"
               >
                 {isDark ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
               </button>
@@ -1672,7 +1697,7 @@ export default function DashboardClient({
               <div className="relative">
                 <div 
                   onClick={() => setIsProfileOpen(!isProfileOpen)}
-                  className="flex items-center gap-2 px-2.5 py-1.5 rounded-xl border border-slate-100 dark:border-slate-800 bg-slate-50 dark:bg-slate-900 hover:bg-slate-100 dark:hover:bg-slate-800/60 cursor-pointer transition-all select-none"
+                  className="flex items-center gap-2 px-2.5 py-1.5 rounded-xl border border-slate-200/80 dark:border-white/10 bg-slate-50/80 dark:bg-white/5 hover:bg-slate-100 dark:hover:bg-white/10 cursor-pointer transition-all select-none"
                 >
                   <div className="w-7 h-7 rounded-full bg-[#00aeef] text-white flex items-center justify-center text-xs font-black uppercase shadow-sm">
                     {userProfile?.name?.slice(0, 1).toLowerCase() || "c"}
@@ -1713,7 +1738,7 @@ export default function DashboardClient({
                         <button
                           onClick={() => {
                             setIsProfileOpen(false);
-                            handleLogout();
+                            setShowLogoutModal(true);
                           }}
                           className="w-full text-left px-4 py-2.5 text-xs font-bold text-red-650 dark:text-red-400 hover:bg-red-50/50 dark:hover:bg-red-950/20 transition-colors flex items-center gap-2 cursor-pointer border-t border-slate-50 dark:border-slate-800/50"
                         >
@@ -1759,8 +1784,8 @@ export default function DashboardClient({
                 {/* Drawer Header */}
                 <div className="h-16 border-b border-slate-100 flex items-center justify-between px-5 shrink-0">
                   <div className="flex items-center gap-3">
-                    <img src="/LOGO2.png" alt="AquaTrack Logo" className="h-8 w-auto object-contain" />
-                    <span className="text-base font-black tracking-tight text-[#001e66]">
+                    <img src={isDark ? "/LOGO3.png" : "/LOGO2.png"} alt="AquaTrack Logo" className="h-8 w-auto object-contain" />
+                    <span className="text-base font-black tracking-tight text-[#001e66] dark:text-white">
                       AQUA<span className="text-[#00aeef]">TRACK</span>
                     </span>
                   </div>
@@ -1864,7 +1889,7 @@ export default function DashboardClient({
         </AnimatePresence>
 
         {/* ── Main Content Area ── */}
-        <main className="flex-1 rounded-2xl shadow-sm flex flex-col bg-white border border-slate-100/80 p-8">
+        <main className="flex-1 rounded-2xl shadow-sm flex flex-col bg-white dark:bg-slate-900 border border-slate-100/80 dark:border-slate-800 p-8">
           <style dangerouslySetInnerHTML={{__html: `
             @keyframes pulse {
               0% { transform: scale(0.95); opacity: 0.8; }
@@ -1890,8 +1915,8 @@ export default function DashboardClient({
                     className="bg-[#0B2E7A] rounded-[24px] py-5 px-6 md:py-6 md:px-8 text-white relative overflow-hidden shadow-md h-[220px] flex flex-col justify-center bg-cover bg-center"
                     style={{ backgroundImage: "url('/headerpic.png')" }}
                   >
-                    {/* Blue Tint Overlay */}
-                    <div className="absolute inset-0 bg-[#0B2E7A]/85 z-0 pointer-events-none" />
+                    {/* Blue Tint Overlay (near-black in dark mode) */}
+                    <div className="absolute inset-0 bg-[#0B2E7A]/85 dark:bg-slate-950/85 z-0 pointer-events-none" />
 
                     {/* Animated Wave Background SVG Overlay */}
                     <div className="absolute inset-0 opacity-15 pointer-events-none z-0">
@@ -1966,12 +1991,8 @@ export default function DashboardClient({
                             {myComplaints.filter(c => c.status !== "RESOLVED").length}
                           </h3>
                         </div>
-                        <div className="w-12 h-12 rounded-xl bg-blue-50/80 flex items-center justify-center border border-blue-100 shrink-0 group-hover:scale-110 transition-transform duration-300 shadow-sm">
-                          <div className="w-5 h-6 rounded border-2 border-blue-500 bg-blue-50/80 flex flex-col justify-between p-1 shrink-0">
-                            <div className="w-full h-0.5 bg-blue-500 rounded" />
-                            <div className="w-full h-0.5 bg-blue-500 rounded" />
-                            <div className="w-2/3 h-0.5 bg-blue-500 rounded" />
-                          </div>
+                        <div className="w-12 h-12 rounded-xl bg-blue-50/80 dark:bg-blue-500/10 flex items-center justify-center border border-blue-100 dark:border-blue-900/40 shrink-0 group-hover:scale-110 transition-transform duration-300 shadow-sm">
+                          <ListTodo className="w-5.5 h-5.5 text-blue-500 dark:text-sky-400" strokeWidth={2.5} />
                         </div>
                       </div>
                       <p className="text-[10px] text-slate-500 font-bold mt-4 relative z-10">Tickets in triage or active dispatch</p>
@@ -1991,10 +2012,8 @@ export default function DashboardClient({
                             {myComplaints.filter(c => c.status === "ASSIGNED" || c.status === "INVESTIGATING").length}
                           </h3>
                         </div>
-                        <div className="w-12 h-12 rounded-xl bg-amber-50/80 flex items-center justify-center border border-amber-100 shrink-0 group-hover:scale-110 transition-transform duration-300 shadow-sm">
-                          <div className="w-6 h-2 bg-slate-100 rounded-full overflow-hidden border border-amber-300/80 flex shrink-0 p-0">
-                            <div className="w-1/2 h-full bg-amber-500 rounded-full" />
-                          </div>
+                        <div className="w-12 h-12 rounded-xl bg-amber-50/80 dark:bg-amber-500/10 flex items-center justify-center border border-amber-100 dark:border-amber-900/40 shrink-0 group-hover:scale-110 transition-transform duration-300 shadow-sm">
+                          <Clock className="w-5.5 h-5.5 text-amber-500 dark:text-amber-400" strokeWidth={2.5} />
                         </div>
                       </div>
                       <p className="text-[10px] text-slate-500 font-bold mt-4 relative z-10">Crew currently dispatched to site</p>
@@ -2013,8 +2032,8 @@ export default function DashboardClient({
                             {myComplaints.filter(c => c.status === "RESOLVED").length}
                           </h3>
                         </div>
-                        <div className="w-12 h-12 rounded-xl bg-emerald-50/80 flex items-center justify-center border border-emerald-100 shrink-0 group-hover:scale-110 transition-transform duration-300 shadow-sm">
-                          <div className="w-2 h-3.5 border-r-[2.5px] border-b-[2.5px] border-emerald-600 transform rotate-45 -translate-y-0.5 shrink-0" />
+                        <div className="w-12 h-12 rounded-xl bg-emerald-50/80 dark:bg-emerald-500/10 flex items-center justify-center border border-emerald-100 dark:border-emerald-900/40 shrink-0 group-hover:scale-110 transition-transform duration-300 shadow-sm">
+                          <CheckCircle2 className="w-5.5 h-5.5 text-emerald-600 dark:text-emerald-400" strokeWidth={2.5} />
                         </div>
                       </div>
                       <p className="text-[10px] text-slate-500 font-bold mt-4 relative z-10">Incidents fully resolved & closed</p>
@@ -2030,39 +2049,37 @@ export default function DashboardClient({
                   <div className="grid grid-cols-1 lg:grid-cols-5 gap-6 items-start">
                     
                     {/* Left 60%: Active Tickets List */}
-                    <div className="bg-white rounded-[24px] border border-slate-100 p-6 shadow-[0_8px_30px_rgb(0,0,0,0.015)] lg:col-span-3 flex flex-col justify-between min-h-[380px]">
+                    <div className="bg-white dark:bg-slate-900 rounded-[24px] border border-slate-100 dark:border-slate-800/80 p-6 shadow-[0_8px_30px_rgb(0,0,0,0.015)] dark:shadow-none lg:col-span-3 flex flex-col justify-between min-h-[380px]">
                       <div className="space-y-4">
-                        <div className="flex items-center justify-between border-b border-slate-100 pb-3">
-                          <h3 className="text-xs font-black text-[#0B2E7A] tracking-wider uppercase flex items-center gap-2">
+                        <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-3">
+                          <h3 className="text-xs font-black text-[#0B2E7A] dark:text-slate-200 tracking-wider uppercase flex items-center gap-2">
                             <span className="w-1.5 h-3 bg-[#189BFF] rounded-full inline-block" />
                             Active Tickets
                           </h3>
                           <button 
                             onClick={() => setActiveTab("track-complaint")}
-                            className="text-[10px] font-black text-[#189BFF] hover:text-[#0B2E7A] transition-colors uppercase tracking-wider font-sans"
+                            className="text-[10px] font-black text-[#189BFF] hover:text-[#0B2E7A] dark:text-sky-400 dark:hover:text-sky-300 transition-colors uppercase tracking-wider font-sans"
                           >
                             View All &rarr;
                           </button>
                         </div>
 
                         {/* List */}
-                        <div className="divide-y divide-slate-50 text-left">
+                        <div className="divide-y divide-slate-50 dark:divide-slate-800 text-left">
                           {myComplaints.filter(c => c.status !== "RESOLVED").slice(0, 4).map((ticket) => {
                             const isPending = ticket.status === "PENDING";
                             const isAssigned = ticket.status === "ASSIGNED" || ticket.status === "INVESTIGATING";
                             return (
-                              <div key={ticket.id} className="py-3.5 flex items-center justify-between hover:bg-slate-50/50 px-2 rounded-xl transition-colors group cursor-pointer" onClick={() => setActiveTab("track-complaint")}>
+                              <div key={ticket.id} className="py-3.5 flex items-center justify-between hover:bg-slate-50/50 dark:hover:bg-slate-800/40 px-2 rounded-xl transition-colors group cursor-pointer" onClick={() => setActiveTab("track-complaint")}>
                                 <div className="flex items-center space-x-3.5 min-w-0">
-                                  <div className="w-9 h-9 rounded-lg bg-blue-50 flex items-center justify-center text-[#189BFF] shrink-0">
-                                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="2.5" stroke="currentColor" className="w-4 h-4">
-                                      <path d="M12 22a7 7 0 0 0 7-7c0-4.3-7-11-7-11S5 10.7 5 15a7 7 0 0 0 7 7z" />
-                                    </svg>
+                                  <div className="w-9 h-9 rounded-lg bg-blue-50 dark:bg-blue-500/10 text-[#189BFF] dark:text-sky-400 flex items-center justify-center shrink-0">
+                                    <MapPin className="w-4 h-4" />
                                   </div>
                                   <div className="text-left min-w-0">
-                                    <p className="text-xs font-black text-[#0B2E7A] truncate group-hover:text-[#189BFF] transition-colors">
+                                    <p className="text-xs font-black text-[#0B2E7A] dark:text-slate-200 truncate group-hover:text-[#189BFF] dark:group-hover:text-sky-400 transition-colors">
                                       {ticket.summary}
                                     </p>
-                                    <p className="text-[10px] text-slate-400 font-bold mt-0.5">
+                                    <p className="text-[10px] text-slate-400 dark:text-slate-500 font-bold mt-0.5">
                                       Brgy. {ticket.barangay || "Del Pilar"} • Ticket #{ticket.id.slice(0, 6).toUpperCase()}
                                     </p>
                                   </div>
@@ -2072,20 +2089,18 @@ export default function DashboardClient({
                                   <div className="flex flex-col items-end">
                                     <span className={`px-2 py-0.5 rounded-full text-[8px] font-black uppercase tracking-wider border ${
                                       isPending 
-                                        ? "bg-amber-50 text-amber-700 border-amber-200/50" 
+                                        ? "bg-amber-50 text-amber-700 border-amber-200/50 dark:bg-amber-500/10 dark:text-amber-300 dark:border-amber-500/30" 
                                         : isAssigned 
-                                        ? "bg-blue-50 text-blue-700 border-blue-200/50" 
-                                        : "bg-slate-50 text-slate-700 border-slate-200/50"
+                                        ? "bg-blue-50 text-blue-700 border-blue-200/50 dark:bg-blue-500/10 dark:text-sky-300 dark:border-blue-500/30" 
+                                        : "bg-slate-50 text-slate-700 border-slate-200/50 dark:bg-slate-800 dark:text-slate-300 dark:border-slate-700"
                                     }`}>
                                       {ticket.status}
                                     </span>
-                                    <span className="text-[8px] text-slate-400 font-bold mt-1">
+                                    <span className="text-[8px] text-slate-400 dark:text-slate-500 font-bold mt-1">
                                       {new Date(ticket.createdAt).toLocaleDateString()}
                                     </span>
                                   </div>
-                                  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="2.5" stroke="currentColor" className="w-3.5 h-3.5 text-slate-300 group-hover:text-[#189BFF] group-hover:translate-x-0.5 transition-all">
-                                    <path strokeLinecap="round" strokeLinejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" />
-                                  </svg>
+                                  <ChevronRight className="w-3.5 h-3.5 text-slate-300 dark:text-slate-600 group-hover:text-[#189BFF] dark:group-hover:text-sky-400 group-hover:translate-x-0.5 transition-all" />
                                 </div>
                               </div>
                             );
@@ -2093,14 +2108,12 @@ export default function DashboardClient({
 
                           {myComplaints.filter(c => c.status !== "RESOLVED").length === 0 && (
                             <div className="py-12 flex flex-col items-center justify-center text-center space-y-3">
-                              <div className="w-12 h-12 rounded-full bg-emerald-50 flex items-center justify-center text-emerald-500 border border-emerald-100">
-                                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="2.5" stroke="currentColor" className="w-5 h-5">
-                                  <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12.75l6 6 9-13.5" />
-                                </svg>
+                              <div className="w-12 h-12 rounded-full bg-emerald-50 dark:bg-emerald-500/10 text-emerald-500 dark:text-emerald-400 flex items-center justify-center border border-emerald-100 dark:border-emerald-500/30">
+                                <CheckCircle2 className="w-5 h-5" />
                               </div>
                               <div>
-                                <p className="text-xs font-black text-[#0B2E7A]">All Clear!</p>
-                                <p className="text-[10px] text-slate-400 font-semibold mt-0.5">You have no active reported incident tickets.</p>
+                                <p className="text-xs font-black text-[#0B2E7A] dark:text-slate-200">All Clear!</p>
+                                <p className="text-[10px] text-slate-400 dark:text-slate-500 font-semibold mt-0.5">You have no active reported incident tickets.</p>
                               </div>
                             </div>
                           )}
@@ -2109,23 +2122,23 @@ export default function DashboardClient({
 
                       <button
                         onClick={() => setActiveTab("track-complaint")}
-                        className="w-full bg-slate-50 hover:bg-blue-50 text-[#0B2E7A] hover:text-[#189BFF] font-black text-xs py-3 rounded-xl uppercase tracking-wider border border-slate-100 transition-colors mt-6 text-center cursor-pointer"
+                        className="w-full bg-slate-50 hover:bg-blue-50 text-[#0B2E7A] hover:text-[#189BFF] dark:bg-slate-800/60 dark:hover:bg-slate-800 dark:text-slate-200 dark:hover:text-sky-400 font-black text-xs py-3 rounded-xl uppercase tracking-wider border border-slate-100 dark:border-slate-800 transition-colors mt-6 text-center cursor-pointer"
                       >
                         Go to Track Complaints
                       </button>
                     </div>
 
                     {/* Right 40%: Latest Bulletin */}
-                    <div className="bg-white rounded-[24px] border border-slate-100 p-6 shadow-[0_8px_30px_rgb(0,0,0,0.015)] lg:col-span-2 flex flex-col justify-between min-h-[380px]">
+                    <div className="bg-white dark:bg-slate-900 rounded-[24px] border border-slate-100 dark:border-slate-800/80 p-6 shadow-[0_8px_30px_rgb(0,0,0,0.015)] dark:shadow-none lg:col-span-2 flex flex-col justify-between min-h-[380px]">
                       <div className="space-y-4">
-                        <div className="flex items-center justify-between border-b border-slate-100 pb-3">
-                          <h3 className="text-xs font-black text-[#0B2E7A] tracking-wider uppercase flex items-center gap-2">
+                        <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-3">
+                          <h3 className="text-xs font-black text-[#0B2E7A] dark:text-slate-200 tracking-wider uppercase flex items-center gap-2">
                             <span className="w-1.5 h-3 bg-[#189BFF] rounded-full inline-block" />
                             Latest Bulletin
                           </h3>
                           <button 
                             onClick={() => setActiveTab("view-announcements")}
-                            className="text-[10px] font-black text-[#189BFF] hover:text-[#0B2E7A] transition-colors uppercase tracking-wider font-sans"
+                            className="text-[10px] font-black text-[#189BFF] hover:text-[#0B2E7A] dark:text-sky-400 dark:hover:text-sky-300 transition-colors uppercase tracking-wider font-sans"
                           >
                             View All &rarr;
                           </button>
@@ -2134,31 +2147,31 @@ export default function DashboardClient({
                         {filteredAdvisories.length > 0 ? (
                           <div className="space-y-4 text-left">
                             <div className="flex items-center gap-2.5">
-                              <div className="w-9 h-9 rounded-lg bg-amber-50 flex items-center justify-center text-amber-600 border border-amber-100/40 shrink-0">
+                              <div className="w-9 h-9 rounded-lg bg-amber-50 dark:bg-amber-500/10 text-amber-600 dark:text-amber-400 flex items-center justify-center border border-amber-100/40 dark:border-amber-500/30 shrink-0">
                                 <Megaphone className="w-4.5 h-4.5" />
                               </div>
                               <div>
-                                <h4 className="text-xs font-black text-[#0B2E7A] line-clamp-1 leading-snug">
+                                <h4 className="text-xs font-black text-[#0B2E7A] dark:text-slate-200 line-clamp-1 leading-snug">
                                   {filteredAdvisories[0].title}
                                 </h4>
-                                <p className="text-[8px] text-slate-400 font-bold uppercase tracking-wider mt-0.5">
+                                <p className="text-[8px] text-slate-400 dark:text-slate-500 font-bold uppercase tracking-wider mt-0.5">
                                   {filteredAdvisories[0].date} • Broadcast Notice
                                 </p>
                               </div>
                             </div>
 
-                            <p className="text-xs text-slate-500 leading-relaxed font-semibold bg-slate-50 p-4 rounded-2xl border border-slate-100/60 line-clamp-4">
+                            <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed font-semibold bg-slate-50 dark:bg-slate-800/60 p-4 rounded-2xl border border-slate-100/60 dark:border-slate-800 line-clamp-4">
                               {filteredAdvisories[0].text}
                             </p>
                           </div>
                         ) : (
                           <div className="py-12 flex flex-col items-center justify-center text-center space-y-3">
-                            <div className="w-12 h-12 rounded-full bg-slate-50 flex items-center justify-center text-slate-400 border border-slate-100">
+                            <div className="w-12 h-12 rounded-full bg-slate-50 dark:bg-slate-800 flex items-center justify-center text-slate-400 dark:text-slate-500 border border-slate-100 dark:border-slate-700">
                               <Megaphone className="w-5 h-5" />
                             </div>
                             <div>
-                              <p className="text-xs font-black text-[#0B2E7A]">No Bulletins</p>
-                              <p className="text-[10px] text-slate-400 font-semibold mt-0.5">No announcements have been broadcasted yet.</p>
+                              <p className="text-xs font-black text-[#0B2E7A] dark:text-slate-200">No Bulletins</p>
+                              <p className="text-[10px] text-slate-400 dark:text-slate-500 font-semibold mt-0.5">No announcements have been broadcasted yet.</p>
                             </div>
                           </div>
                         )}
@@ -2167,15 +2180,15 @@ export default function DashboardClient({
                       {/* Pagination Dots Indicator */}
                       <div className="flex items-center justify-center gap-1.5 pt-4 mt-auto">
                         <span className="w-2.5 h-1.5 rounded-full bg-[#189BFF]" />
-                        <span className="w-1.5 h-1.5 rounded-full bg-slate-200" />
-                        <span className="w-1.5 h-1.5 rounded-full bg-slate-200" />
+                        <span className="w-1.5 h-1.5 rounded-full bg-slate-200 dark:bg-slate-700" />
+                        <span className="w-1.5 h-1.5 rounded-full bg-slate-200 dark:bg-slate-700" />
                       </div>
                     </div>
 
                   </div>
 
                   {/* Water Supply Overview Card (Glass-inspired) */}
-                  <div className="bg-white border border-slate-100 p-6 rounded-[24px] shadow-sm relative overflow-hidden text-left">
+                  <div className="bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800/80 p-6 rounded-[24px] shadow-sm relative overflow-hidden text-left">
                     {/* Background Wave Graphic */}
                     <div className="absolute inset-0 opacity-5 pointer-events-none select-none z-0">
                       <svg className="w-full h-full" viewBox="0 0 1440 320" preserveAspectRatio="none" xmlns="http://www.w3.org/2000/svg">
@@ -2187,15 +2200,15 @@ export default function DashboardClient({
                       
                       {/* Left: Health Index Overview */}
                       <div className="lg:col-span-5 flex items-start space-x-4">
-                        <div className="w-14 h-14 rounded-2xl bg-blue-50 flex items-center justify-center text-[#189BFF] border border-blue-100/40 shrink-0 shadow-sm">
+                        <div className="w-14 h-14 rounded-2xl bg-blue-50 dark:bg-blue-500/10 flex items-center justify-center text-[#189BFF] dark:text-sky-400 border border-blue-100/40 dark:border-blue-500/30 shrink-0 shadow-sm">
                           <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="2.5" stroke="currentColor" className="w-6.5 h-6.5">
                             <path d="M12 22a7 7 0 0 0 7-7c0-4.3-7-11-7-11S5 10.7 5 15a7 7 0 0 0 7 7z" />
                           </svg>
                         </div>
                         <div className="space-y-1 text-left">
-                          <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Consumer Water Health Index</p>
+                          <p className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest">Consumer Water Health Index</p>
                           <div className="flex items-center gap-2">
-                            <h4 className="text-2xl font-black text-[#0B2E7A] tracking-tight">
+                            <h4 className="text-2xl font-black text-[#0B2E7A] dark:text-slate-200 tracking-tight">
                               {healthIndex !== null ? `${healthIndex}%` : "No Data"}
                             </h4>
                             <span className={`text-[9px] font-black uppercase px-2 py-0.5 rounded-full border tracking-wider ${statusColorClass}`}>
@@ -2205,11 +2218,11 @@ export default function DashboardClient({
                               <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 inline-block animate-pulse" />
                             )}
                           </div>
-                          <p className="text-[10px] text-slate-500 font-bold leading-relaxed">
+                          <p className="text-[10px] text-slate-500 dark:text-slate-400 font-bold leading-relaxed">
                             {nearestNode ? `Calculated from nearest node: ${nearestNode.name}` : "PNSDW standard compliance level verified"}
                           </p>
                           {nearestNode && (
-                            <p className="text-[9px] text-slate-400 font-bold">
+                            <p className="text-[9px] text-slate-400 dark:text-slate-500 font-bold">
                               Distance: {nearestNode.distanceMeters ? `${Math.round(nearestNode.distanceMeters)}m` : "Nearby"}
                             </p>
                           )}
@@ -2221,58 +2234,58 @@ export default function DashboardClient({
                         {nearestNode ? (
                           <div className="space-y-2">
                             <div className="flex items-center justify-between">
-                              <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest block">
+                              <span className="text-[9px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest block">
                                 📡 Live Local Telemetry
                               </span>
                             </div>
                             <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
                               {/* pH Card */}
-                              <div className="bg-slate-50/60 border border-slate-100 p-3 rounded-2xl text-left space-y-1 shadow-[inset_0_2px_4px_rgba(0,0,0,0.01)]">
-                                <span className="text-[9px] font-black text-slate-400 uppercase tracking-wider block">pH Level</span>
-                                <p className="text-base font-black text-[#0B2E7A]">
+                              <div className="bg-slate-50/60 dark:bg-slate-800/50 border border-slate-100 dark:border-slate-800 p-3 rounded-2xl text-left space-y-1 shadow-[inset_0_2px_4px_rgba(0,0,0,0.01)]">
+                                <span className="text-[9px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-wider block">pH Level</span>
+                                <p className="text-base font-black text-[#0B2E7A] dark:text-slate-200">
                                   {nearestNode.reading?.ph ? nearestNode.reading.ph.toFixed(1) : "7.2"}
                                 </p>
-                                <p className="text-[8px] text-emerald-600 font-bold bg-emerald-50/50 px-1 py-0.5 rounded border border-emerald-100/40 inline-block">6.5 - 8.5 Safe</p>
+                                <p className="text-[8px] text-emerald-600 dark:text-emerald-400 font-bold bg-emerald-50/50 dark:bg-emerald-500/10 px-1 py-0.5 rounded border border-emerald-100/40 dark:border-emerald-500/30 inline-block">6.5 - 8.5 Safe</p>
                               </div>
 
                               {/* Turbidity Card */}
-                              <div className="bg-slate-50/60 border border-slate-100 p-3 rounded-2xl text-left space-y-1 shadow-[inset_0_2px_4px_rgba(0,0,0,0.01)]">
-                                <span className="text-[9px] font-black text-slate-400 uppercase tracking-wider block">Turbidity</span>
-                                <p className="text-base font-black text-[#0B2E7A]">
+                              <div className="bg-slate-50/60 dark:bg-slate-800/50 border border-slate-100 dark:border-slate-800 p-3 rounded-2xl text-left space-y-1 shadow-[inset_0_2px_4px_rgba(0,0,0,0.01)]">
+                                <span className="text-[9px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-wider block">Turbidity</span>
+                                <p className="text-base font-black text-[#0B2E7A] dark:text-slate-200">
                                   {nearestNode.reading?.turbidity ? `${nearestNode.reading.turbidity.toFixed(2)} NTU` : "0.80 NTU"}
                                 </p>
-                                <p className="text-[8px] text-emerald-600 font-bold bg-emerald-50/50 px-1 py-0.5 rounded border border-emerald-100/40 inline-block">&lt; 5 NTU Safe</p>
+                                <p className="text-[8px] text-emerald-600 dark:text-emerald-400 font-bold bg-emerald-50/50 dark:bg-emerald-500/10 px-1 py-0.5 rounded border border-emerald-100/40 dark:border-emerald-500/30 inline-block">&lt; 5 NTU Safe</p>
                               </div>
 
                               {/* TDS Card */}
-                              <div className="bg-slate-50/60 border border-slate-100 p-3 rounded-2xl text-left space-y-1 shadow-[inset_0_2px_4px_rgba(0,0,0,0.01)]">
-                                <span className="text-[9px] font-black text-slate-400 uppercase tracking-wider block">TDS Index</span>
-                                <p className="text-base font-black text-[#0B2E7A]">
+                              <div className="bg-slate-50/60 dark:bg-slate-800/50 border border-slate-100 dark:border-slate-800 p-3 rounded-2xl text-left space-y-1 shadow-[inset_0_2px_4px_rgba(0,0,0,0.01)]">
+                                <span className="text-[9px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-wider block">TDS Index</span>
+                                <p className="text-base font-black text-[#0B2E7A] dark:text-slate-200">
                                   {nearestNode.reading?.tds ? `${Math.round(nearestNode.reading.tds)} ppm` : "150 ppm"}
                                 </p>
-                                <p className="text-[8px] text-emerald-600 font-bold bg-emerald-50/50 px-1 py-0.5 rounded border border-emerald-100/40 inline-block">&lt; 600 Safe</p>
+                                <p className="text-[8px] text-emerald-600 dark:text-emerald-400 font-bold bg-emerald-50/50 dark:bg-emerald-500/10 px-1 py-0.5 rounded border border-emerald-100/40 dark:border-emerald-500/30 inline-block">&lt; 600 Safe</p>
                               </div>
 
                               {/* Pressure Card */}
-                              <div className="bg-slate-50/60 border border-slate-100 p-3 rounded-2xl text-left space-y-1 shadow-[inset_0_2px_4px_rgba(0,0,0,0.01)]">
-                                <span className="text-[9px] font-black text-slate-400 uppercase tracking-wider block">Pressure</span>
-                                <p className="text-base font-black text-[#0B2E7A]">
+                              <div className="bg-slate-50/60 dark:bg-slate-800/50 border border-slate-100 dark:border-slate-800 p-3 rounded-2xl text-left space-y-1 shadow-[inset_0_2px_4px_rgba(0,0,0,0.01)]">
+                                <span className="text-[9px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-wider block">Pressure</span>
+                                <p className="text-base font-black text-[#0B2E7A] dark:text-slate-200">
                                   {nearestNode.reading?.pressure ? `${Math.round(nearestNode.reading.pressure)} PSI` : "42 PSI"}
                                 </p>
-                                <p className="text-[8px] text-emerald-600 font-bold bg-emerald-50/50 px-1 py-0.5 rounded border border-emerald-100/40 inline-block">15 - 60 Safe</p>
+                                <p className="text-[8px] text-emerald-600 dark:text-emerald-400 font-bold bg-emerald-50/50 dark:bg-emerald-500/10 px-1 py-0.5 rounded border border-emerald-100/40 dark:border-emerald-500/30 inline-block">15 - 60 Safe</p>
                               </div>
                             </div>
                           </div>
                         ) : (
-                          <div className="flex items-start gap-3 bg-amber-50 border border-amber-200/60 p-5 rounded-[20px] text-left shadow-[inset_0_2px_4px_rgba(245,158,11,0.01)]">
-                            <div className="w-10 h-10 rounded-xl bg-amber-100 flex items-center justify-center text-amber-600 border border-amber-200/40 shrink-0">
+                          <div className="flex items-start gap-3 bg-amber-50 dark:bg-amber-500/10 border border-amber-200/60 dark:border-amber-500/30 p-5 rounded-[20px] text-left shadow-[inset_0_2px_4px_rgba(245,158,11,0.01)] dark:shadow-none">
+                            <div className="w-10 h-10 rounded-xl bg-amber-100 dark:bg-amber-500/20 text-amber-600 dark:text-amber-400 flex items-center justify-center border border-amber-200/40 dark:border-amber-500/30 shrink-0">
                               <MapPinOff className="w-5.5 h-5.5 animate-pulse" />
                             </div>
                             <div className="space-y-1">
-                              <h5 className="text-xs font-black text-amber-900 uppercase tracking-wider flex items-center gap-1.5">
+                              <h5 className="text-xs font-black text-amber-900 dark:text-amber-300 uppercase tracking-wider flex items-center gap-1.5">
                                 No Nearest IoT Node in Range
                               </h5>
-                              <p className="text-[10px] text-amber-800/90 font-semibold leading-relaxed">
+                              <p className="text-[10px] text-amber-800/90 dark:text-amber-200/90 font-semibold leading-relaxed">
                                 Live local telemetry sensors are currently unavailable for this area. Municipal baseline index indicates safe water supply across all parameters.
                               </p>
                             </div>
@@ -2302,7 +2315,7 @@ export default function DashboardClient({
                         
                         <div className="flex-grow flex flex-col justify-center space-y-4 py-1">
                           <div className="flex items-center gap-3.5">
-                            <div className="w-10 h-10 rounded-xl bg-blue-50 dark:bg-slate-850 flex items-center justify-center text-blue-500 shrink-0 border border-blue-100/30 shadow-xs">
+                            <div className="w-10 h-10 rounded-xl bg-blue-50 dark:bg-slate-800 flex items-center justify-center text-blue-500 shrink-0 border border-blue-100/30 shadow-xs">
                               <PhoneCall className="w-5 h-5" />
                             </div>
                             <div>
@@ -2312,7 +2325,7 @@ export default function DashboardClient({
                           </div>
 
                           <div className="flex items-center gap-3.5">
-                            <div className="w-10 h-10 rounded-xl bg-emerald-50 dark:bg-slate-850 flex items-center justify-center text-emerald-500 shrink-0 border border-emerald-100/30 shadow-xs">
+                            <div className="w-10 h-10 rounded-xl bg-emerald-50 dark:bg-slate-800 flex items-center justify-center text-emerald-500 shrink-0 border border-emerald-100/30 shadow-xs">
                               <Mail className="w-5 h-5" />
                             </div>
                             <div>
@@ -2340,7 +2353,7 @@ export default function DashboardClient({
                         <div className="absolute inset-0 p-6 z-30 flex flex-col justify-end h-full pointer-events-none">
                           <div className="flex items-end justify-between w-full pointer-events-auto transition-all duration-300">
                             <div className="flex items-start gap-3.5 transform group-hover:translate-x-1">
-                              <div className="w-9 h-9 rounded-xl bg-blue-50 dark:bg-slate-850 flex items-center justify-center text-[#00aeef] shrink-0 border border-blue-100/30 shadow-xs">
+                              <div className="w-9 h-9 rounded-xl bg-blue-50 dark:bg-slate-800 flex items-center justify-center text-[#00aeef] shrink-0 border border-blue-100/30 shadow-xs">
                                 <MapPin className="w-5 h-5" />
                               </div>
                               <div className="space-y-1">
@@ -2386,15 +2399,13 @@ export default function DashboardClient({
               {activeTab === "file-complaint" && (
                 <div className="flex flex-col h-full gap-5">
                   {/* Page Header */}
-                  <div className="flex items-center gap-4 bg-white p-4 rounded-2xl border border-slate-200/60 shadow-sm shrink-0">
-                    <div className="w-14 h-14 rounded-full bg-blue-50 flex items-center justify-center text-[#00aeef] border border-blue-100 shadow-sm shrink-0">
-                      <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="2" stroke="currentColor" className="w-6 h-6">
-                        <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m0 12.75h7.5m-7.5 3H12M10.5 2.25H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z" />
-                      </svg>
+                  <div className="flex items-center gap-4 bg-white dark:bg-slate-900 p-4 rounded-2xl border border-slate-200/60 dark:border-slate-800 shadow-sm shrink-0">
+                    <div className="w-14 h-14 rounded-full bg-blue-50 dark:bg-blue-500/10 flex items-center justify-center text-[#00aeef] dark:text-sky-400 border border-blue-100 dark:border-blue-500/30 shadow-sm shrink-0">
+                      <FileText className="w-6 h-6" />
                     </div>
                     <div>
-                      <h1 className="text-[1.75rem] font-black text-[#001e66] leading-tight">File an Incident Report</h1>
-                      <p className="text-[0.9rem] text-slate-500 font-bold">Help us keep our water clean and our community safe.</p>
+                      <h1 className="text-[1.75rem] font-black text-[#001e66] dark:text-slate-100 leading-tight">File an Incident Report</h1>
+                      <p className="text-[0.9rem] text-slate-500 dark:text-slate-400 font-bold">Help us keep our water clean and our community safe.</p>
                     </div>
                   </div>
 
@@ -2402,7 +2413,7 @@ export default function DashboardClient({
                   <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-stretch flex-1 min-h-0">
                     
                     {/* Left Card: Form Inputs / Success State */}
-                    <div className="bg-white rounded-2xl border border-slate-200/60 shadow-sm p-6 flex flex-col justify-between h-full gap-5 overflow-y-auto">
+                    <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/60 dark:border-slate-800 shadow-sm p-6 flex flex-col justify-between h-full gap-5 overflow-y-auto">
                       {submitSuccess ? (
                         <div className="space-y-6 my-auto animate-fade-in py-2">
                           {/* Success Banner */}
@@ -2517,16 +2528,16 @@ export default function DashboardClient({
                       ) : (
                         <form onSubmit={handleCreateComplaint} className="flex flex-col h-full justify-between gap-5">
                           {submitError && (
-                            <div className="p-3.5 bg-red-50 border border-red-200 rounded-xl text-red-700 text-xs font-bold shrink-0">
-                              ⚠ {submitError}
+                            <div className="p-3.5 bg-red-50 dark:bg-red-500/10 border border-red-200 dark:border-red-500/30 rounded-xl text-red-700 dark:text-red-300 text-xs font-bold shrink-0">
+                              <AlertTriangle className="w-3.5 h-3.5 inline-block mr-1.5 -mt-0.5" />{submitError}
                             </div>
                           )}
 
                           {/* Step 1: Describe Water Issue */}
                           <div className="space-y-2">
                             <div className="flex items-center gap-2">
-                              <span className="w-5 h-5 rounded-full bg-blue-100 text-blue-600 font-bold text-xs flex items-center justify-center shadow-sm">1</span>
-                              <h3 className="font-black text-slate-800 text-xs uppercase tracking-wider">Describe Water Issue</h3>
+                              <span className="w-5 h-5 rounded-full bg-blue-100 dark:bg-blue-500/20 text-blue-600 dark:text-sky-300 font-bold text-xs flex items-center justify-center shadow-sm">1</span>
+                              <h3 className="font-black text-slate-800 dark:text-slate-200 text-xs uppercase tracking-wider">Describe Water Issue</h3>
                             </div>
                             <div className="relative">
                               <textarea
@@ -2534,13 +2545,13 @@ export default function DashboardClient({
                                 value={complaintText}
                                 onChange={(e) => setComplaintText(e.target.value.slice(0, 1000))}
                                 placeholder="e.g. Mahina ang tubig dito sa amin sa Del Pilar, halos walang tumutulo..."
-                                className="w-full bg-white border border-slate-200 text-[#001e66] font-semibold text-xs py-3 px-4 rounded-xl focus:outline-none focus:border-[#00aeef] focus:ring-2 focus:ring-[#00aeef]/20 transition-all resize-none pb-8 shadow-inner"
+                                className="w-full bg-white dark:bg-slate-950/60 border border-slate-200 dark:border-slate-700 text-[#001e66] dark:text-slate-100 font-semibold text-xs py-3 px-4 rounded-xl focus:outline-none focus:border-[#00aeef] focus:ring-2 focus:ring-[#00aeef]/20 transition-all resize-none pb-8 shadow-inner placeholder:text-slate-400 dark:placeholder:text-slate-500"
                               />
-                              <div className="absolute bottom-2.5 right-3 text-[10px] text-slate-400 font-bold font-mono">
+                              <div className="absolute bottom-2.5 right-3 text-[10px] text-slate-400 dark:text-slate-500 font-bold font-mono">
                                 {complaintText.length}/1000
                               </div>
                             </div>
-                            <p className="text-[11px] text-slate-400 font-bold">
+                            <p className="text-[11px] text-slate-400 dark:text-slate-500 font-bold">
                               Reports can be entered in Tagalog, Taglish, or English.
                             </p>
                           </div>
@@ -2548,8 +2559,8 @@ export default function DashboardClient({
                           {/* Step 2: Attach Photo (Optional) */}
                           <div className="space-y-2">
                             <div className="flex items-center gap-2">
-                              <span className="w-5 h-5 rounded-full bg-blue-100 text-blue-600 font-bold text-xs flex items-center justify-center shadow-sm">2</span>
-                              <h3 className="font-black text-slate-800 text-xs uppercase tracking-wider">Attach Photo (Optional)</h3>
+                              <span className="w-5 h-5 rounded-full bg-blue-100 dark:bg-blue-500/20 text-blue-600 dark:text-sky-300 font-bold text-xs flex items-center justify-center shadow-sm">2</span>
+                              <h3 className="font-black text-slate-800 dark:text-slate-200 text-xs uppercase tracking-wider">Attach Photo (Optional)</h3>
                             </div>
                             
                             <input
@@ -2572,26 +2583,26 @@ export default function DashboardClient({
                                 }}
                                 className={`relative w-full rounded-xl border-2 border-dashed flex flex-col items-center justify-center p-5 transition-all ${
                                   isDragging
-                                    ? "border-[#00aeef] bg-sky-50/60"
-                                    : "border-slate-200 bg-sky-50/20 hover:border-slate-300"
+                                    ? "border-[#00aeef] bg-sky-50/60 dark:bg-sky-500/10"
+                                    : "border-slate-200 bg-sky-50/20 hover:border-slate-300 dark:border-slate-700 dark:bg-sky-500/5 dark:hover:border-slate-600"
                                 }`}
                               >
-                                <Upload className="w-8 h-8 text-[#00aeef] mb-1.5" />
+                                <Upload className="w-8 h-8 text-[#00aeef] dark:text-sky-400 mb-1.5" />
                                 
-                                <p className="text-xs text-slate-500 font-bold text-center mb-2">
+                                <p className="text-xs text-slate-500 dark:text-slate-400 font-bold text-center mb-2">
                                   Drag and drop an image here or
                                 </p>
                                 
                                 <button
                                   type="button"
                                   onClick={() => fileInputRef.current?.click()}
-                                  className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-[#00aeef] hover:bg-[#001e66] text-white font-bold text-[10px] rounded-lg transition-colors cursor-pointer shadow-sm"
+                                  className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-[#00aeef] hover:bg-[#001e66] dark:hover:bg-[#0a2f8a] text-white font-bold text-[10px] rounded-lg transition-colors cursor-pointer shadow-sm"
                                 >
                                   <Plus className="w-3 h-3" />
                                   Choose File
                                 </button>
                                 
-                                <p className="text-[9px] text-slate-400 font-bold mt-2.5">
+                                <p className="text-[9px] text-slate-400 dark:text-slate-500 font-bold mt-2.5">
                                   JPG, PNG up to 10MB
                                 </p>
                               </div>
@@ -2634,26 +2645,23 @@ export default function DashboardClient({
                     </div>
 
                     {/* Right Card: Geographic Dispatch Details */}
-                    <div className="bg-white rounded-2xl border border-slate-200/60 shadow-sm p-6 flex flex-col justify-between h-full gap-4">
+                    <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/60 dark:border-slate-800 shadow-sm p-6 flex flex-col justify-between h-full gap-4">
                       
                       {/* Header Section */}
-                      <div className="flex items-center justify-between border-b border-slate-100 pb-3 shrink-0">
+                      <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-3 shrink-0">
                         <div className="flex items-center gap-2">
-                          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="2.5" stroke="#001e66" className="w-4 h-4 shrink-0">
-                            <path strokeLinecap="round" strokeLinejoin="round" d="M15 10.5a3 3 0 11-6 0 3 3 0 016 0z" />
-                            <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 10.5c0 7.142-7.5 11.25-7.5 11.25s-7.5-4.108-7.5-11.25a7.5 7.5 0 1115 0z" />
-                          </svg>
-                          <h3 className="font-extrabold text-[#001e66] text-xs uppercase tracking-wider">Geographic Dispatch Details</h3>
+                          <MapPin className="w-4 h-4 shrink-0 text-[#001e66] dark:text-sky-400" />
+                          <h3 className="font-extrabold text-[#001e66] dark:text-slate-200 text-xs uppercase tracking-wider">Geographic Dispatch Details</h3>
                         </div>
                         
-                        <div className="flex items-center gap-2 px-2.5 py-1 bg-blue-50 border border-blue-100 rounded-lg text-left">
+                        <div className="flex items-center gap-2 px-2.5 py-1 bg-blue-50 dark:bg-blue-500/10 border border-blue-100 dark:border-blue-500/30 rounded-lg text-left">
                           <span className="relative flex h-2 w-2 shrink-0">
                             <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-blue-400 opacity-75"></span>
                             <span className="relative inline-flex rounded-full h-2 w-2 bg-blue-500"></span>
                           </span>
                           <div className="flex flex-col leading-none max-w-[140px]">
-                            <span className="text-[9px] font-black text-[#001e66] uppercase">Automated GPS Location Pinpoint</span>
-                            <span className="text-[7px] text-slate-500 font-bold mt-0.5 truncate block" title={addressSearchQuery || "Awaiting GPS pinpoint..."}>
+                            <span className="text-[9px] font-black text-[#001e66] dark:text-sky-300 uppercase">Automated GPS Location Pinpoint</span>
+                            <span className="text-[7px] text-slate-500 dark:text-slate-400 font-bold mt-0.5 truncate block" title={addressSearchQuery || "Awaiting GPS pinpoint..."}>
                               {addressSearchQuery || "Awaiting GPS pinpoint..."}
                             </span>
                           </div>
@@ -2662,12 +2670,10 @@ export default function DashboardClient({
 
                       {/* Address Search */}
                       <div className="space-y-1.5 shrink-0">
-                        <label className="text-[9px] font-black text-slate-450 uppercase tracking-wider block">Search Address, Street, or Landmark</label>
-                        <div className="flex shadow-sm rounded-lg overflow-hidden border border-slate-200 focus-within:border-[#00aeef] focus-within:ring-2 focus-within:ring-[#00aeef]/10 transition-all bg-white">
-                          <div className="flex items-center pl-3 pr-2 text-slate-400 shrink-0">
-                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="2.5" stroke="currentColor" className="w-4 h-4">
-                              <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.637 10.637z" />
-                            </svg>
+                        <label className="text-[9px] font-black text-slate-450 dark:text-slate-500 uppercase tracking-wider block">Search Address, Street, or Landmark</label>
+                        <div className="flex shadow-sm rounded-lg overflow-hidden border border-slate-200 dark:border-slate-700 focus-within:border-[#00aeef] focus-within:ring-2 focus-within:ring-[#00aeef]/10 transition-all bg-white dark:bg-[#1e293b]">
+                          <div className="flex items-center pl-3 pr-2 text-slate-400 dark:text-[#64748b] shrink-0">
+                            <Search className="w-4 h-4" />
                           </div>
                           <input
                             type="text"
@@ -2680,7 +2686,7 @@ export default function DashboardClient({
                                 handleAddressSearch();
                               }
                             }}
-                            className="flex-1 text-slate-800 font-semibold text-xs py-2 focus:outline-none placeholder-slate-450"
+                            className="flex-1 text-slate-800 dark:text-slate-100 font-semibold text-xs py-2 focus:outline-none placeholder-slate-450 dark:placeholder:text-slate-500 bg-transparent"
                           />
                           <button
                             type="button"
@@ -2693,11 +2699,11 @@ export default function DashboardClient({
                       </div>
 
                       {/* Map Container */}
-                      <div className="w-full flex-1 rounded-xl border border-slate-200 overflow-hidden relative shadow-inner min-h-[220px]">
+                      <div className="w-full flex-1 rounded-xl border border-slate-200 dark:border-slate-800 overflow-hidden relative shadow-inner min-h-[220px]">
                         {mapError ? (
-                          <div className="absolute inset-0 bg-[#F1F3F5] overflow-hidden flex flex-col items-center justify-center relative select-none">
+                          <div className="absolute inset-0 bg-[#F1F3F5] dark:bg-slate-950 overflow-hidden flex flex-col items-center justify-center relative select-none">
                             {/* Street Grid SVG Background */}
-                            <svg className="absolute inset-0 w-full h-full text-slate-200" xmlns="http://www.w3.org/2000/svg" width="100%" height="100%">
+                            <svg className="absolute inset-0 w-full h-full text-slate-200 dark:text-slate-800" xmlns="http://www.w3.org/2000/svg" width="100%" height="100%">
                               <defs>
                                 <pattern id="street-grid" width="120" height="120" patternUnits="userSpaceOnUse">
                                   <path d="M 0 10 L 120 10 M 10 0 L 10 120 M 0 60 L 120 60 M 60 0 L 60 120" fill="none" stroke="currentColor" strokeWidth="1.5" />
@@ -2707,17 +2713,17 @@ export default function DashboardClient({
                               <rect width="100%" height="100%" fill="url(#street-grid)" />
                               
                               {/* City blocks & Features */}
-                              <rect x="20" y="20" width="30" height="30" rx="4" fill="#e2e8f0" />
-                              <rect x="70" y="20" width="40" height="30" rx="4" fill="#e2e8f0" />
-                              <rect x="20" y="70" width="30" height="40" rx="4" fill="#e2e8f0" />
+                              <rect x="20" y="20" width="30" height="30" rx="4" className="fill-slate-200 dark:fill-slate-800" />
+                              <rect x="70" y="20" width="40" height="30" rx="4" className="fill-slate-200 dark:fill-slate-800" />
+                              <rect x="20" y="70" width="30" height="40" rx="4" className="fill-slate-200 dark:fill-slate-800" />
                               
                               {/* Rivers/water pipe lines mock */}
                               <path d="M -10 100 Q 80 80 130 110 T 260 90 T 400 115" fill="none" stroke="#bae6fd" strokeWidth="8" strokeLinecap="round" opacity="0.6" />
                               
                               {/* Street labels */}
-                              <text x="18" y="15" fill="#94a3b8" fontSize="8" fontWeight="bold">Del Pilar St.</text>
-                              <text x="115" y="55" fill="#94a3b8" fontSize="8" fontWeight="bold" transform="rotate(90, 115, 55)">Sto. Rosario St.</text>
-                              <text x="65" y="75" fill="#94a3b8" fontSize="8" fontWeight="bold">Abad Santos Ave.</text>
+                              <text x="18" y="15" className="fill-slate-400 dark:fill-slate-500" fontSize="8" fontWeight="bold">Del Pilar St.</text>
+                              <text x="115" y="55" className="fill-slate-400 dark:fill-slate-500" fontSize="8" fontWeight="bold" transform="rotate(90, 115, 55)">Sto. Rosario St.</text>
+                              <text x="65" y="75" className="fill-slate-400 dark:fill-slate-500" fontSize="8" fontWeight="bold">Abad Santos Ave.</text>
                             </svg>
                             
                             {/* Blue location pin centered with pulse ring */}
@@ -2769,7 +2775,7 @@ export default function DashboardClient({
                           <button
                             type="button"
                             onClick={() => clientMapRef.current?.zoomIn()}
-                            className="w-8 h-8 rounded-lg bg-white shadow-md hover:bg-slate-50 border border-slate-200 flex items-center justify-center font-bold text-slate-600 transition-colors cursor-pointer text-sm"
+                            className="w-8 h-8 rounded-lg bg-white dark:bg-slate-800 shadow-md hover:bg-slate-50 dark:hover:bg-slate-700 border border-slate-200 dark:border-slate-700 flex items-center justify-center font-bold text-slate-600 dark:text-slate-300 transition-colors cursor-pointer text-sm"
                             title="Zoom In"
                           >
                             +
@@ -2778,7 +2784,7 @@ export default function DashboardClient({
                           <button
                             type="button"
                             onClick={() => clientMapRef.current?.zoomOut()}
-                            className="w-8 h-8 rounded-lg bg-white shadow-md hover:bg-slate-50 border border-slate-200 flex items-center justify-center font-bold text-slate-600 transition-colors cursor-pointer text-sm"
+                            className="w-8 h-8 rounded-lg bg-white dark:bg-slate-800 shadow-md hover:bg-slate-50 dark:hover:bg-slate-700 border border-slate-200 dark:border-slate-700 flex items-center justify-center font-bold text-slate-600 dark:text-slate-300 transition-colors cursor-pointer text-sm"
                             title="Zoom Out"
                           >
                             −
@@ -2787,12 +2793,10 @@ export default function DashboardClient({
                           <button
                             type="button"
                             onClick={handleRequestLocation}
-                            className="w-8 h-8 rounded-lg bg-white shadow-md hover:bg-slate-50 border border-slate-200 flex items-center justify-center text-slate-600 hover:text-blue-500 transition-colors cursor-pointer"
+                            className="w-8 h-8 rounded-lg bg-white dark:bg-slate-800 shadow-md hover:bg-slate-50 dark:hover:bg-slate-700 border border-slate-200 dark:border-slate-700 flex items-center justify-center text-slate-600 dark:text-slate-300 hover:text-blue-500 dark:hover:text-sky-400 transition-colors cursor-pointer"
                             title="Target Current Location"
                           >
-                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="2.5" stroke="currentColor" className="w-4 h-4">
-                              <path strokeLinecap="round" strokeLinejoin="round" d="M12 3v2.25m6.364.386l-1.591 1.591M21 12h-2.25m-.386 6.364l-1.591-1.591M12 18.75V21m-4.773-4.227l-1.591 1.591M3 12h2.25m-.386-6.364l1.591 1.591M12 18.75a6.75 6.75 0 110-13.5 6.75 6.75 0 010 13.5z" />
-                            </svg>
+                            <Crosshair className="w-4 h-4" />
                           </button>
                           {/* 3D Toggle */}
                           <button
@@ -2802,7 +2806,7 @@ export default function DashboardClient({
                             className={`w-8 h-8 rounded-lg shadow-md border flex items-center justify-center text-[9px] font-black uppercase tracking-wider transition-all cursor-pointer ${
                               clientMap3D
                                 ? "bg-[#00aeef] border-[#00aeef] text-white shadow-[#00aeef]/30"
-                                : "bg-white border-slate-200 text-slate-500 hover:text-[#00aeef]"
+                                : "bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-500 dark:text-slate-400 hover:text-[#00aeef] dark:hover:text-sky-400"
                             }`}
                           >
                             3D
@@ -2812,11 +2816,9 @@ export default function DashboardClient({
                             type="button"
                             onClick={() => clientMapRef.current?.resetNorth({ duration: 600 })}
                             title="Reset North"
-                            className="w-8 h-8 rounded-lg bg-white shadow-md hover:bg-slate-50 border border-slate-200 flex items-center justify-center text-slate-600 hover:text-[#00aeef] transition-colors cursor-pointer"
+                            className="w-8 h-8 rounded-lg bg-white dark:bg-slate-800 shadow-md hover:bg-slate-50 dark:hover:bg-slate-700 border border-slate-200 dark:border-slate-700 flex items-center justify-center text-slate-600 dark:text-slate-300 hover:text-[#00aeef] dark:hover:text-sky-400 transition-colors cursor-pointer"
                           >
-                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-4 h-4">
-                              <path d="M12 2l2.5 7h-5L12 2zm0 20l-2.5-7h5L12 22zM2 12l7-2.5v5L2 12zm20 0l-7 2.5v-5L22 12z"/>
-                            </svg>
+                            <Compass className="w-4 h-4" />
                           </button>
                         </div>
                         
@@ -2827,9 +2829,7 @@ export default function DashboardClient({
                             <div className="absolute inset-0 bg-red-900/20 backdrop-blur-[1px]" />
                             <div className="relative flex flex-col items-center gap-2 bg-red-600/95 text-white px-5 py-3.5 rounded-2xl border-2 border-red-400/60 shadow-2xl shadow-red-900/40 max-w-[85%] text-center">
                               <div className="flex items-center gap-2">
-                                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="2.5" stroke="currentColor" className="w-5 h-5 shrink-0 text-red-200">
-                                  <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z" />
-                                </svg>
+                                <AlertTriangle className="w-5 h-5 shrink-0 text-red-200" />
                                 <span className="font-black text-[11px] uppercase tracking-widest text-red-100">📍 Out of Service Area</span>
                               </div>
                               <p className="text-[10px] font-bold text-red-100 leading-snug">
@@ -2847,17 +2847,12 @@ export default function DashboardClient({
                         }`}>
                           {isOutOfScope ? (
                             <>
-                              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="2.5" stroke="currentColor" className="w-3.5 h-3.5 shrink-0 text-red-200">
-                                <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z" />
-                              </svg>
+                              <AlertTriangle className="w-3.5 h-3.5 shrink-0 text-red-200" />
                               <span>Out of scope — move pin inside San Fernando, Pampanga</span>
                             </>
                           ) : (
                             <>
-                              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="2.5" stroke="#00aeef" className="w-3.5 h-3.5 shrink-0">
-                                <path strokeLinecap="round" strokeLinejoin="round" d="M15 10.5a3 3 0 11-6 0 3 3 0 016 0z" />
-                                <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 10.5c0 7.142-7.5 11.25-7.5 11.25s-7.5-4.108-7.5-11.25a7.5 7.5 0 1115 0z" />
-                              </svg>
+                              <MapPin className="w-3.5 h-3.5 shrink-0 text-[#00aeef]" />
                               <span>Drag marker or click map to pin exact location</span>
                             </>
                           )}
@@ -2869,31 +2864,29 @@ export default function DashboardClient({
                         <button
                           type="button"
                           onClick={handleRequestLocation}
-                          className="w-full border border-[#00aeef] hover:bg-sky-50/40 text-[#00aeef] font-bold text-xs py-2.5 rounded-lg transition-colors flex items-center justify-center gap-1.5 cursor-pointer shadow-sm"
+                          className="w-full border border-[#00aeef] hover:bg-sky-50/40 dark:hover:bg-sky-500/10 text-[#00aeef] dark:text-sky-400 font-bold text-xs py-2.5 rounded-lg transition-colors flex items-center justify-center gap-1.5 cursor-pointer shadow-sm"
                         >
-                          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="2" stroke="currentColor" className="w-4 h-4">
-                            <path strokeLinecap="round" strokeLinejoin="round" d="M12 3v2.25m6.364.386l-1.591 1.591M21 12h-2.25m-.386 6.364l-1.591-1.591M12 18.75V21m-4.773-4.227l-1.591 1.591M3 12h2.25m-.386-6.364l1.591 1.591M12 18.75a6.75 6.75 0 110-13.5 6.75 6.75 0 010 13.5z" />
-                          </svg>
+                          <Crosshair className="w-4 h-4" />
                           <span>Pin My Current Device Location</span>
                         </button>
 
                         <div className="grid grid-cols-2 gap-3">
                           <div className="space-y-1">
-                            <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Latitude</label>
+                            <label className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider block">Latitude</label>
                             <input
                               type="text"
                               readOnly
                               value={customLat}
-                              className="w-full bg-slate-50 border border-slate-200 text-[#001e66] font-mono text-xs py-2 px-3 rounded-lg focus:outline-none cursor-not-allowed select-all font-semibold"
+                              className="w-full bg-slate-50 dark:bg-slate-950/60 border border-slate-200 dark:border-slate-700 text-[#001e66] dark:text-slate-100 font-mono text-xs py-2 px-3 rounded-lg focus:outline-none cursor-not-allowed select-all font-semibold"
                             />
                           </div>
                           <div className="space-y-1">
-                            <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Longitude</label>
+                            <label className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider block">Longitude</label>
                             <input
                               type="text"
                               readOnly
                               value={customLng}
-                              className="w-full bg-slate-50 border border-slate-200 text-[#001e66] font-mono text-xs py-2 px-3 rounded-lg focus:outline-none cursor-not-allowed select-all font-semibold"
+                              className="w-full bg-slate-50 dark:bg-slate-950/60 border border-slate-200 dark:border-slate-700 text-[#001e66] dark:text-slate-100 font-mono text-xs py-2 px-3 rounded-lg focus:outline-none cursor-not-allowed select-all font-semibold"
                             />
                           </div>
                         </div>
@@ -2902,31 +2895,27 @@ export default function DashboardClient({
                       {/* Verification Footer */}
                       <div className={`border rounded-xl p-3.5 flex items-center justify-between mt-auto shrink-0 transition-all ${
                         isOutOfScope
-                          ? "bg-red-50/80 border-red-200"
-                          : "bg-emerald-50/70 border-emerald-100"
+                          ? "bg-red-50/80 border-red-200 dark:bg-red-500/10 dark:border-red-500/30"
+                          : "bg-emerald-50/70 border-emerald-100 dark:bg-emerald-500/10 dark:border-emerald-500/30"
                       }`}>
                         <div className="flex flex-col leading-none">
-                          <span className="text-[8px] font-bold text-slate-400 uppercase tracking-wider">POSTGIS - NOMINATIM BARANGAY DETECTION</span>
+                          <span className="text-[8px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider">POSTGIS - NOMINATIM BARANGAY DETECTION</span>
                           {isOutOfScope ? (
-                            <span className="text-xs font-black text-red-700 mt-1">⚠ Outside San Fernando, Pampanga</span>
+                            <span className="text-xs font-black text-red-700 dark:text-red-400 mt-1">⚠ Outside San Fernando, Pampanga</span>
                           ) : (
-                            <span className="text-xs font-black text-emerald-800 mt-1">
+                            <span className="text-xs font-black text-emerald-800 dark:text-emerald-400 mt-1">
                               Brgy. {detectedBarangay || "Santo Rosario"}
                             </span>
                           )}
                         </div>
                         {isOutOfScope ? (
-                          <div className="flex items-center gap-1 bg-red-100/60 text-red-700 text-[10px] font-black px-2.5 py-1.5 rounded-full border border-red-200/50 shrink-0">
-                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="2.5" stroke="currentColor" className="w-3.5 h-3.5 shrink-0 text-red-600">
-                              <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
-                            </svg>
+                          <div className="flex items-center gap-1 bg-red-100/60 dark:bg-red-500/20 text-red-700 dark:text-red-300 text-[10px] font-black px-2.5 py-1.5 rounded-full border border-red-200/50 dark:border-red-500/30 shrink-0">
+                            <X className="w-3.5 h-3.5 shrink-0 text-red-600 dark:text-red-400" />
                             <span>Out of scope</span>
                           </div>
                         ) : (
-                          <div className="flex items-center gap-1 bg-emerald-100/60 text-emerald-700 text-[10px] font-black px-2.5 py-1.5 rounded-full border border-emerald-200/50 shrink-0">
-                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="2.5" stroke="currentColor" className="w-3.5 h-3.5 shrink-0 text-emerald-600">
-                              <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12.75l6 6 9-13.5" />
-                            </svg>
+                          <div className="flex items-center gap-1 bg-emerald-100/60 dark:bg-emerald-500/20 text-emerald-700 dark:text-emerald-300 text-[10px] font-black px-2.5 py-1.5 rounded-full border border-emerald-200/50 dark:border-emerald-500/30 shrink-0">
+                            <CheckCircle2 className="w-3.5 h-3.5 shrink-0 text-emerald-600 dark:text-emerald-400" />
                             <span>Nominatim verified</span>
                           </div>
                         )}
@@ -2943,14 +2932,14 @@ export default function DashboardClient({
               {/* Section 1: Active Complaints */}
               <div className="space-y-4">
                 <div>
-                  <h2 className="text-xl font-black text-[#001e66] tracking-tight">Active Ticket Status Tracker</h2>
-                  <p className="text-xs text-slate-500 font-bold">Monitor your active tickets and dispatch assignments</p>
+                  <h2 className="text-xl font-black text-[#001e66] dark:text-slate-200 tracking-tight">Active Ticket Status Tracker</h2>
+                  <p className="text-xs text-slate-500 dark:text-slate-400 font-bold">Monitor your active tickets and dispatch assignments</p>
                 </div>
 
-                <div className="overflow-x-auto border border-slate-100 rounded-xl bg-white shadow-sm">
+                <div className="overflow-x-auto border border-slate-100 dark:border-slate-800 rounded-xl bg-white dark:bg-slate-900 shadow-sm">
                   <table className="w-full text-left border-collapse text-xs table-fixed min-w-[800px]">
                     <thead>
-                      <tr className="bg-slate-50 border-b border-slate-200 text-slate-500 font-bold uppercase tracking-wider">
+                      <tr className="bg-slate-50 dark:bg-slate-800/60 border-b border-slate-200 dark:border-slate-800 text-slate-500 dark:text-slate-400 font-bold uppercase tracking-wider">
                         <th className="py-3 px-4 w-[14%]">ID</th>
                         <th className="py-3 px-4 w-[32%]">Summary</th>
                         <th className="py-3 px-4 w-[12%]">Urgency</th>
@@ -2959,65 +2948,65 @@ export default function DashboardClient({
                         <th className="py-3 px-4 w-[12%]">Dispatch Notes</th>
                       </tr>
                     </thead>
-                    <tbody className="divide-y divide-slate-100">
+                    <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
                       {myComplaints
                         .filter((c) => c.status !== "RESOLVED")
                         .map((c) => (
-                          <tr key={c.id} className="hover:bg-slate-50/50 transition-colors">
-                            <td className="py-4 px-4 font-mono text-[10px] font-bold text-slate-400 align-top">
+                          <tr key={c.id} className="hover:bg-slate-50/50 dark:hover:bg-slate-800/40 transition-colors">
+                            <td className="py-4 px-4 font-mono text-[10px] font-bold text-slate-400 dark:text-slate-500 align-top">
                               AQ-{c.id.slice(0, 8).toUpperCase()}
                             </td>
-                            <td className="py-4 px-4 font-bold text-[#001e66] pr-2 align-top">
-                              <div className="font-bold text-[#001e66]">{c.summary || "Resident reported issue"}</div>
-                              <div className="text-slate-500 font-medium italic mt-0.5 leading-relaxed line-clamp-2">
+                            <td className="py-4 px-4 font-bold text-[#001e66] dark:text-slate-200 pr-2 align-top">
+                              <div className="font-bold text-[#001e66] dark:text-slate-200">{c.summary || "Resident reported issue"}</div>
+                              <div className="text-slate-500 dark:text-slate-400 font-medium italic mt-0.5 leading-relaxed line-clamp-2">
                                 "{c.rawText.length > 75 ? c.rawText.slice(0, 75) + "...." : c.rawText}"
                               </div>
                             </td>
                             <td className="py-4 px-4 align-top">
                               <span className={`inline-flex items-center px-2 py-0.5 rounded-[6px] text-[9px] font-black uppercase border ${
                                 c.urgency === "CRITICAL" || c.urgency === "HIGH" || c.urgency === "URGENT"
-                                  ? "bg-red-50 text-red-700 border-red-200"
+                                  ? "bg-red-50 text-red-700 border-red-200 dark:bg-red-500/10 dark:text-red-300 dark:border-red-500/30"
                                   : c.urgency === "MEDIUM"
-                                  ? "bg-amber-50 text-amber-700 border-amber-200"
-                                  : "bg-slate-50 text-slate-700 border-slate-200"
+                                  ? "bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-500/10 dark:text-amber-300 dark:border-amber-500/30"
+                                  : "bg-slate-50 text-slate-700 border-slate-200 dark:bg-slate-800 dark:text-slate-300 dark:border-slate-700"
                               }`}>
                                 {c.urgency || "LOW"}
                               </span>
                             </td>
-                            <td className="py-4 px-4 font-bold text-slate-600 align-top break-words">
+                            <td className="py-4 px-4 font-bold text-slate-600 dark:text-slate-300 align-top break-words">
                               {formatCategory(c.category)}
                             </td>
                             <td className="py-4 px-4 align-top">
                               <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-[9px] font-black uppercase border ${
                                 c.status === "PENDING"
-                                  ? "bg-yellow-50 text-yellow-700 border-yellow-200"
+                                  ? "bg-yellow-50 text-yellow-700 border-yellow-200 dark:bg-yellow-500/10 dark:text-yellow-300 dark:border-yellow-500/30"
                                   : c.status === "EVALUATING"
-                                  ? "bg-blue-50 text-blue-700 border-blue-200"
+                                  ? "bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-500/10 dark:text-blue-300 dark:border-blue-500/30"
                                   : c.status === "DISPATCHED"
-                                  ? "bg-indigo-50 text-indigo-700 border-indigo-200"
+                                  ? "bg-indigo-50 text-indigo-700 border-indigo-200 dark:bg-indigo-500/10 dark:text-indigo-300 dark:border-indigo-500/30"
                                   : c.status === "ONGOING"
-                                  ? "bg-orange-50 text-orange-700 border-orange-200"
+                                  ? "bg-orange-50 text-orange-700 border-orange-200 dark:bg-orange-500/10 dark:text-orange-300 dark:border-orange-500/30"
                                   : c.status === "RESOLVED"
-                                  ? "bg-emerald-50 text-emerald-700 border-emerald-200"
-                                  : "bg-slate-100 text-slate-700 border-slate-200"
+                                  ? "bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-500/10 dark:text-emerald-300 dark:border-emerald-500/30"
+                                  : "bg-slate-100 text-slate-700 border-slate-200 dark:bg-slate-800 dark:text-slate-300 dark:border-slate-700"
                               }`}>
                                 {c.status || "PENDING"}
                               </span>
                             </td>
                             <td className="py-4 px-4 align-top">
                               {c.assignedToName ? (
-                                <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded bg-blue-50/70 border border-blue-150 text-blue-700 font-bold text-[9px] uppercase tracking-wide">
-                                  🔧 {c.assignedToName}
+                                <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded bg-blue-50/70 dark:bg-blue-500/10 border border-blue-150 dark:border-blue-500/30 text-blue-700 dark:text-sky-300 font-bold text-[9px] uppercase tracking-wide">
+                                  <Wrench className="w-3 h-3 shrink-0" /> {c.assignedToName}
                                 </span>
                               ) : (
-                                <span className="text-slate-400 italic font-medium">Awaiting Dispatch</span>
+                                <span className="text-slate-400 dark:text-slate-500 italic font-medium">Awaiting Dispatch</span>
                               )}
                             </td>
                           </tr>
                         ))}
                       {myComplaints.filter((c) => c.status !== "RESOLVED").length === 0 && (
                         <tr>
-                          <td colSpan={6} className="py-8 text-center text-slate-500 italic">
+                          <td colSpan={6} className="py-8 text-center text-slate-500 dark:text-slate-400 italic">
                             No active tickets recorded.
                           </td>
                         </tr>
@@ -3030,14 +3019,14 @@ export default function DashboardClient({
               {/* Section 2: Complaint History */}
               <div className="space-y-4">
                 <div>
-                  <h2 className="text-xl font-black text-[#001e66] tracking-tight">My Complaint History (Audit Trail)</h2>
-                  <p className="text-xs text-slate-500 font-bold">Resolved incident logs and completed audit trails</p>
+                  <h2 className="text-xl font-black text-[#001e66] dark:text-slate-200 tracking-tight">My Complaint History (Audit Trail)</h2>
+                  <p className="text-xs text-slate-500 dark:text-slate-400 font-bold">Resolved incident logs and completed audit trails</p>
                 </div>
 
-                <div className="overflow-x-auto border border-slate-100 rounded-xl bg-white shadow-sm">
+                <div className="overflow-x-auto border border-slate-100 dark:border-slate-800 rounded-xl bg-white dark:bg-slate-900 shadow-sm">
                   <table className="w-full text-left border-collapse text-xs table-fixed min-w-[800px]">
                     <thead>
-                      <tr className="bg-slate-50 border-b border-slate-200 text-slate-500 font-bold uppercase tracking-wider">
+                      <tr className="bg-slate-50 dark:bg-slate-800/60 border-b border-slate-200 dark:border-slate-800 text-slate-500 dark:text-slate-400 font-bold uppercase tracking-wider">
                         <th className="py-3 px-4 w-[14%]">ID</th>
                         <th className="py-3 px-4 w-[32%]">Summary</th>
                         <th className="py-3 px-4 w-[12%]">Urgency</th>
@@ -3046,53 +3035,53 @@ export default function DashboardClient({
                         <th className="py-3 px-4 w-[12%]">Dispatch Notes</th>
                       </tr>
                     </thead>
-                    <tbody className="divide-y divide-slate-100">
+                    <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
                       {myComplaints
                         .filter((c) => c.status === "RESOLVED")
                         .map((c) => (
-                          <tr key={c.id} className="hover:bg-slate-50/50 transition-colors">
-                            <td className="py-4 px-4 font-mono text-[10px] font-bold text-slate-400 align-top">
+                          <tr key={c.id} className="hover:bg-slate-50/50 dark:hover:bg-slate-800/40 transition-colors">
+                            <td className="py-4 px-4 font-mono text-[10px] font-bold text-slate-400 dark:text-slate-500 align-top">
                               AQ-{c.id.slice(0, 8).toUpperCase()}
                             </td>
-                            <td className="py-4 px-4 font-bold text-[#001e66] pr-2 align-top">
-                              <div className="font-bold text-[#001e66]">{c.summary || "Resident reported issue"}</div>
-                              <div className="text-slate-500 font-medium italic mt-0.5 leading-relaxed line-clamp-2">
+                            <td className="py-4 px-4 font-bold text-[#001e66] dark:text-slate-200 pr-2 align-top">
+                              <div className="font-bold text-[#001e66] dark:text-slate-200">{c.summary || "Resident reported issue"}</div>
+                              <div className="text-slate-500 dark:text-slate-400 font-medium italic mt-0.5 leading-relaxed line-clamp-2">
                                 "{c.rawText.length > 75 ? c.rawText.slice(0, 75) + "...." : c.rawText}"
                               </div>
                             </td>
                             <td className="py-4 px-4 align-top">
                               <span className={`inline-flex items-center px-2 py-0.5 rounded-[6px] text-[9px] font-black uppercase border ${
                                 c.urgency === "CRITICAL" || c.urgency === "HIGH" || c.urgency === "URGENT"
-                                  ? "bg-red-50 text-red-700 border-red-200"
+                                  ? "bg-red-50 text-red-700 border-red-200 dark:bg-red-500/10 dark:text-red-300 dark:border-red-500/30"
                                   : c.urgency === "MEDIUM"
-                                  ? "bg-amber-50 text-amber-700 border-amber-200"
-                                  : "bg-slate-50 text-slate-700 border-slate-200"
+                                  ? "bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-500/10 dark:text-amber-300 dark:border-amber-500/30"
+                                  : "bg-slate-50 text-slate-700 border-slate-200 dark:bg-slate-800 dark:text-slate-300 dark:border-slate-700"
                               }`}>
                                 {c.urgency || "LOW"}
                               </span>
                             </td>
-                            <td className="py-4 px-4 font-bold text-slate-600 align-top break-words">
+                            <td className="py-4 px-4 font-bold text-slate-600 dark:text-slate-300 align-top break-words">
                               {formatCategory(c.category)}
                             </td>
                             <td className="py-4 px-4 align-top">
-                              <span className="inline-flex items-center px-2.5 py-1 rounded-full text-[9px] font-black uppercase bg-emerald-50 text-emerald-700 border border-emerald-200">
+                              <span className="inline-flex items-center px-2.5 py-1 rounded-full text-[9px] font-black uppercase bg-emerald-50 dark:bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-500/30">
                                 RESOLVED
                               </span>
                             </td>
                             <td className="py-4 px-4 align-top">
                               {c.assignedToName ? (
-                                <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded bg-blue-50/70 border border-blue-150 text-blue-700 font-bold text-[9px] uppercase tracking-wide">
-                                  🔧 {c.assignedToName}
+                                <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded bg-blue-50/70 dark:bg-blue-500/10 border border-blue-150 dark:border-blue-500/30 text-blue-700 dark:text-sky-300 font-bold text-[9px] uppercase tracking-wide">
+                                  <Wrench className="w-3 h-3 shrink-0" /> {c.assignedToName}
                                 </span>
                               ) : (
-                                <span className="text-slate-400 italic font-medium">No assigned technician recorded</span>
+                                <span className="text-slate-400 dark:text-slate-500 italic font-medium">No assigned technician recorded</span>
                               )}
                             </td>
                           </tr>
                         ))}
                       {myComplaints.filter((c) => c.status === "RESOLVED").length === 0 && (
                         <tr>
-                          <td colSpan={6} className="py-8 text-center text-slate-500 italic">
+                          <td colSpan={6} className="py-8 text-center text-slate-500 dark:text-slate-400 italic">
                             No resolved complaints recorded.
                           </td>
                         </tr>
@@ -3115,37 +3104,37 @@ export default function DashboardClient({
 
               {/* Quick Advisory Summary Stats */}
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
-                <div className="bg-white rounded-2xl border border-slate-100 p-5 shadow-[0_8px_30px_rgb(0,0,0,0.015)] flex items-center justify-between">
+                <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-100 dark:border-slate-800 p-5 shadow-[0_8px_30px_rgb(0,0,0,0.015)] dark:shadow-none flex items-center justify-between">
                   <div>
-                    <p className="text-[10px] text-slate-400 font-black uppercase tracking-wider">Total Broadcasts</p>
-                    <p className="text-xl font-black text-[#0B2E7A] mt-1">{filteredAdvisories.length}</p>
+                    <p className="text-[10px] text-slate-400 dark:text-slate-500 font-black uppercase tracking-wider">Total Broadcasts</p>
+                    <p className="text-xl font-black text-[#0B2E7A] dark:text-slate-200 mt-1">{filteredAdvisories.length}</p>
                   </div>
-                  <div className="w-10 h-10 rounded-xl bg-blue-50/80 flex items-center justify-center border border-blue-100 shrink-0 shadow-sm">
-                    <Megaphone className="w-5 h-5 text-blue-500" />
+                  <div className="w-10 h-10 rounded-xl bg-blue-50/80 dark:bg-blue-500/10 flex items-center justify-center border border-blue-100 dark:border-blue-500/30 shrink-0 shadow-sm">
+                    <Megaphone className="w-5 h-5 text-blue-500 dark:text-sky-400" />
                   </div>
                 </div>
 
-                <div className="bg-white rounded-2xl border border-slate-100 p-5 shadow-[0_8px_30px_rgb(0,0,0,0.015)] flex items-center justify-between">
+                <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-100 dark:border-slate-800 p-5 shadow-[0_8px_30px_rgb(0,0,0,0.015)] dark:shadow-none flex items-center justify-between">
                   <div>
-                    <p className="text-[10px] text-slate-400 font-black uppercase tracking-wider">Service Warnings</p>
-                    <p className="text-xl font-black text-red-650 mt-1">
+                    <p className="text-[10px] text-slate-400 dark:text-slate-500 font-black uppercase tracking-wider">Service Warnings</p>
+                    <p className="text-xl font-black text-red-650 mt-1 dark:text-red-400">
                       {filteredAdvisories.filter((ad) => ad.type === "warning").length}
                     </p>
                   </div>
-                  <div className="w-10 h-10 rounded-xl bg-red-50/80 flex items-center justify-center border border-red-100 shrink-0 shadow-sm">
-                    <AlertTriangle className="w-5 h-5 text-red-500" />
+                  <div className="w-10 h-10 rounded-xl bg-red-50/80 dark:bg-red-500/10 flex items-center justify-center border border-red-100 dark:border-red-500/30 shrink-0 shadow-sm">
+                    <AlertTriangle className="w-5 h-5 text-red-500 dark:text-red-400" />
                   </div>
                 </div>
 
-                <div className="bg-white rounded-2xl border border-slate-100 p-5 shadow-[0_8px_30px_rgb(0,0,0,0.015)] flex items-center justify-between">
+                <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-100 dark:border-slate-800 p-5 shadow-[0_8px_30px_rgb(0,0,0,0.015)] dark:shadow-none flex items-center justify-between">
                   <div>
-                    <p className="text-[10px] text-slate-400 font-black uppercase tracking-wider">Info Updates</p>
-                    <p className="text-xl font-black text-emerald-650 mt-1">
+                    <p className="text-[10px] text-slate-400 dark:text-slate-500 font-black uppercase tracking-wider">Info Updates</p>
+                    <p className="text-xl font-black text-emerald-650 mt-1 dark:text-emerald-400">
                       {filteredAdvisories.filter((ad) => ad.type !== "warning").length}
                     </p>
                   </div>
-                  <div className="w-10 h-10 rounded-xl bg-emerald-50/80 flex items-center justify-center border border-emerald-100 shrink-0 shadow-sm">
-                    <Activity className="w-5 h-5 text-emerald-500" />
+                  <div className="w-10 h-10 rounded-xl bg-emerald-50/80 dark:bg-emerald-500/10 flex items-center justify-center border border-emerald-100 dark:border-emerald-500/30 shrink-0 shadow-sm">
+                    <Activity className="w-5 h-5 text-emerald-500 dark:text-emerald-400" />
                   </div>
                 </div>
               </div>
@@ -3154,7 +3143,7 @@ export default function DashboardClient({
               <div className="w-full space-y-6">
                 
                 {/* Filter Tabs (segment control) */}
-                <div className="flex gap-2 p-1 bg-slate-100/80 dark:bg-slate-800/40 rounded-xl max-w-xs md:max-w-sm border border-slate-200/40">
+                <div className="flex gap-2 p-1 bg-slate-100/80 dark:bg-slate-800/40 rounded-xl max-w-xs md:max-w-sm border border-slate-200/40 dark:border-slate-800">
                   {[
                     { key: "all", label: "All", count: filteredAdvisories.length },
                     { key: "warning", label: "Warnings", count: filteredAdvisories.filter(ad => ad.type === "warning").length },
@@ -3168,8 +3157,8 @@ export default function DashboardClient({
                       }}
                       className={`flex-1 flex items-center justify-center gap-1.5 px-3 py-1.5 text-[9px] font-black uppercase tracking-wider rounded-lg transition-all duration-200 cursor-pointer select-none ${
                         advisoryFilter === btn.key
-                          ? "bg-white dark:bg-slate-900 text-[#001e66] dark:text-white shadow-sm border border-slate-200/50 dark:border-slate-800/85"
-                          : "text-slate-500 hover:text-slate-700 dark:hover:text-slate-300"
+                          ? "bg-white dark:bg-slate-900 text-[#001e66] dark:text-slate-100 shadow-sm border border-slate-200/50 dark:border-slate-800/85"
+                          : "text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200"
                       }`}
                     >
                       {btn.label}
@@ -3191,10 +3180,10 @@ export default function DashboardClient({
                           setSelectedAdvisory(ad);
                           markAdvisoryAsRead(ad.id);
                         }}
-                        className={`p-5 rounded-[20px] bg-white border transition-all duration-300 hover:-translate-y-0.5 hover:shadow-md relative overflow-hidden flex gap-4 text-left cursor-pointer select-none ${
+                        className={`p-5 rounded-[20px] bg-white dark:bg-slate-900 border transition-all duration-300 hover:-translate-y-0.5 hover:shadow-md relative overflow-hidden flex gap-4 text-left cursor-pointer select-none ${
                           isWarning 
-                            ? "border-red-100 hover:border-red-200/60 shadow-[0_4px_20px_rgba(239,68,68,0.01)]" 
-                            : "border-slate-100 hover:border-blue-100/60 shadow-[0_4px_20px_rgba(24,155,255,0.01)]"
+                            ? "border-red-100 dark:border-red-950/60 hover:border-red-200/60 dark:hover:border-red-900/60 shadow-[0_4px_20px_rgba(239,68,68,0.01)]" 
+                            : "border-slate-100 dark:border-slate-800 hover:border-blue-100/60 dark:hover:border-blue-900/50 shadow-[0_4px_20px_rgba(24,155,255,0.01)]"
                         }`}
                       >
                         {/* Alert Left Indicator Bar */}
@@ -3202,7 +3191,7 @@ export default function DashboardClient({
 
                         {/* Icon Container */}
                         <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 shadow-inner ${
-                          isWarning ? "bg-red-50 text-red-650" : "bg-blue-50 text-blue-600"
+                          isWarning ? "bg-red-50 dark:bg-red-500/10 text-red-650 dark:text-red-400" : "bg-blue-50 dark:bg-blue-500/10 text-blue-600 dark:text-sky-400"
                         }`}>
                           {isWarning ? <AlertTriangle className="w-5 h-5" /> : <Megaphone className="w-5 h-5" />}
                         </div>
@@ -3210,14 +3199,14 @@ export default function DashboardClient({
                         {/* Text Body */}
                         <div className="flex-1 min-w-0 space-y-1">
                           <div className="flex flex-wrap items-center justify-between gap-2">
-                            <h3 className="text-sm font-extrabold text-[#001e66] tracking-tight leading-snug">
+                            <h3 className="text-sm font-extrabold text-[#001e66] dark:text-slate-200 tracking-tight leading-snug">
                               {ad.title}
                             </h3>
-                            <span className="text-[9px] font-mono font-black text-slate-400 bg-slate-50 px-2 py-0.5 rounded-md border border-slate-100">
+                            <span className="text-[9px] font-mono font-black text-slate-400 dark:text-slate-500 bg-slate-50 dark:bg-slate-800 px-2 py-0.5 rounded-md border border-slate-100 dark:border-slate-800">
                               {ad.date}
                             </span>
                           </div>
-                          <p className="text-xs text-slate-500 font-semibold leading-relaxed">
+                          <p className="text-xs text-slate-500 dark:text-slate-400 font-semibold leading-relaxed">
                             {ad.text}
                           </p>
                         </div>
@@ -3226,10 +3215,10 @@ export default function DashboardClient({
                   })}
 
                   {paginatedAdvisories.length === 0 && (
-                    <div className="p-12 text-center border border-dashed border-slate-200 bg-white rounded-2xl">
-                      <Megaphone className="w-8 h-8 text-slate-350 mx-auto mb-2" />
-                      <p className="text-xs font-black text-[#0B2E7A]">No Notices Found</p>
-                      <p className="text-[10px] text-slate-400 font-semibold mt-0.5">No bulletins fit the selected filter category.</p>
+                    <div className="p-12 text-center border border-dashed border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 rounded-2xl">
+                      <Megaphone className="w-8 h-8 text-slate-350 dark:text-slate-600 mx-auto mb-2" />
+                      <p className="text-xs font-black text-[#0B2E7A] dark:text-slate-200">No Notices Found</p>
+                      <p className="text-[10px] text-slate-400 dark:text-slate-500 font-semibold mt-0.5">No bulletins fit the selected filter category.</p>
                     </div>
                   )}
                 </div>
@@ -3240,17 +3229,17 @@ export default function DashboardClient({
                     <button
                       onClick={() => setAdvisoryPage((prev) => Math.max(prev - 1, 1))}
                       disabled={currentPage === 1}
-                      className="inline-flex items-center gap-1 px-3 py-2 text-[10px] font-black uppercase tracking-wider text-[#001e66] bg-white border border-slate-200 hover:bg-slate-50 disabled:opacity-50 rounded-xl transition-all duration-200 cursor-pointer disabled:cursor-not-allowed shadow-xs"
+                      className="inline-flex items-center gap-1 px-3 py-2 text-[10px] font-black uppercase tracking-wider text-[#001e66] dark:text-slate-200 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800 disabled:opacity-50 rounded-xl transition-all duration-200 cursor-pointer disabled:cursor-not-allowed shadow-xs"
                     >
                       &larr; Prev
                     </button>
-                    <span className="text-[10px] font-extrabold text-slate-450 uppercase tracking-widest">
+                    <span className="text-[10px] font-extrabold text-slate-450 dark:text-slate-500 uppercase tracking-widest">
                       Page {currentPage} / {totalAdvisoryPages}
                     </span>
                     <button
                       onClick={() => setAdvisoryPage((prev) => Math.min(prev + 1, totalAdvisoryPages))}
                       disabled={currentPage === totalAdvisoryPages}
-                      className="inline-flex items-center gap-1 px-3 py-2 text-[10px] font-black uppercase tracking-wider text-[#001e66] bg-white border border-slate-200 hover:bg-slate-50 disabled:opacity-50 rounded-xl transition-all duration-200 cursor-pointer disabled:cursor-not-allowed shadow-xs"
+                      className="inline-flex items-center gap-1 px-3 py-2 text-[10px] font-black uppercase tracking-wider text-[#001e66] dark:text-slate-200 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800 disabled:opacity-50 rounded-xl transition-all duration-200 cursor-pointer disabled:cursor-not-allowed shadow-xs"
                     >
                       Next &rarr;
                     </button>
@@ -3291,7 +3280,7 @@ export default function DashboardClient({
               className="relative w-full max-w-4xl bg-white dark:bg-slate-900 rounded-[32px] shadow-[0_25px_60px_rgba(0,30,102,0.18)] overflow-hidden border border-slate-100 dark:border-slate-800 flex flex-col md:flex-row h-[550px] z-10"
             >
               {/* Left sidebar inside modal */}
-              <div className="w-full md:w-64 bg-slate-50 dark:bg-slate-900/40 p-6 border-r border-slate-100 dark:border-slate-850 flex flex-col justify-between shrink-0">
+              <div className="w-full md:w-64 bg-[#f8fafc] dark:bg-slate-900/40 p-6 border-r border-[#e2e8f0] dark:border-white/10 flex flex-col justify-between shrink-0">
                 <div className="space-y-6">
                   <div>
                     <h3 className="text-base font-black text-[#001e66] dark:text-slate-200 tracking-tight">Account Details</h3>
@@ -3303,26 +3292,22 @@ export default function DashboardClient({
                       onClick={() => setAccountModalTab("profile")}
                       className={`flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-bold transition-all text-left cursor-pointer ${
                         accountModalTab === "profile"
-                          ? "bg-[#001e66] text-white shadow-sm"
-                          : "text-slate-650 hover:bg-slate-100 dark:hover:bg-slate-800/40 dark:text-slate-400"
+                          ? "bg-[#001e66] dark:bg-[#00aeef] text-white dark:text-[#001e66] shadow-sm"
+                          : "text-slate-600 hover:bg-slate-100 dark:hover:bg-slate-800/40 dark:text-slate-400"
                       }`}
                     >
-                      <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
-                        <path strokeLinecap="round" strokeLinejoin="round" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-                      </svg>
+                      <User className="w-4 h-4" />
                       Profile Information
                     </button>
                     <button
                       onClick={() => setAccountModalTab("security")}
                       className={`flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-bold transition-all text-left cursor-pointer ${
                         accountModalTab === "security"
-                          ? "bg-[#001e66] text-white shadow-sm"
-                          : "text-slate-650 hover:bg-slate-100 dark:hover:bg-slate-800/40 dark:text-slate-400"
+                          ? "bg-[#001e66] dark:bg-[#00aeef] text-white dark:text-[#001e66] shadow-sm"
+                          : "text-slate-600 hover:bg-slate-100 dark:hover:bg-slate-800/40 dark:text-slate-400"
                       }`}
                     >
-                      <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
-                        <path strokeLinecap="round" strokeLinejoin="round" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
-                      </svg>
+                      <Lock className="w-4 h-4" />
                       Security Settings
                     </button>
                   </div>
@@ -3346,12 +3331,12 @@ export default function DashboardClient({
                     </div>
 
                     {profileError && (
-                      <div className="p-3.5 bg-red-50 border border-red-200 text-red-700 rounded-xl text-xs font-bold text-left">
+                      <div className="p-3.5 bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-900/50 text-red-700 dark:text-red-300 rounded-xl text-xs font-bold text-left">
                         {profileError}
                       </div>
                     )}
                     {profileSuccess && (
-                      <div className="p-3.5 bg-emerald-50 border border-emerald-200 text-emerald-700 rounded-xl text-xs font-bold text-left">
+                      <div className="p-3.5 bg-emerald-50 dark:bg-emerald-950/30 border border-emerald-200 dark:border-emerald-900/50 text-emerald-700 dark:text-emerald-300 rounded-xl text-xs font-bold text-left">
                         {profileSuccess}
                       </div>
                     )}
@@ -3401,9 +3386,9 @@ export default function DashboardClient({
                             type="text"
                             readOnly
                             value={`CSFWD-${userProfile?.id?.slice(0, 8).toUpperCase() || "CSF-2026"}`}
-                            className="w-full px-4 py-3 pr-12 rounded-xl border border-slate-150 bg-slate-50 dark:bg-slate-900/60 dark:border-slate-850 text-slate-500 dark:text-slate-400 text-xs font-bold outline-none cursor-not-allowed select-none"
+                            className="w-full px-4 py-3 pr-12 rounded-xl border border-slate-150 bg-slate-50 dark:bg-slate-900/60 dark:border-slate-800 text-slate-500 dark:text-slate-400 text-xs font-bold outline-none cursor-not-allowed select-none"
                           />
-                          <span className="absolute right-3.5 top-1/2 -translate-y-1/2 text-[9px] font-black uppercase tracking-wider text-slate-400 bg-slate-100 dark:bg-slate-850 px-2 py-0.5 rounded border border-slate-200/50 dark:border-slate-700">
+                          <span className="absolute right-3.5 top-1/2 -translate-y-1/2 text-[9px] font-black uppercase tracking-wider text-slate-400 bg-slate-100 dark:bg-slate-800 px-2 py-0.5 rounded border border-slate-200/50 dark:border-slate-700">
                             Readonly
                           </span>
                         </div>
@@ -3427,7 +3412,7 @@ export default function DashboardClient({
                       <button
                         type="submit"
                         disabled={profileSaving}
-                        className="px-5 py-2.5 bg-[#001e66] hover:bg-[#00aeef] text-white text-xs font-bold rounded-xl transition-all shadow-sm cursor-pointer disabled:opacity-50"
+                        className="px-5 py-2.5 bg-[#001e66] dark:bg-[#00aeef] hover:bg-[#00aeef] dark:hover:bg-[#00aeef]/90 text-white dark:text-[#001e66] text-xs font-bold rounded-xl transition-all shadow-sm cursor-pointer disabled:opacity-50"
                       >
                         {profileSaving ? "Saving changes..." : "Save Profile Details"}
                       </button>
@@ -3444,12 +3429,12 @@ export default function DashboardClient({
 
                       <form onSubmit={handleUpdatePassword} className="space-y-4 max-w-md">
                         {securityError && (
-                          <div className="p-3.5 bg-red-50 border border-red-200 text-red-700 rounded-xl text-xs font-bold">
+                          <div className="p-3.5 bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-900/50 text-red-700 dark:text-red-300 rounded-xl text-xs font-bold">
                             {securityError}
                           </div>
                         )}
                         {securitySuccess && (
-                          <div className="p-3.5 bg-emerald-50 border border-emerald-200 text-emerald-700 rounded-xl text-xs font-bold">
+                          <div className="p-3.5 bg-emerald-50 dark:bg-emerald-950/30 border border-emerald-200 dark:border-emerald-900/50 text-emerald-700 dark:text-emerald-300 rounded-xl text-xs font-bold">
                             {securitySuccess}
                           </div>
                         )}
@@ -3462,7 +3447,7 @@ export default function DashboardClient({
                             placeholder="••••••••••••"
                             value={newPassword}
                             onChange={(e) => setNewPassword(e.target.value)}
-                            className="w-full px-4 py-3 rounded-xl border border-slate-200 bg-slate-50 dark:bg-slate-900 dark:border-slate-800 text-xs font-bold outline-none focus:ring-2 focus:ring-[#00aeef]/20 focus:border-[#00aeef] transition-all"
+                            className="w-full px-4 py-3 rounded-xl border border-slate-200 bg-slate-50 dark:bg-slate-900 dark:border-slate-800 text-slate-700 dark:text-slate-200 text-xs font-bold outline-none focus:ring-2 focus:ring-[#00aeef]/20 focus:border-[#00aeef] transition-all"
                           />
                         </div>
 
@@ -3474,14 +3459,14 @@ export default function DashboardClient({
                             placeholder="••••••••••••"
                             value={confirmNewPassword}
                             onChange={(e) => setConfirmNewPassword(e.target.value)}
-                            className="w-full px-4 py-3 rounded-xl border border-slate-200 bg-slate-50 dark:bg-slate-900 dark:border-slate-800 text-xs font-bold outline-none focus:ring-2 focus:ring-[#00aeef]/20 focus:border-[#00aeef] transition-all"
+                            className="w-full px-4 py-3 rounded-xl border border-slate-200 bg-slate-50 dark:bg-slate-900 dark:border-slate-800 text-slate-700 dark:text-slate-200 text-xs font-bold outline-none focus:ring-2 focus:ring-[#00aeef]/20 focus:border-[#00aeef] transition-all"
                           />
                         </div>
 
                         <button
                           type="submit"
                           disabled={updatingPassword}
-                          className="px-5 py-2.5 bg-[#001e66] hover:bg-[#00aeef] text-white text-xs font-bold rounded-xl transition-all shadow-sm cursor-pointer disabled:opacity-50"
+                          className="px-5 py-2.5 bg-[#001e66] dark:bg-[#00aeef] hover:bg-[#00aeef] dark:hover:bg-[#00aeef]/90 text-white dark:text-[#001e66] text-xs font-bold rounded-xl transition-all shadow-sm cursor-pointer disabled:opacity-50"
                         >
                           {updatingPassword ? "Updating Key..." : "Change Password"}
                         </button>
@@ -3498,7 +3483,7 @@ export default function DashboardClient({
                       <div className="bg-red-50/50 dark:bg-red-950/5 rounded-2xl border border-red-100/50 dark:border-red-950/20 p-5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
                         <div className="text-left">
                           <p className="text-xs font-black text-red-750 dark:text-red-450 uppercase tracking-wide">Delete Account</p>
-                          <p className="text-[11px] text-slate-500 font-bold mt-1 max-w-md">
+                          <p className="text-[11px] text-slate-500 dark:text-slate-400 font-bold mt-1 max-w-md">
                             Deleting your account will remove your access to the AquaTrack portal and cancel all active ticket feeds.
                           </p>
                         </div>
@@ -3512,7 +3497,7 @@ export default function DashboardClient({
                             </button>
                             <button
                               onClick={() => setIsDeleteConfirmOpen(false)}
-                              className="px-4 py-2 border border-slate-200 dark:border-slate-800 hover:bg-slate-150 text-[#001e66] dark:text-slate-350 text-xs font-bold rounded-xl transition-all cursor-pointer"
+                              className="px-4 py-2 border border-slate-200 dark:border-slate-800 hover:bg-slate-100 dark:hover:bg-slate-800/40 text-[#001e66] dark:text-slate-200 text-xs font-bold rounded-xl transition-all cursor-pointer"
                             >
                               Cancel
                             </button>
@@ -3520,7 +3505,7 @@ export default function DashboardClient({
                         ) : (
                           <button
                             onClick={() => setIsDeleteConfirmOpen(true)}
-                            className="px-4 py-2 bg-red-100 hover:bg-red-200 text-red-700 text-xs font-bold rounded-xl transition-all cursor-pointer"
+                            className="px-4 py-2 bg-red-100 hover:bg-red-200 dark:bg-red-950/40 dark:hover:bg-red-950/60 text-red-700 dark:text-red-300 text-xs font-bold rounded-xl transition-all cursor-pointer"
                           >
                             Delete Account
                           </button>
@@ -3533,6 +3518,14 @@ export default function DashboardClient({
             </motion.div>
           </div>
         )}
+
+        {/* Logout Confirmation Modal */}
+        <LogoutConfirmModal
+          open={showLogoutModal}
+          onCancel={() => setShowLogoutModal(false)}
+          onConfirm={handleLogout}
+          message="Are you sure you want to end your session and log out of the AquaTrack portal?"
+        />
 
         {/* Custom Location Search Error Modal */}
         {searchErrorModalOpen && (
@@ -3605,7 +3598,7 @@ export default function DashboardClient({
               {/* Close Button */}
               <button
                 onClick={() => setSelectedAdvisory(null)}
-                className="absolute top-5 right-5 text-slate-400 hover:text-slate-655 hover:bg-slate-50 dark:hover:bg-slate-850 p-1.5 rounded-full transition-all cursor-pointer"
+                className="absolute top-5 right-5 text-slate-400 dark:text-slate-500 hover:text-slate-600 hover:bg-slate-50 dark:hover:bg-slate-800 p-1.5 rounded-full transition-all cursor-pointer"
               >
                 <X className="w-4 h-4" />
               </button>
@@ -3613,15 +3606,15 @@ export default function DashboardClient({
               {/* Icon & Title Row */}
               <div className="flex items-start gap-4">
                 <div className={`w-12 h-12 rounded-2xl flex items-center justify-center shrink-0 shadow-inner ${
-                  selectedAdvisory.type === "warning" ? "bg-red-50 text-red-650" : "bg-blue-50 text-blue-600"
+                  selectedAdvisory.type === "warning" ? "bg-red-50 dark:bg-red-500/10 text-red-650 dark:text-red-400" : "bg-blue-50 dark:bg-blue-500/10 text-blue-600 dark:text-sky-400"
                 }`}>
                   {selectedAdvisory.type === "warning" ? <AlertTriangle className="w-6 h-6" /> : <Megaphone className="w-6 h-6" />}
                 </div>
                 <div className="space-y-1">
                   <span className={`inline-flex items-center px-2 py-0.5 rounded-[6px] text-[8px] font-black uppercase border ${
                     selectedAdvisory.type === "warning"
-                      ? "bg-red-50 text-red-700 border-red-200"
-                      : "bg-blue-50 text-blue-700 border-blue-200"
+                      ? "bg-red-50 text-red-700 border-red-200 dark:bg-red-500/10 dark:text-red-300 dark:border-red-500/30"
+                      : "bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-500/10 dark:text-sky-300 dark:border-blue-500/30"
                   }`}>
                     {selectedAdvisory.type}
                   </span>
@@ -3632,7 +3625,7 @@ export default function DashboardClient({
               </div>
 
               {/* Meta information */}
-              <div className="flex items-center gap-2 text-[10px] text-slate-400 font-bold uppercase tracking-wider border-y border-slate-100 dark:border-slate-800 py-3">
+              <div className="flex items-center gap-2 text-[10px] text-slate-400 dark:text-slate-500 font-bold uppercase tracking-wider border-y border-slate-100 dark:border-slate-800 py-3">
                 <span>Issued: {selectedAdvisory.date}</span>
                 <span className="text-slate-200 dark:text-slate-800">•</span>
                 <span>Target: Broadcast Announcement</span>

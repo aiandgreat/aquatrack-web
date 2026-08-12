@@ -2,6 +2,37 @@ import { NextResponse } from "next/server";
 import { generateText } from "ai";
 import { createGoogle } from "@ai-sdk/google";
 
+const VALID_CATEGORIES = [
+  "PIPELINE_BREACH_PRESSURE_DROP",
+  "HIGH_TURBIDITY",
+  "HIGH_MINERAL_CONTENT_TDS",
+  "CHEMICAL_DISCOLORATION_CONTAMINATION",
+  "UNCLASSIFIED_INFRASTRUCTURE_ANOMALY",
+];
+
+const VALID_URGENCIES = ["LOW", "MEDIUM", "HIGH", "CRITICAL"];
+
+function normalizeCategory(value: unknown): string {
+  if (!value) return "UNCLASSIFIED_INFRASTRUCTURE_ANOMALY";
+  const candidate = String(value).toUpperCase().replace(/\s+/g, "_");
+  if (VALID_CATEGORIES.includes(candidate)) return candidate;
+  if (candidate.includes("PRESSURE") || candidate.includes("BREACH")) return "PIPELINE_BREACH_PRESSURE_DROP";
+  if (candidate.includes("TURBID") || candidate.includes("MUDDY")) return "HIGH_TURBIDITY";
+  if (candidate.includes("TDS") || candidate.includes("MINERAL")) return "HIGH_MINERAL_CONTENT_TDS";
+  if (candidate.includes("PH") || candidate.includes("CHEMICAL") || candidate.includes("COLOR") || candidate.includes("CONTAMINA")) return "CHEMICAL_DISCOLORATION_CONTAMINATION";
+  return "UNCLASSIFIED_INFRASTRUCTURE_ANOMALY";
+}
+
+function normalizeUrgency(value: unknown): string {
+  if (!value) return "MEDIUM";
+  const candidate = String(value).toUpperCase();
+  if (VALID_URGENCIES.includes(candidate)) return candidate;
+  if (candidate.includes("EMERGENCY")) return "CRITICAL";
+  if (candidate.includes("URGENT") || candidate.includes("HIGH")) return "HIGH";
+  if (candidate.includes("LOW")) return "LOW";
+  return "MEDIUM";
+}
+
 export async function POST(req: Request) {
   try {
     const { text } = await req.json();
@@ -72,6 +103,9 @@ export async function POST(req: Request) {
 
     const cleanJson = aiResponse.replace(/```json|```/g, "").trim();
     const result = JSON.parse(cleanJson);
+
+    result.category = normalizeCategory(result.category);
+    result.urgency = normalizeUrgency(result.urgency);
 
     return NextResponse.json({ success: true, result });
   } catch (err: any) {

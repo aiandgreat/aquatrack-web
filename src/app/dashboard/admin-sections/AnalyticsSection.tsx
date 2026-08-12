@@ -313,20 +313,20 @@ function RangeCalendar({
     const single = start && end;
     const disabled = isDisabled(d);
 
-    if (disabled) return "text-slate-300 cursor-not-allowed";
+    if (disabled) return "text-slate-300 dark:text-slate-600 cursor-not-allowed";
 
     let cls = "cursor-pointer select-none transition-all text-[12px] font-semibold ";
 
     if (single || (start && !rangeEnd)) {
-      cls += "bg-[#001e66] text-white rounded-lg shadow-sm ";
+      cls += "bg-[#001e66] dark:bg-[#00aeef] text-white dark:text-[#001e66] rounded-lg shadow-sm ";
     } else if (start) {
-      cls += "bg-[#001e66] text-white rounded-l-lg ";
+      cls += "bg-[#001e66] dark:bg-[#00aeef] text-white dark:text-[#001e66] rounded-l-lg ";
     } else if (end) {
-      cls += "bg-[#001e66] text-white rounded-r-lg ";
+      cls += "bg-[#001e66] dark:bg-[#00aeef] text-white dark:text-[#001e66] rounded-r-lg ";
     } else if (mid) {
-      cls += "bg-[#00aeef]/20 text-[#001e66] rounded-none ";
+      cls += "bg-[#00aeef]/20 dark:bg-[#00aeef]/25 text-[#001e66] dark:text-slate-100 rounded-none ";
     } else {
-      cls += "text-slate-700 hover:bg-slate-100 rounded-lg ";
+      cls += "text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg ";
     }
 
     if (isToday(d) && !start && !end && !mid) {
@@ -343,19 +343,19 @@ function RangeCalendar({
         <button
           type="button"
           onClick={prevMonth}
-          className="p-1.5 rounded-lg hover:bg-slate-100 transition-colors"
+          className="p-1.5 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
         >
-          <ChevronLeft className="w-4 h-4 text-[#001e66]" />
+          <ChevronLeft className="w-4 h-4 text-[#001e66] dark:text-slate-200" />
         </button>
-        <span className="text-xs font-black text-[#001e66] tracking-wide">
+        <span className="text-xs font-black text-[#001e66] dark:text-slate-200 tracking-wide">
           {MONTHS[viewMonth]} {viewYear}
         </span>
         <button
           type="button"
           onClick={nextMonth}
-          className="p-1.5 rounded-lg hover:bg-slate-100 transition-colors"
+          className="p-1.5 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
         >
-          <ChevronRight className="w-4 h-4 text-[#001e66]" />
+          <ChevronRight className="w-4 h-4 text-[#001e66] dark:text-slate-200" />
         </button>
       </div>
 
@@ -692,11 +692,11 @@ export default function AnalyticsSection({
                 animate={{ scale: 1, opacity: 1, y: 0 }}
                 exit={{ scale: 0.94, opacity: 0, y: 30 }}
                 transition={{ type: "spring", stiffness: 320, damping: 28 }}
-                className="bg-white rounded-3xl shadow-2xl border border-slate-200 w-full max-w-sm flex flex-col overflow-hidden"
+                className="bg-white dark:bg-slate-900 rounded-3xl shadow-2xl border border-slate-200 dark:border-slate-800 w-full max-w-sm flex flex-col overflow-hidden"
                 style={{ maxHeight: "min(90svh, 580px)" }}
               >
                 {/* Modal Header */}
-                <div className="flex items-center justify-between px-5 py-3.5 border-b border-slate-100 bg-gradient-to-r from-[#001e66] to-[#003399] shrink-0">
+                <div className="flex items-center justify-between px-5 py-3.5 border-b border-slate-100 dark:border-slate-800 bg-gradient-to-r from-[#001e66] to-[#003399] shrink-0">
                   <div className="flex items-center gap-2.5">
                     <Calendar className="w-4.5 h-4.5 text-[#00aeef]" />
                     <div>
@@ -725,9 +725,9 @@ export default function AnalyticsSection({
                   {/* Live selection summary */}
                   <div className="mt-3 min-h-[36px]">
                     {filterFrom ? (
-                      <div className="p-2.5 bg-[#001e66]/5 border border-[#001e66]/10 rounded-xl flex items-center gap-2">
+                      <div className="p-2.5 bg-[#001e66]/5 dark:bg-white/5 border border-[#001e66]/10 dark:border-white/10 rounded-xl flex items-center gap-2">
                         <Clock className="w-3.5 h-3.5 text-[#00aeef] shrink-0" />
-                        <span className="text-[11px] font-bold text-[#001e66]">
+                        <span className="text-[11px] font-bold text-[#001e66] dark:text-slate-100">
                           {filterTo && !isSameDate(filterFrom, filterTo)
                             ? <>{filterFrom.toLocaleDateString("en-US",{month:"short",day:"numeric",year:"numeric"})} &nbsp;→&nbsp; {filterTo.toLocaleDateString("en-US",{month:"short",day:"numeric",year:"numeric"})}</>
                             : filterFrom.toLocaleDateString("en-US",{month:"long",day:"numeric",year:"numeric"})
@@ -741,20 +741,20 @@ export default function AnalyticsSection({
                 </div>
 
                 {/* Footer */}
-                <div className="flex items-center gap-2 px-5 py-3.5 border-t border-slate-100 bg-slate-50 shrink-0">
+                <div className="flex items-center gap-2 px-5 py-3.5 border-t border-slate-100 dark:border-slate-800 bg-slate-50 dark:bg-slate-900 shrink-0">
                   <button
                     onClick={handleClearFilter}
-                    className="flex-1 py-2.5 rounded-xl text-xs font-bold text-slate-500 border border-slate-200 hover:bg-slate-100 transition-all"
+                    className="flex-1 py-2.5 rounded-xl text-xs font-bold text-slate-500 dark:text-slate-300 border border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800 transition-all"
                   >
                     Clear
                   </button>
                   <button
                     disabled={!filterFrom}
                     onClick={handleApplyFilter}
-                    className={`flex-1 py-2.5 rounded-xl text-xs font-bold text-white transition-all ${
+                    className={`flex-1 py-2.5 rounded-xl text-xs font-bold text-white dark:text-[#001e66] transition-all ${
                       filterFrom
-                        ? "bg-[#001e66] hover:bg-[#00aeef] shadow-md cursor-pointer"
-                        : "bg-slate-300 cursor-not-allowed"
+                        ? "bg-[#001e66] dark:bg-[#00aeef] hover:bg-[#00aeef] dark:hover:bg-[#00aeef]/90 shadow-md cursor-pointer"
+                        : "bg-slate-300 dark:bg-slate-700 cursor-not-allowed"
                     }`}
                   >
                     Apply Filter
@@ -782,7 +782,7 @@ export default function AnalyticsSection({
                 animate={{ scale: 1, opacity: 1, y: 0 }}
                 exit={{ scale: 0.85, opacity: 0, y: 24 }}
                 transition={{ type: "spring", stiffness: 340, damping: 30 }}
-                className="bg-white rounded-3xl shadow-2xl border border-slate-200 w-full max-w-sm overflow-hidden"
+                className="bg-white dark:bg-slate-900 rounded-3xl shadow-2xl border border-slate-200 dark:border-slate-800 w-full max-w-sm overflow-hidden"
               >
                 {/* Accent strip */}
                 <div className="h-1.5 w-full bg-gradient-to-r from-[#001e66] via-[#00aeef] to-[#ffd800]" />
@@ -793,22 +793,22 @@ export default function AnalyticsSection({
                     initial={{ scale: 0.5, opacity: 0 }}
                     animate={{ scale: 1, opacity: 1 }}
                     transition={{ delay: 0.1, type: "spring", stiffness: 300, damping: 22 }}
-                    className="w-16 h-16 rounded-full bg-[#001e66]/5 border-2 border-[#00aeef]/30 flex items-center justify-center"
+                    className="w-16 h-16 rounded-full bg-[#001e66]/5 dark:bg-white/5 border-2 border-[#00aeef]/30 flex items-center justify-center"
                   >
-                    <FileCheck className="w-8 h-8 text-[#001e66]" />
+                    <FileCheck className="w-8 h-8 text-[#001e66] dark:text-[#00aeef]" />
                   </motion.div>
 
                   <div>
-                    <h3 className="text-base font-black text-[#001e66] tracking-tight mb-1">Report Downloaded!</h3>
-                    <p className="text-xs text-slate-500 font-medium leading-relaxed">
+                    <h3 className="text-base font-black text-[#001e66] dark:text-slate-100 tracking-tight mb-1">Report Downloaded!</h3>
+                    <p className="text-xs text-slate-500 dark:text-slate-400 font-medium leading-relaxed">
                       Your Water Analytics PDF has been successfully generated and saved to your downloads folder.
                     </p>
                   </div>
 
                   {/* Range badge */}
-                  <div className="flex items-center gap-2 bg-[#001e66]/5 border border-[#001e66]/10 rounded-xl px-4 py-2.5 w-full justify-center">
+                  <div className="flex items-center gap-2 bg-[#001e66]/5 dark:bg-white/5 border border-[#001e66]/10 dark:border-white/10 rounded-xl px-4 py-2.5 w-full justify-center">
                     <Calendar className="w-3.5 h-3.5 text-[#00aeef] shrink-0" />
-                    <span className="text-[11px] font-black text-[#001e66] uppercase tracking-wider">{downloadedRange}</span>
+                    <span className="text-[11px] font-black text-[#001e66] dark:text-slate-100 uppercase tracking-wider">{downloadedRange}</span>
                   </div>
 
                   {/* Meta info */}
@@ -820,7 +820,7 @@ export default function AnalyticsSection({
 
                   <button
                     onClick={() => setShowSuccessModal(false)}
-                    className="w-full mt-1 py-3 bg-[#001e66] hover:bg-[#00aeef] text-white text-xs font-black uppercase tracking-widest rounded-xl transition-all shadow-md hover:shadow-lg cursor-pointer border-none"
+                    className="w-full mt-1 py-3 bg-[#001e66] dark:bg-[#00aeef] hover:bg-[#00aeef] dark:hover:bg-[#00aeef]/90 text-white dark:text-[#001e66] text-xs font-black uppercase tracking-widest rounded-xl transition-all shadow-md hover:shadow-lg cursor-pointer border-none"
                   >
                     Close
                   </button>
@@ -832,23 +832,23 @@ export default function AnalyticsSection({
       </ModalPortal>
 
       {/* Section Header */}
-      <div className="flex flex-wrap justify-between items-center gap-3 pb-4 border-b border-slate-200">
+      <div className="flex flex-wrap justify-between items-center gap-3 pb-4 border-b border-slate-200 dark:border-slate-800">
         <div className="flex items-center gap-2.5">
-          <div className="p-2 bg-blue-50 text-[#001e66] rounded-xl shadow-inner">
+          <div className="p-2 bg-blue-50 dark:bg-blue-950/40 text-[#001e66] dark:text-slate-100 rounded-xl shadow-inner">
             <BarChart3 className="w-5 h-5 text-[#00aeef]" />
           </div>
           <div>
-            <h2 className="text-lg font-black text-[#001e66] tracking-tight">Water Quality Analytics Panel</h2>
-            <p className="text-xs text-slate-500 font-medium">Verify overall district water telemetry analytics and compliance limits</p>
+            <h2 className="text-lg font-black text-[#001e66] dark:text-slate-100 tracking-tight">Water Quality Analytics Panel</h2>
+            <p className="text-xs text-slate-500 dark:text-slate-400 font-medium">Verify overall district water telemetry analytics and compliance limits</p>
           </div>
         </div>
         <div className="flex items-center gap-2 flex-wrap">
           {/* Active range badge */}
           {appliedFrom && appliedTo && (
-            <span className="flex items-center gap-1.5 bg-[#00aeef]/10 border border-[#00aeef]/30 text-[#001e66] text-[10px] font-black px-3 py-1.5 rounded-full tracking-wide">
+            <span className="flex items-center gap-1.5 bg-[#00aeef]/10 dark:bg-[#00aeef]/15 border border-[#00aeef]/30 text-[#001e66] dark:text-slate-100 text-[10px] font-black px-3 py-1.5 rounded-full tracking-wide">
               <Calendar className="w-3 h-3" />
               {rangeLabel}
-              <button onClick={handleClearFilter} className="ml-1 text-[#001e66]/50 hover:text-[#970006] transition-colors">
+              <button onClick={handleClearFilter} className="ml-1 text-[#001e66]/50 dark:text-slate-300 hover:text-[#970006] transition-colors">
                 <X className="w-3 h-3" />
               </button>
             </span>
@@ -856,7 +856,7 @@ export default function AnalyticsSection({
           {/* Filter button */}
           <button
             onClick={() => setFilterOpen(true)}
-            className="flex items-center gap-1.5 bg-white hover:bg-slate-50 border border-slate-200 text-[#001e66] font-extrabold text-xs px-3.5 py-2.5 rounded-xl uppercase tracking-wider shadow-sm hover:scale-105 active:scale-98 transition-all cursor-pointer focus:outline-none"
+            className="flex items-center gap-1.5 bg-white dark:bg-slate-900 hover:bg-slate-50 dark:hover:bg-slate-800 border border-slate-200 dark:border-slate-800 text-[#001e66] dark:text-slate-200 font-extrabold text-xs px-3.5 py-2.5 rounded-xl uppercase tracking-wider shadow-sm hover:scale-105 active:scale-98 transition-all cursor-pointer focus:outline-none"
           >
             <Filter className="w-3.5 h-3.5" />
             <span>Filter</span>
@@ -864,7 +864,7 @@ export default function AnalyticsSection({
           {/* Download button */}
           <button
             onClick={handleDownloadWithModal}
-            className="flex items-center gap-1.5 bg-[#001e66] hover:bg-[#00aeef] text-white font-extrabold text-xs px-4 py-2.5 rounded-xl uppercase tracking-wider shadow-md hover:scale-105 active:scale-98 transition-all cursor-pointer border-none focus:outline-none"
+            className="flex items-center gap-1.5 bg-[#001e66] dark:bg-[#00aeef] hover:bg-[#00aeef] dark:hover:bg-[#00aeef]/90 text-white dark:text-[#001e66] font-extrabold text-xs px-4 py-2.5 rounded-xl uppercase tracking-wider shadow-md hover:scale-105 active:scale-98 transition-all cursor-pointer border-none focus:outline-none"
           >
             <Download className="w-3.5 h-3.5" />
             <span>Download Analytics PDF</span>
@@ -873,16 +873,16 @@ export default function AnalyticsSection({
       </div>
 
       {/* ── 1. Water Quality Timeline Recharts Line Chart with Dual Axis ─── */}
-      <Card className="bg-white/40 border border-slate-200/85 rounded-[24px] p-6 shadow-sm">
+      <Card className="bg-white/40 dark:bg-slate-900/40 border border-slate-200/85 dark:border-slate-800/85 rounded-[24px] p-6 shadow-sm">
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
           <div className="flex items-center gap-2">
             <TrendingUp className="w-4.5 h-4.5 text-[#00aeef] shrink-0" />
             <div>
-              <Title className="text-sm font-black text-[#001e66] uppercase tracking-wider">Water Quality Timelines — {rangeLabel}</Title>
-              <Text className="text-xs text-slate-400 font-medium mt-0.5">Rolling averages of chemical and mineral parameters across CSFWD nodes</Text>
+              <Title className="text-sm font-black text-[#001e66] dark:text-slate-100 uppercase tracking-wider">Water Quality Timelines — {rangeLabel}</Title>
+              <Text className="text-xs text-slate-400 dark:text-slate-400 font-medium mt-0.5">Rolling averages of chemical and mineral parameters across CSFWD nodes</Text>
             </div>
           </div>
-          <div className="flex flex-wrap items-center gap-4 text-[10px] font-black uppercase tracking-wider text-slate-500">
+          <div className="flex flex-wrap items-center gap-4 text-[10px] font-black uppercase tracking-wider text-slate-500 dark:text-slate-300">
             <span className="flex items-center gap-1.5"><span className="w-3 h-3 rounded-full bg-[#00aeef]" /> Avg pH</span>
             <span className="flex items-center gap-1.5"><span className="w-3 h-3 rounded-full bg-[#facc15]" /> Avg Turbidity (NTU)</span>
             <span className="flex items-center gap-1.5"><span className="w-3 h-3 rounded-full bg-[#a855f7]" /> Avg TDS (ppm)</span>
@@ -892,19 +892,19 @@ export default function AnalyticsSection({
         <div className="h-72 w-full">
           <ResponsiveContainer width="100%" height="100%">
             <LineChart data={timelineData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
-              <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" vertical={false} />
-              <XAxis dataKey="date" interval={0} tick={{ fill: "#64748b", fontSize: 9, fontWeight: "bold" }} axisLine={false} tickLine={false} />
-              <YAxis yAxisId="left" domain={[0, 14]} tick={{ fill: "#64748b", fontSize: 10, fontWeight: "bold" }} axisLine={false} tickLine={false} />
-              <YAxis yAxisId="right" orientation="right" domain={[0, 500]} tick={{ fill: "#64748b", fontSize: 10, fontWeight: "bold" }} axisLine={false} tickLine={false} />
+              <CartesianGrid strokeDasharray="3 3" stroke="rgba(148, 163, 184, 0.4)" vertical={false} />
+              <XAxis dataKey="date" interval={0} tick={{ fill: "#94a3b8", fontSize: 9, fontWeight: "bold" }} axisLine={false} tickLine={false} />
+              <YAxis yAxisId="left" domain={[0, 14]} tick={{ fill: "#94a3b8", fontSize: 10, fontWeight: "bold" }} axisLine={false} tickLine={false} />
+              <YAxis yAxisId="right" orientation="right" domain={[0, 500]} tick={{ fill: "#94a3b8", fontSize: 10, fontWeight: "bold" }} axisLine={false} tickLine={false} />
               <Tooltip
                 contentStyle={{
-                  backgroundColor: "rgba(255, 255, 255, 0.95)",
-                  border: "1px solid #e2e8f0",
+                  backgroundColor: "var(--chart-tooltip-bg)",
+                  border: "1px solid var(--chart-tooltip-border)",
                   borderRadius: "12px",
                   fontSize: "11px",
                   fontWeight: "bold",
-                  color: "#001e66",
-                  boxShadow: "0 4px 12px rgba(0, 0, 0, 0.05)",
+                  color: "var(--chart-tooltip-color)",
+                  boxShadow: "0 4px 12px var(--chart-tooltip-shadow)",
                 }}
               />
               <Line yAxisId="left" type="monotone" dataKey="pH" stroke="#00aeef" strokeWidth={3.5} dot={false} activeDot={{ r: 6 }} />
@@ -922,27 +922,27 @@ export default function AnalyticsSection({
         <div className="lg:col-span-7 flex flex-col justify-between space-y-6">
           
           {/* Absolute Counts Progress Cards */}
-          <div className="bg-white/40 border border-slate-200/85 rounded-[24px] p-6 shadow-sm flex-1 flex flex-col justify-between">
+          <div className="bg-white/40 dark:bg-slate-900/40 border border-slate-200/85 dark:border-slate-800/85 rounded-[24px] p-6 shadow-sm flex-1 flex flex-col justify-between">
             <div className="mb-4 flex items-center gap-2">
               <LayoutGrid className="w-4.5 h-4.5 text-[#00aeef] shrink-0" />
               <div>
-                <h3 className="text-sm font-black text-[#001e66] uppercase tracking-wider">Barangay Classification Matrix</h3>
-                <p className="text-xs text-slate-400 font-medium">Stacked segments showing active complaint types per Barangay</p>
+                <h3 className="text-sm font-black text-[#001e66] dark:text-slate-100 uppercase tracking-wider">Barangay Classification Matrix</h3>
+                <p className="text-xs text-slate-400 dark:text-slate-400 font-medium">Stacked segments showing active complaint types per Barangay</p>
               </div>
             </div>
 
             <div className="space-y-4 max-h-[340px] overflow-y-auto pr-1">
               {barangayCounts.map((bar) => (
                 <div key={bar.barangay} className="space-y-1">
-                  <div className="flex justify-between text-xs font-bold text-[#001e66]">
+                  <div className="flex justify-between text-xs font-bold text-[#001e66] dark:text-slate-200">
                     <span className="flex items-center gap-1">
                       <MapPin className="w-3.5 h-3.5 text-[#00aeef] shrink-0" />
                       <span>Barangay {bar.barangay}</span>
                     </span>
-                    <span className="text-[10px] text-slate-400">{bar.total} Active Cases</span>
+                    <span className="text-[10px] text-slate-400 dark:text-slate-400">{bar.total} Active Cases</span>
                   </div>
                   {/* Multi-segment stacked progress bar */}
-                  <div className="w-full h-5.5 bg-slate-100 rounded-full overflow-hidden flex shadow-inner">
+                  <div className="w-full h-5.5 bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden flex shadow-inner">
                     {bar.total > 0 ? (
                       Object.entries(bar.categories).map(([cat, count]) => {
                         if (count === 0) return null;
@@ -962,8 +962,8 @@ export default function AnalyticsSection({
                         );
                       })
                     ) : (
-                      <div className="w-full h-full flex items-center justify-center gap-1 text-[9px] text-emerald-600 bg-emerald-50/50 font-bold uppercase tracking-wider">
-                        <ShieldCheck className="w-3.5 h-3.5 text-emerald-500 shrink-0" />
+                      <div className="w-full h-full flex items-center justify-center gap-1 text-[9px] text-emerald-600 dark:text-emerald-300 bg-emerald-50/50 dark:bg-emerald-950/50 font-bold uppercase tracking-wider">
+                        <ShieldCheck className="w-3.5 h-3.5 text-emerald-500 dark:text-emerald-400 shrink-0" />
                         <span>Clear Sector</span>
                       </div>
                     )}
@@ -973,9 +973,9 @@ export default function AnalyticsSection({
             </div>
 
             {/* Visual Legend below matrix */}
-            <div className="flex flex-wrap gap-x-4 gap-y-2 mt-5 pt-4 border-t border-slate-150">
+            <div className="flex flex-wrap gap-x-4 gap-y-2 mt-5 pt-4 border-t border-slate-150 dark:border-slate-800">
               {Object.entries(categoryColors).map(([key, value]) => (
-                <div key={key} className="flex items-center gap-1.5 text-[9px] font-bold text-slate-500 uppercase tracking-wide">
+                <div key={key} className="flex items-center gap-1.5 text-[9px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wide">
                   <span className="w-2.5 h-2.5 rounded" style={{ backgroundColor: value.hex }} />
                   {value.label}
                 </div>
@@ -987,21 +987,21 @@ export default function AnalyticsSection({
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             
             {/* Scrollable Barangay Feed */}
-            <div className="bg-white/40 border border-slate-200/85 rounded-[24px] p-5 shadow-sm">
+            <div className="bg-white/40 dark:bg-slate-900/40 border border-slate-200/85 dark:border-slate-800/85 rounded-[24px] p-5 shadow-sm">
               <div className="flex items-center gap-2 mb-3.5">
                 <FileSpreadsheet className="w-4.5 h-4.5 text-[#00aeef] shrink-0" />
-                <h4 className="text-xs font-black text-[#001e66] uppercase tracking-wider">Barangay Ledger</h4>
+                <h4 className="text-xs font-black text-[#001e66] dark:text-slate-100 uppercase tracking-wider">Barangay Ledger</h4>
               </div>
               <div className="max-h-[220px] overflow-y-auto space-y-2.5 pr-1">
                 {barangayCounts.map((bar) => {
                   const isClear = bar.total === 0;
                   return (
-                    <div key={bar.barangay} className="flex justify-between items-center text-xs pb-1.5 border-b border-slate-100/50">
-                      <span className="font-extrabold text-[#001e66]">Brgy. {bar.barangay}</span>
+                    <div key={bar.barangay} className="flex justify-between items-center text-xs pb-1.5 border-b border-slate-100/50 dark:border-slate-800">
+                      <span className="font-extrabold text-[#001e66] dark:text-slate-100">Brgy. {bar.barangay}</span>
                       <span className={`px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-wider border ${
                         isClear 
-                          ? "bg-emerald-50 text-emerald-700 border-emerald-100" 
-                          : "bg-amber-50 text-amber-700 border-amber-100"
+                          ? "bg-emerald-50 text-emerald-700 border-emerald-100 dark:bg-emerald-950/40 dark:text-emerald-300 dark:border-emerald-900/50" 
+                          : "bg-amber-50 text-amber-700 border-amber-100 dark:bg-amber-950/40 dark:text-amber-300 dark:border-amber-900/50"
                       }`}>
                         {isClear ? "CLEAR" : `${bar.total} CASES`}
                       </span>
@@ -1012,24 +1012,24 @@ export default function AnalyticsSection({
             </div>
 
             {/* AI Classification Summary Box */}
-            <div className="bg-slate-50 border border-slate-250 rounded-[24px] p-5 shadow-sm flex flex-col justify-between">
+            <div className="bg-slate-50 dark:bg-slate-900/40 border border-slate-250 dark:border-slate-800/85 rounded-[24px] p-5 shadow-sm flex flex-col justify-between">
               <div>
                 <div className="flex items-center gap-2 mb-3.5">
                   <Bot className="w-4.5 h-4.5 text-[#00aeef] shrink-0" />
-                  <h4 className="text-xs font-black text-[#001e66] uppercase tracking-wider">AI Classification Summary</h4>
+                  <h4 className="text-xs font-black text-[#001e66] dark:text-slate-100 uppercase tracking-wider">AI Classification Summary</h4>
                 </div>
-                <p className="text-xs text-slate-700 font-semibold leading-relaxed">
+                <p className="text-xs text-slate-700 dark:text-slate-200 font-semibold leading-relaxed">
                   {insights.text}
                 </p>
               </div>
-              <div className="mt-4 pt-3 border-t border-slate-150 grid grid-cols-2 gap-2 text-xxs font-bold text-slate-400 uppercase tracking-wider">
+              <div className="mt-4 pt-3 border-t border-slate-150 dark:border-slate-800 grid grid-cols-2 gap-2 text-xxs font-bold text-slate-400 dark:text-slate-400 uppercase tracking-wider">
                 <div>
                   <span>District Hotspot</span>
-                  <span className="block text-slate-700 font-black text-[10px] mt-0.5">{insights.hotspot}</span>
+                  <span className="block text-slate-700 dark:text-slate-100 font-black text-[10px] mt-0.5">{insights.hotspot}</span>
                 </div>
                 <div>
                   <span>Prevalent Issue</span>
-                  <span className="block text-slate-700 font-black text-[10px] mt-0.5">{insights.topIssue}</span>
+                  <span className="block text-slate-700 dark:text-slate-100 font-black text-[10px] mt-0.5">{insights.topIssue}</span>
                 </div>
               </div>
             </div>
@@ -1039,12 +1039,12 @@ export default function AnalyticsSection({
         </div>
 
         {/* Right Column: Proportions calculated Donut Chart */}
-        <div className="lg:col-span-5 bg-white/40 border border-slate-200/85 rounded-[24px] p-6 shadow-sm flex flex-col justify-between items-center text-center">
+        <div className="lg:col-span-5 bg-white/40 dark:bg-slate-900/40 border border-slate-200/85 dark:border-slate-800/85 rounded-[24px] p-6 shadow-sm flex flex-col justify-between items-center text-center">
           <div className="w-full flex items-center gap-2">
             <PieChart className="w-4.5 h-4.5 text-[#00aeef] shrink-0" />
             <div className="text-left">
-              <h3 className="text-sm font-black text-[#001e66] uppercase tracking-wider">Grievance Proportions</h3>
-              <p className="text-xs text-slate-400 font-medium">District-wide category weight distributions</p>
+              <h3 className="text-sm font-black text-[#001e66] dark:text-slate-100 uppercase tracking-wider">Grievance Proportions</h3>
+              <p className="text-xs text-slate-400 dark:text-slate-400 font-medium">District-wide category weight distributions</p>
             </div>
           </div>
 
@@ -1069,22 +1069,22 @@ export default function AnalyticsSection({
                 ))}
               </svg>
             ) : (
-              <div className="w-48 h-48 rounded-full border-4 border-dashed border-slate-200 flex flex-col items-center justify-center text-slate-300 p-4">
-                <span className="text-[10px] font-black uppercase tracking-wider text-slate-400">Zero Grievances</span>
-                <span className="text-[9px] mt-1 text-slate-400 leading-normal text-center">All pipelines reporting standard compliance limits.</span>
+              <div className="w-48 h-48 rounded-full border-4 border-dashed border-slate-200 dark:border-slate-700 flex flex-col items-center justify-center text-slate-300 p-4">
+                <span className="text-[10px] font-black uppercase tracking-wider text-slate-400 dark:text-slate-400">Zero Grievances</span>
+                <span className="text-[9px] mt-1 text-slate-400 dark:text-slate-400 leading-normal text-center">All pipelines reporting standard compliance limits.</span>
               </div>
             )}
 
             {/* Central Information Plate */}
             {totalActiveCount > 0 && (
-              <div className="absolute w-32 h-32 bg-white rounded-full shadow-inner flex flex-col items-center justify-center p-3 select-none pointer-events-none">
+              <div className="absolute w-32 h-32 bg-white dark:bg-slate-800 rounded-full shadow-inner flex flex-col items-center justify-center p-3 select-none pointer-events-none">
                 <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest text-center truncate max-w-full">
                   {hoveredSlice ? hoveredSlice.name : "Total Active"}
                 </span>
-                <span className="text-2xl font-black text-[#001e66] mt-0.5">
+                <span className="text-2xl font-black text-[#001e66] dark:text-slate-100 mt-0.5">
                   {hoveredSlice ? hoveredSlice.count : totalActiveCount}
                 </span>
-                <span className="text-[10px] font-bold text-slate-500 mt-0.5">
+                <span className="text-[10px] font-bold text-slate-500 dark:text-slate-400 mt-0.5">
                   {hoveredSlice ? `${hoveredSlice.percentage}%` : "Grievances"}
                 </span>
               </div>
@@ -1092,7 +1092,7 @@ export default function AnalyticsSection({
           </div>
 
           {/* Slices legend info panel */}
-          <div className="w-full text-left space-y-1.5 bg-slate-50/50 p-3 rounded-xl border border-slate-200/40 text-xxs font-bold text-slate-500">
+          <div className="w-full text-left space-y-1.5 bg-slate-50/50 dark:bg-slate-900/40 p-3 rounded-xl border border-slate-200/40 dark:border-slate-800 text-xxs font-bold text-slate-500 dark:text-slate-300">
             {donutSlices.length > 0 ? (
               donutSlices.map((slice) => (
                 <div key={slice.category} className="flex justify-between items-center">
@@ -1104,7 +1104,7 @@ export default function AnalyticsSection({
                 </div>
               ))
             ) : (
-              <div className="text-center italic text-slate-400 py-1">No category proportions data.</div>
+              <div className="text-center italic text-slate-400 dark:text-slate-400 py-1">No category proportions data.</div>
             )}
           </div>
         </div>

@@ -38,6 +38,14 @@ interface HomeSectionProps {
   email?: string | null;
 }
 
+const getUrgencyBadgeClass = (urgency: string) => {
+  const u = urgency.toUpperCase();
+  if (u === "CRITICAL") return "bg-red-100 dark:bg-red-950/40 text-red-800 dark:text-red-300 border border-red-200 dark:border-red-900/60";
+  if (u === "HIGH" || u === "URGENT") return "bg-orange-100 dark:bg-orange-950/40 text-orange-800 dark:text-orange-300 border border-orange-200 dark:border-orange-900/60";
+  if (u === "MEDIUM") return "bg-yellow-100 dark:bg-yellow-950/40 text-yellow-900 dark:text-yellow-300 border border-yellow-200 dark:border-yellow-900/60";
+  return "bg-slate-100 dark:bg-slate-800 text-slate-650 dark:text-slate-400 border border-slate-200 dark:border-slate-700";
+};
+
 export default function HomeSection({
   stats,
   assignedComplaints,
@@ -56,8 +64,8 @@ export default function HomeSection({
           style={{ backgroundImage: "url('/headerpic.png')", backgroundPosition: "center 25%" }}
         />
 
-        {/* Dark Blue Overlay */}
-        <div className="absolute inset-0 bg-gradient-to-r from-[#0B2E7A]/95 via-[#0B2E7A]/90 to-[#0B2E7A]/80 dark:from-[#001e66]/95 dark:via-[#001e66]/90 dark:to-[#001e66]/80 z-10 pointer-events-none" />
+        {/* Dark Overlay */}
+        <div className="absolute inset-0 bg-gradient-to-r from-[#0B2E7A]/95 via-[#0B2E7A]/90 to-[#0B2E7A]/80 dark:from-slate-950/95 dark:via-slate-950/90 dark:to-slate-950/80 z-10 pointer-events-none" />
         
         {/* Wave Background SVG Overlay */}
         <div className="absolute inset-0 opacity-15 pointer-events-none z-10">
@@ -179,22 +187,28 @@ export default function HomeSection({
                       <p className="text-xs font-black text-[#0B2E7A] dark:text-slate-200 truncate group-hover:text-[#189BFF] transition-colors">
                         {ticket.summary}
                       </p>
-                      <p className="text-[10px] text-slate-450 dark:text-slate-500 font-bold mt-0.5">
-                        Urgency: <span className="text-rose-600 dark:text-rose-400 uppercase font-black">{ticket.urgency}</span> • Category: {ticket.category?.replace(/_/g, " ") || "UNCLASSIFIED"}
+                      <p className="text-[10px] text-slate-450 dark:text-slate-500 font-bold mt-0.5 flex items-center gap-1.5 flex-wrap">
+                        <span className="uppercase font-black text-slate-600 dark:text-slate-400">Urgency:</span>
+                        <span className={`inline-block px-2 py-0.5 rounded-full text-[8px] font-black uppercase tracking-wider ${getUrgencyBadgeClass(ticket.urgency)}`}>
+                          {ticket.urgency}
+                        </span>
+                        <span className="text-slate-450 dark:text-slate-500">•</span>
+                        <span className="uppercase font-black text-slate-600 dark:text-slate-400">Category:</span>
+                        <span className="font-bold">{ticket.category?.replace(/_/g, " ") || "UNCLASSIFIED"}</span>
                       </p>
                     </div>
                   </div>
  
                   <div className="flex items-center space-x-3 shrink-0 ml-4">
                     <div className="flex flex-col items-end">
-                      <span className={`px-2 py-0.5 rounded-lg text-[8px] font-black uppercase tracking-wider border ${
+                      <span className={`px-2 py-1 rounded-lg text-[8px] font-black uppercase tracking-wider border ${
                         isPending 
-                          ? "bg-amber-50 text-amber-700 border-amber-250/70 dark:bg-amber-950/20 dark:text-amber-400 dark:border-amber-900/40" 
+                          ? "bg-amber-50 text-amber-700 border-amber-250/70 dark:bg-amber-950/50 dark:text-amber-300 dark:border-amber-800/60" 
                           : isEvaluating 
-                          ? "bg-blue-50 text-blue-700 border-blue-250/70 dark:bg-blue-950/20 dark:text-blue-400 dark:border-blue-900/40" 
+                          ? "bg-blue-50 text-blue-700 border-blue-250/70 dark:bg-blue-950/50 dark:text-blue-300 dark:border-blue-800/60" 
                           : isDispatched 
-                          ? "bg-indigo-50 text-indigo-700 border-indigo-250/70 dark:bg-indigo-950/20 dark:text-indigo-400 dark:border-indigo-900/40" 
-                          : "bg-emerald-50 text-emerald-700 border-emerald-250/70 dark:bg-emerald-950/20 dark:text-emerald-400 dark:border-emerald-800/40"
+                          ? "bg-indigo-50 text-indigo-700 border-indigo-250/70 dark:bg-indigo-950/50 dark:text-indigo-300 dark:border-indigo-800/60" 
+                          : "bg-emerald-50 text-emerald-700 border-emerald-250/70 dark:bg-emerald-950/50 dark:text-emerald-300 dark:border-emerald-800/60"
                       }`}>
                         {ticket.status}
                       </span>

@@ -164,7 +164,7 @@ export default function HomeSection({
         />
 
         {/* Dark Blue Overlay */}
-        <div className="absolute inset-0 bg-gradient-to-r from-[#0B2E7A]/95 via-[#0B2E7A]/90 to-[#0B2E7A]/80 dark:from-[#001e66]/95 dark:via-[#001e66]/90 dark:to-[#001e66]/80 z-10 pointer-events-none" />
+        <div className="absolute inset-0 bg-gradient-to-r from-[#0B2E7A]/95 via-[#0B2E7A]/90 to-[#0B2E7A]/80 dark:from-slate-950/95 dark:via-slate-950/90 dark:to-slate-950/80 z-10 pointer-events-none" />
 
         {/* Decorative Wave Design */}
         <div className="absolute inset-0 opacity-15 pointer-events-none z-10">
@@ -423,10 +423,10 @@ export default function HomeSection({
               id: `complaint-${comp.id}`,
               timestamp: new Date(comp.createdAt),
               tag: "AI Triage",
-              tagColor: "text-rose-600 dark:text-rose-400",
-              badgeBg: "bg-rose-50 dark:bg-rose-950/30 border border-rose-100 dark:border-rose-900/40",
+              tagColor: "text-rose-600 dark:text-rose-300",
+              badgeBg: "bg-rose-50 dark:bg-rose-950/50 border border-rose-100 dark:border-rose-900/60",
               icon: Brain,
-              iconColor: "text-rose-500",
+              iconColor: "text-rose-500 dark:text-rose-400",
               iconBg: "bg-rose-500/10",
               text: `Citizen in Brgy. ${comp.barangay || "San Fernando"} reported: "${comp.summary || comp.rawText}" (${comp.urgency})`
             });
@@ -437,10 +437,10 @@ export default function HomeSection({
               id: `node-${node.id}`,
               timestamp: new Date(Date.now() - 1000 * 60 * 2),
               tag: "Sensor Alert",
-              tagColor: "text-amber-650 dark:text-amber-400",
-              badgeBg: "bg-amber-50 dark:bg-amber-950/30 border border-amber-100 dark:border-amber-900/40",
+              tagColor: "text-amber-650 dark:text-amber-300",
+              badgeBg: "bg-amber-50 dark:bg-amber-950/50 border border-amber-100 dark:border-amber-900/60",
               icon: Activity,
-              iconColor: "text-amber-500",
+              iconColor: "text-amber-500 dark:text-amber-400",
               iconBg: "bg-amber-500/10",
               text: `Sensor node "${node.name}" status changed to ${node.status} due to threshold breach.`
             });
@@ -451,10 +451,10 @@ export default function HomeSection({
               id: "sys-ok-1",
               timestamp: new Date(Date.now() - 1000 * 60 * 15),
               tag: "Telemetry Stream",
-              tagColor: "text-emerald-600 dark:text-emerald-450",
-              badgeBg: "bg-emerald-50 dark:bg-emerald-950/30 border border-emerald-100 dark:border-emerald-900/40",
+              tagColor: "text-emerald-600 dark:text-emerald-300",
+              badgeBg: "bg-emerald-50 dark:bg-emerald-950/50 border border-emerald-100 dark:border-emerald-900/60",
               icon: Database,
-              iconColor: "text-emerald-500",
+              iconColor: "text-emerald-500 dark:text-emerald-400",
               iconBg: "bg-emerald-500/10",
               text: "Global water telemetry stream is active. All pump sensors reporting normal pressures."
             });
@@ -462,10 +462,10 @@ export default function HomeSection({
               id: "sys-ok-2",
               timestamp: new Date(Date.now() - 1000 * 60 * 120),
               tag: "AI Coeff Update",
-              tagColor: "text-purple-650 dark:text-purple-400",
-              badgeBg: "bg-purple-50 dark:bg-purple-950/30 border border-purple-100 dark:border-purple-900/40",
+              tagColor: "text-purple-650 dark:text-purple-300",
+              badgeBg: "bg-purple-50 dark:bg-purple-950/50 border border-purple-100 dark:border-purple-900/60",
               icon: Sparkles,
-              iconColor: "text-purple-500",
+              iconColor: "text-purple-500 dark:text-purple-400",
               iconBg: "bg-purple-500/10",
               text: "System-wide automated diagnostic sensitivity updated: standard filtering verified."
             });
@@ -601,17 +601,17 @@ export default function HomeSection({
                           <div
                             key={news.id}
                             onClick={() => setActiveDetailNews(news)}
-                            className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800/80 rounded-2xl p-4 hover:border-[#00aeef] dark:hover:border-[#00aeef] transition-all cursor-pointer shadow-sm relative pr-28 text-left"
+                            className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800/80 rounded-2xl p-4 hover:border-[#00aeef] dark:hover:border-[#00aeef] dark:hover:bg-slate-800/50 transition-all cursor-pointer shadow-sm relative pr-28 text-left"
                           >
-                            <span className="text-[10px] font-bold text-slate-400 dark:text-slate-500 font-mono">{news.date}</span>
-                            <h4 className="font-black text-[#001e66] dark:text-slate-200 text-sm mt-1">{news.title}</h4>
+                            <span className="text-[10px] font-bold text-slate-400 dark:text-slate-400 font-mono">{news.date}</span>
+                            <h4 className="font-black text-[#001e66] dark:text-slate-100 text-sm mt-1">{news.title}</h4>
                             <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed mt-1.5 line-clamp-2">
                               {news.description}
                             </p>
                             <span className={`absolute top-4 right-4 text-[9px] font-mono font-black uppercase px-2 py-0.5 rounded border ${
                               news.tag === "CORE UPGRADE" ? "bg-blue-50 text-blue-600 border-blue-200/50 dark:bg-blue-950/40 dark:text-blue-300 dark:border-blue-900/40" :
                               news.tag === "COMPLIANCE" ? "bg-emerald-50 text-emerald-700 border-emerald-250/50 dark:bg-emerald-950/40 dark:text-emerald-400 dark:border-emerald-800/40" :
-                              "bg-slate-50 text-[#001e66] border-slate-200 dark:bg-slate-800 dark:text-slate-300 dark:border-slate-700/60"
+                              "bg-slate-50 text-[#001e66] border-slate-200 dark:bg-slate-800 dark:text-slate-200 dark:border-slate-700"
                             }`}>
                               {news.tag}
                             </span>
@@ -671,17 +671,17 @@ export default function HomeSection({
                             key={ad.id}
                             className={`border-l-[4px] rounded-r-2xl rounded-l-md p-3.5 shadow-sm text-left ${
                               ad.type === "warning"
-                                ? "bg-red-50/60 dark:bg-red-950/10 border border-red-200 dark:border-red-900 border-l-red-500"
-                                : "bg-blue-50/60 dark:bg-slate-900/40 border border-blue-200 dark:border-slate-800 border-l-blue-500"
+                                ? "bg-red-50/60 dark:bg-red-950/25 border border-red-200 dark:border-red-900 border-l-red-500"
+                                : "bg-blue-50/60 dark:bg-slate-900/60 border border-blue-200 dark:border-slate-800 border-l-blue-500"
                             }`}
                           >
                             <div className="flex items-center justify-between">
                               <span className={`text-[8px] font-black px-1.5 py-0.5 rounded border ${
-                                ad.type === "warning" ? "bg-red-100 text-red-700 border-red-200/50 dark:bg-red-950 dark:text-red-400" : "bg-blue-100 text-blue-700 border-blue-200/50 dark:bg-blue-950 dark:text-blue-300"
+                                ad.type === "warning" ? "bg-red-100 text-red-700 border-red-200/50 dark:bg-red-950 dark:text-red-300" : "bg-blue-100 text-blue-700 border-blue-200/50 dark:bg-blue-950 dark:text-blue-300"
                               }`}>
                                 {ad.type.toUpperCase()}
                               </span>
-                              <span className="text-[9px] font-mono font-bold text-slate-400 dark:text-slate-500">{ad.date}</span>
+                              <span className="text-[9px] font-mono font-bold text-slate-400 dark:text-slate-400">{ad.date}</span>
                             </div>
                             <h4 className={`text-xs font-black mt-2 leading-tight ${
                               ad.type === "warning" ? "text-red-950 dark:text-red-300" : "text-[#001e66] dark:text-blue-300"
@@ -710,7 +710,7 @@ export default function HomeSection({
                     </div>
                   </div>
                 ) : (
-                  <div className="bg-[#EEF4FC]/50 dark:bg-slate-900/10 border border-slate-200 dark:border-slate-800 border-dashed rounded-xl p-4 text-center text-slate-400 dark:text-slate-500 mt-2">
+                  <div className="bg-[#EEF4FC]/50 dark:bg-slate-900/30 border border-slate-200 dark:border-slate-800 border-dashed rounded-xl p-4 text-center text-slate-400 dark:text-slate-400 mt-2">
                     <p className="text-xs font-bold uppercase tracking-wider">No Active Staff Advisories</p>
                     <p className="text-[11px] text-slate-500 mt-1">Global maintenance broadcasts will list here.</p>
                   </div>
@@ -738,7 +738,7 @@ export default function HomeSection({
                     return (
                       <div 
                         key={act.id} 
-                        className="group p-3 bg-slate-50/50 dark:bg-slate-950/40 border border-slate-100 dark:border-slate-800/60 rounded-xl flex gap-3 hover:bg-slate-50 dark:hover:bg-slate-900/60 transition-all duration-200 hover:translate-x-0.5 hover:shadow-xs text-xs"
+                        className="group p-3 bg-slate-50/50 dark:bg-slate-900 border border-slate-100 dark:border-slate-800/60 rounded-xl flex gap-3 hover:bg-slate-50 dark:hover:bg-slate-800/60 transition-all duration-200 hover:translate-x-0.5 hover:shadow-xs text-xs"
                       >
                         {/* Leading Icon Box */}
                         <div className={`w-8 h-8 rounded-lg ${act.iconBg} flex items-center justify-center shrink-0`}>
@@ -752,14 +752,14 @@ export default function HomeSection({
                               {act.tag}
                             </span>
                             {/* Timestamp */}
-                            <span className="text-[9px] text-slate-400 dark:text-slate-500 font-mono flex items-center gap-1 font-semibold">
+                            <span className="text-[9px] text-slate-400 dark:text-slate-400 font-mono flex items-center gap-1 font-semibold">
                               <Clock className="w-2.5 h-2.5" />
                               {act.timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                             </span>
                           </div>
 
                           {/* Message Content */}
-                          <p className="text-slate-600 dark:text-slate-350 font-semibold leading-relaxed" title={act.text}>
+                          <p className="text-slate-600 dark:text-slate-300 font-semibold leading-relaxed" title={act.text}>
                             {act.text}
                           </p>
                         </div>
@@ -860,7 +860,7 @@ export default function HomeSection({
                                 className={`w-8 h-8 text-[11px] font-bold rounded-full flex items-center justify-center mx-auto transition-all ${
                                   isToday
                                     ? "border-2 border-[#001e66] dark:border-[#00aeef] text-[#001e66] dark:text-[#00aeef]"
-                                    : "text-slate-550 dark:text-slate-450 hover:bg-slate-200/50 dark:hover:bg-slate-800"
+                                    : "text-slate-550 dark:text-slate-450 hover:bg-slate-200/50 dark:hover:bg-slate-800/60"
                                 }`}
                               >
                                 {dayNum}
@@ -879,15 +879,15 @@ export default function HomeSection({
                         <div
                           key={evt.id}
                           onClick={() => setActiveDetailEvent(evt)}
-                          className="flex items-start space-x-3.5 cursor-pointer hover:opacity-85 transition-opacity"
+                          className="flex items-start space-x-3.5 cursor-pointer hover:opacity-85 transition-opacity group"
                         >
                           <div className={`w-10 h-10 shrink-0 rounded-xl flex flex-col items-center justify-center font-black ${evt.color} shadow-sm`}>
                             <span className="text-[8px] uppercase tracking-wider">{evt.month}</span>
                             <span className="text-xs -mt-0.5">{evt.day}</span>
                           </div>
                           <div className="text-left flex-1 min-w-0">
-                            <h4 className="font-extrabold text-[#001e66] dark:text-slate-200 text-xs truncate leading-tight">{evt.title}</h4>
-                            <p className="text-[11px] text-slate-550 dark:text-slate-450 mt-0.5 line-clamp-1 leading-normal">{evt.description}</p>
+                            <h4 className="font-extrabold text-[#001e66] dark:text-slate-100 text-xs truncate leading-tight group-hover:text-[#189BFF] dark:group-hover:text-[#00aeef] transition-colors">{evt.title}</h4>
+                            <p className="text-[11px] text-slate-550 dark:text-slate-400 mt-0.5 line-clamp-1 leading-normal">{evt.description}</p>
                           </div>
                         </div>
                       ))

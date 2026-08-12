@@ -7,6 +7,7 @@ import { generateComplianceReport } from "../../lib/pdf-generator";
 import { calculateDistance } from "../../lib/spatial-sorting";
 import { motion, AnimatePresence } from "framer-motion";
 import Footer from "../../components/Footer";
+import LogoutConfirmModal from "../../components/LogoutConfirmModal";
 import { 
   Home, Map, AlertTriangle, Flame, Cpu, BarChart3, Users, 
   Megaphone, Settings, Bell, HelpCircle, Sun, Moon, ChevronDown, 
@@ -1188,9 +1189,9 @@ export default function DashboardAdmin({
             <Menu className="w-5 h-5 transition-transform hover:scale-110 duration-200" />
           </button>
           <img 
-            src="/LOGO2.png" 
+            src={isDark ? "/LOGO3.png" : "/LOGO2.png"} 
             alt="AquaTrack Logo" 
-            className="h-25 w-auto translate-y-1 hover:opacity-90 transition-opacity shrink-0 dark:brightness-110" 
+            className="h-25 w-auto translate-y-1 hover:opacity-90 transition-opacity shrink-0" 
           />
         </div>
 
@@ -1406,7 +1407,7 @@ export default function DashboardAdmin({
                     <button
                       onClick={() => {
                         setShowProfileMenu(false);
-                        handleLogout();
+                        setShowLogoutModal(true);
                       }}
                       className="w-full text-left px-4 py-2.5 text-xs font-bold text-red-600 dark:text-red-400 hover:bg-red-50/50 dark:hover:bg-red-950/20 transition-colors flex items-center gap-2 cursor-pointer border-t border-slate-50 dark:border-slate-800/50 group"
                     >
@@ -1558,7 +1559,7 @@ export default function DashboardAdmin({
                 {/* Drawer Header */}
                 <div className="h-16 border-b border-slate-100 flex items-center justify-between px-5 shrink-0">
                   <div className="flex items-center gap-3">
-                    <img src="/LOGO2.png" alt="AquaTrack Logo" className="h-8 w-auto object-contain" />
+                    <img src={isDark ? "/LOGO3.png" : "/LOGO2.png"} alt="AquaTrack Logo" className="h-8 w-auto object-contain" />
                     <span className="text-base font-black tracking-tight text-[#001e66]">
                       AQUA<span className="text-[#00aeef]">TRACK</span>
                     </span>
@@ -1821,35 +1822,12 @@ export default function DashboardAdmin({
       )}
 
       {/* Logout Confirmation Modal */}
-      {showLogoutModal && (
-        <div className="fixed inset-0 bg-slate-950/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="bg-white border border-slate-100 rounded-2xl max-w-sm w-full p-6 shadow-xl relative text-center">
-            <div className="w-12 h-12 bg-red-50 text-[#970006] rounded-full flex items-center justify-center mx-auto mb-4">
-              <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
-              </svg>
-            </div>
-            <h3 className="text-lg font-bold text-[#001e66] tracking-tight">Confirm Sign Out</h3>
-            <p className="text-xs text-slate-500 mt-2 leading-relaxed font-semibold">
-              Are you sure you want to end your executive session and log out of the command center?
-            </p>
-            <div className="mt-6 flex justify-center space-x-3">
-              <button
-                onClick={() => setShowLogoutModal(false)}
-                className="bg-slate-100 hover:bg-slate-200 text-slate-600 font-semibold px-4 py-2 rounded-xl text-xs transition-all"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={handleLogout}
-                className="bg-[#970006] hover:bg-red-700 text-white font-bold px-5 py-2.5 rounded-xl text-xs uppercase tracking-wider transition-all shadow-sm"
-              >
-                Sign Out
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      <LogoutConfirmModal
+        open={showLogoutModal}
+        onCancel={() => setShowLogoutModal(false)}
+        onConfirm={handleLogout}
+        message="Are you sure you want to end your executive session and log out of the command center?"
+      />
 
       {/* News Details Modal */}
       {activeDetailNews && (
@@ -1914,20 +1892,20 @@ export default function DashboardAdmin({
 
       {/* Telemetry Node Satellite Preview Modal */}
       {previewNode && (
-        <div className="fixed inset-0 bg-slate-950/60 backdrop-blur-sm z-[150] flex items-center justify-center p-4 overflow-y-auto">
-          <div className="bg-white border border-slate-200 rounded-3xl max-w-3xl w-full overflow-hidden shadow-2xl relative text-left flex flex-col md:flex-row min-h-[420px]">
+        <div className="fixed inset-0 bg-slate-950/60 dark:bg-slate-950/80 backdrop-blur-sm z-[150] flex items-center justify-center p-4 overflow-y-auto">
+          <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl max-w-3xl w-full overflow-hidden shadow-2xl relative text-left flex flex-col md:flex-row min-h-[420px]">
             
             {/* Close Button (Absolute overlay on the entire modal) */}
             <button
               type="button"
               onClick={() => setPreviewNode(null)}
-              className="absolute top-4 right-4 w-7 h-7 rounded-full bg-white/95 hover:bg-slate-100 text-slate-700 flex items-center justify-center transition-all cursor-pointer border border-slate-200 focus:outline-none shadow-md z-20"
+              className="absolute top-4 right-4 w-7 h-7 rounded-full bg-white/95 dark:bg-slate-800/95 hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 flex items-center justify-center transition-all cursor-pointer border border-slate-200 dark:border-slate-700 focus:outline-none shadow-md z-20"
             >
               <X className="w-3.5 h-3.5" />
             </button>
 
             {/* Left Pane: Map Preview Image */}
-            <div className="w-full md:w-5/12 bg-slate-100 relative min-h-[220px] md:min-h-full">
+            <div className="w-full md:w-5/12 bg-slate-100 dark:bg-slate-800 relative min-h-[220px] md:min-h-full">
               {process.env.NEXT_PUBLIC_MAPBOX_TOKEN ? (
                 <img
                   src={`https://api.mapbox.com/styles/v1/mapbox/satellite-streets-v12/static/pin-s+970006(${previewNode.longitude},${previewNode.latitude})/${previewNode.longitude},${previewNode.latitude},16.5,0/450x450?access_token=${process.env.NEXT_PUBLIC_MAPBOX_TOKEN}`}
@@ -1948,26 +1926,26 @@ export default function DashboardAdmin({
                 <div>
                   <span className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full border text-[8px] font-black uppercase tracking-wider ${
                     previewNode.type === "PUMP_STATION" || previewNode.name.toLowerCase().includes("station") || previewNode.name.toLowerCase().includes("reservoir")
-                      ? "bg-sky-50 text-sky-700 border-sky-150"
-                      : "bg-indigo-50 text-indigo-700 border-indigo-150"
+                      ? "bg-sky-50 dark:bg-sky-950/40 text-sky-700 dark:text-sky-300 border-sky-150 dark:border-sky-800"
+                      : "bg-indigo-50 dark:bg-indigo-950/40 text-indigo-700 dark:text-indigo-300 border-indigo-150 dark:border-indigo-800"
                   }`}>
                     {previewNode.type === "PUMP_STATION" || previewNode.name.toLowerCase().includes("station") || previewNode.name.toLowerCase().includes("reservoir")
                       ? "Pumping Station"
                       : "Household Pipeline"}
                   </span>
-                  <h3 className="text-[#001e66] text-base font-black mt-2 leading-tight pr-6">
+                  <h3 className="text-[#001e66] dark:text-slate-100 text-base font-black mt-2 leading-tight pr-6">
                     {previewNode.name}
                   </h3>
-                  <p className="text-[10px] text-slate-400 font-mono mt-1 select-all tracking-wider">
+                  <p className="text-[10px] text-slate-400 dark:text-slate-400 font-mono mt-1 select-all tracking-wider">
                     NODE ID: {`AQ-NODE-${previewNode.id.slice(-8).toUpperCase()}`}
                   </p>
                 </div>
 
                 {/* Location Details Grid */}
-                <div className="grid grid-cols-2 gap-4 border-t border-slate-100 pt-3 text-xs font-semibold">
+                <div className="grid grid-cols-2 gap-4 border-t border-slate-100 dark:border-slate-800 pt-3 text-xs font-semibold">
                   <div>
-                    <span className="text-slate-400 text-[9px] uppercase tracking-wider block">Barangay Area</span>
-                    <span className="text-[#001e66] font-black text-sm block mt-0.5">
+                    <span className="text-slate-400 dark:text-slate-400 text-[9px] uppercase tracking-wider block">Barangay Area</span>
+                    <span className="text-[#001e66] dark:text-slate-100 font-black text-sm block mt-0.5">
                       {(() => {
                         const nameLower = previewNode.name.toLowerCase();
                         if (nameLower.includes("dolores")) return "Brgy. Dolores";
@@ -1980,28 +1958,28 @@ export default function DashboardAdmin({
                     </span>
                   </div>
                   <div>
-                    <span className="text-slate-400 text-[9px] uppercase tracking-wider block">GPS Coordinates</span>
-                    <span className="text-[#001e66] font-mono font-bold block mt-0.5">
+                    <span className="text-slate-400 dark:text-slate-400 text-[9px] uppercase tracking-wider block">GPS Coordinates</span>
+                    <span className="text-[#001e66] dark:text-slate-100 font-mono font-bold block mt-0.5">
                       {previewNode.latitude.toFixed(5)}, {previewNode.longitude.toFixed(5)}
                     </span>
                   </div>
                 </div>
 
                 {/* Detailed Live Readings Table */}
-                <div className="border-t border-slate-100 pt-3 space-y-2.5">
-                  <span className="text-slate-400 font-bold text-[9px] uppercase tracking-wider block">Live Diagnostic Readings</span>
+                <div className="border-t border-slate-100 dark:border-slate-800 pt-3 space-y-2.5">
+                  <span className="text-slate-400 dark:text-slate-400 font-bold text-[9px] uppercase tracking-wider block">Live Diagnostic Readings</span>
                   {previewNode.reading ? (
                     <div className="grid grid-cols-2 gap-2 text-xs font-bold">
                       {/* pH */}
                       {(() => {
                         const isAnomaly = previewNode.reading.ph < 6.5 || previewNode.reading.ph > 8.5;
                         return (
-                          <div className="bg-slate-50 p-2.5 rounded-xl border border-slate-100 flex flex-col justify-between">
-                            <span className="text-[8px] font-bold text-slate-400 block uppercase">pH level</span>
+                          <div className="bg-slate-50 dark:bg-slate-800/50 p-2.5 rounded-xl border border-slate-100 dark:border-slate-800 flex flex-col justify-between">
+                            <span className="text-[8px] font-bold text-slate-400 dark:text-slate-500 block uppercase">pH level</span>
                             <div className="flex justify-between items-end mt-1">
-                              <span className="text-xs font-black text-[#001e66] font-mono">{previewNode.reading.ph.toFixed(2)}</span>
+                              <span className="text-xs font-black text-[#001e66] dark:text-slate-100 font-mono">{previewNode.reading.ph.toFixed(2)}</span>
                               <span className={`text-[8px] font-black px-1.5 py-0.5 rounded flex items-center gap-0.5 uppercase tracking-wide ${
-                                isAnomaly ? "bg-rose-50 text-rose-600 animate-pulse" : "bg-emerald-50 text-emerald-600"
+                                isAnomaly ? "bg-rose-50 dark:bg-rose-950/50 text-rose-600 dark:text-rose-300 animate-pulse" : "bg-emerald-50 dark:bg-emerald-950/50 text-emerald-600 dark:text-emerald-300"
                               }`}>
                                 {isAnomaly ? <AlertTriangle className="w-2 h-2 shrink-0" /> : <CheckCircle2 className="w-2 h-2 shrink-0" />}
                                 {isAnomaly ? "WARN" : "OK"}
@@ -2014,12 +1992,12 @@ export default function DashboardAdmin({
                       {(() => {
                         const isAnomaly = previewNode.reading.turbidity > 5.0;
                         return (
-                          <div className="bg-slate-50 p-2.5 rounded-xl border border-slate-100 flex flex-col justify-between">
-                            <span className="text-[8px] font-bold text-slate-400 block uppercase">Turbidity</span>
+                          <div className="bg-slate-50 dark:bg-slate-800/50 p-2.5 rounded-xl border border-slate-100 dark:border-slate-800 flex flex-col justify-between">
+                            <span className="text-[8px] font-bold text-slate-400 dark:text-slate-500 block uppercase">Turbidity</span>
                             <div className="flex justify-between items-end mt-1">
-                              <span className="text-xs font-black text-[#001e66] font-mono">{previewNode.reading.turbidity.toFixed(1)} <span className="text-[8px] font-normal">NTU</span></span>
+                              <span className="text-xs font-black text-[#001e66] dark:text-slate-100 font-mono">{previewNode.reading.turbidity.toFixed(1)} <span className="text-[8px] font-normal">NTU</span></span>
                               <span className={`text-[8px] font-black px-1.5 py-0.5 rounded flex items-center gap-0.5 uppercase tracking-wide ${
-                                isAnomaly ? "bg-amber-50 text-amber-600 animate-pulse" : "bg-emerald-50 text-emerald-600"
+                                isAnomaly ? "bg-amber-50 dark:bg-amber-950/50 text-amber-600 dark:text-amber-300 animate-pulse" : "bg-emerald-50 dark:bg-emerald-950/50 text-emerald-600 dark:text-emerald-300"
                               }`}>
                                 {isAnomaly ? <AlertTriangle className="w-2 h-2 shrink-0" /> : <CheckCircle2 className="w-2 h-2 shrink-0" />}
                                 {isAnomaly ? "WARN" : "OK"}
@@ -2032,12 +2010,12 @@ export default function DashboardAdmin({
                       {(() => {
                         const isAnomaly = previewNode.reading.tds > 500;
                         return (
-                          <div className="bg-slate-50 p-2.5 rounded-xl border border-slate-100 flex flex-col justify-between">
-                            <span className="text-[8px] font-bold text-slate-400 block uppercase">TDS (Minerals)</span>
+                          <div className="bg-slate-50 dark:bg-slate-800/50 p-2.5 rounded-xl border border-slate-100 dark:border-slate-800 flex flex-col justify-between">
+                            <span className="text-[8px] font-bold text-slate-400 dark:text-slate-500 block uppercase">TDS (Minerals)</span>
                             <div className="flex justify-between items-end mt-1">
-                              <span className="text-xs font-black text-[#001e66] font-mono">{previewNode.reading.tds.toFixed(0)} <span className="text-[8px] font-normal">ppm</span></span>
+                              <span className="text-xs font-black text-[#001e66] dark:text-slate-100 font-mono">{previewNode.reading.tds.toFixed(0)} <span className="text-[8px] font-normal">ppm</span></span>
                               <span className={`text-[8px] font-black px-1.5 py-0.5 rounded flex items-center gap-0.5 uppercase tracking-wide ${
-                                isAnomaly ? "bg-amber-50 text-amber-600 animate-pulse" : "bg-emerald-50 text-emerald-600"
+                                isAnomaly ? "bg-amber-50 dark:bg-amber-950/50 text-amber-600 dark:text-amber-300 animate-pulse" : "bg-emerald-50 dark:bg-emerald-950/50 text-emerald-600 dark:text-emerald-300"
                               }`}>
                                 {isAnomaly ? <AlertTriangle className="w-2 h-2 shrink-0" /> : <CheckCircle2 className="w-2 h-2 shrink-0" />}
                                 {isAnomaly ? "WARN" : "OK"}
@@ -2050,12 +2028,12 @@ export default function DashboardAdmin({
                       {(() => {
                         const isAnomaly = previewNode.reading.pressure < 30;
                         return (
-                          <div className="bg-slate-50 p-2.5 rounded-xl border border-slate-100 flex flex-col justify-between">
-                            <span className="text-[8px] font-bold text-slate-400 block uppercase">Pressure</span>
+                          <div className="bg-slate-50 dark:bg-slate-800/50 p-2.5 rounded-xl border border-slate-100 dark:border-slate-800 flex flex-col justify-between">
+                            <span className="text-[8px] font-bold text-slate-400 dark:text-slate-500 block uppercase">Pressure</span>
                             <div className="flex justify-between items-end mt-1">
-                              <span className="text-xs font-black text-[#001e66] font-mono">{previewNode.reading.pressure.toFixed(1)} <span className="text-[8px] font-normal">PSI</span></span>
+                              <span className="text-xs font-black text-[#001e66] dark:text-slate-100 font-mono">{previewNode.reading.pressure.toFixed(1)} <span className="text-[8px] font-normal">PSI</span></span>
                               <span className={`text-[8px] font-black px-1.5 py-0.5 rounded flex items-center gap-0.5 uppercase tracking-wide ${
-                                isAnomaly ? "bg-rose-50 text-rose-600 animate-pulse" : "bg-emerald-50 text-emerald-600"
+                                isAnomaly ? "bg-rose-50 dark:bg-rose-950/50 text-rose-600 dark:text-rose-300 animate-pulse" : "bg-emerald-50 dark:bg-emerald-950/50 text-emerald-600 dark:text-emerald-300"
                               }`}>
                                 {isAnomaly ? <AlertTriangle className="w-2 h-2 shrink-0" /> : <CheckCircle2 className="w-2 h-2 shrink-0" />}
                                 {isAnomaly ? "WARN" : "OK"}
@@ -2066,17 +2044,17 @@ export default function DashboardAdmin({
                       })()}
                     </div>
                   ) : (
-                    <div className="p-3 text-center text-slate-400 text-xs italic bg-slate-50 rounded-xl">No telemetry logs found for this node.</div>
+                    <div className="p-3 text-center text-slate-400 dark:text-slate-400 text-xs italic bg-slate-50 dark:bg-slate-800/50 dark:border dark:border-slate-800 rounded-xl">No telemetry logs found for this node.</div>
                   )}
                 </div>
 
                 {/* Status footer */}
-                <div className="border-t border-slate-100 pt-3.5 flex items-center justify-between">
-                  <span className="text-slate-400 font-bold text-[9px] uppercase tracking-wider">Operational Status</span>
+                <div className="border-t border-slate-100 dark:border-slate-800 pt-3.5 flex items-center justify-between">
+                  <span className="text-slate-400 dark:text-slate-400 font-bold text-[9px] uppercase tracking-wider">Operational Status</span>
                   <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-wider border ${
-                    previewNode.status === "ONLINE" ? "bg-emerald-50 text-emerald-700 border-emerald-200" :
-                    previewNode.status === "MAINTENANCE" ? "bg-amber-50 text-amber-700 border-amber-200" :
-                    "bg-rose-50 text-rose-700 border-rose-200"
+                    previewNode.status === "ONLINE" ? "bg-emerald-50 dark:bg-emerald-950/50 text-emerald-700 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800" :
+                    previewNode.status === "MAINTENANCE" ? "bg-amber-50 dark:bg-amber-950/50 text-amber-700 dark:text-amber-300 border-amber-200 dark:border-amber-800" :
+                    "bg-rose-50 dark:bg-rose-950/50 text-rose-700 dark:text-rose-300 border-rose-200 dark:border-rose-800"
                   }`}>
                     {previewNode.status === "ONLINE" && <CheckCircle2 className="w-3 h-3 text-emerald-500 shrink-0" />}
                     {previewNode.status === "MAINTENANCE" && <Wrench className="w-3 h-3 text-amber-500 animate-pulse shrink-0" />}
@@ -2089,7 +2067,7 @@ export default function DashboardAdmin({
               <button
                 type="button"
                 onClick={() => setPreviewNode(null)}
-                className="w-full bg-[#001e66] hover:bg-[#00aeef] text-white font-extrabold py-2.5 rounded-xl transition-all shadow-md text-xxs uppercase tracking-widest cursor-pointer border-none focus:outline-none"
+                className="w-full bg-[#001e66] dark:bg-[#00aeef] hover:bg-[#00aeef] dark:hover:bg-[#00aeef]/90 text-white dark:text-[#001e66] font-extrabold py-2.5 rounded-xl transition-all shadow-md text-xxs uppercase tracking-widest cursor-pointer border-none focus:outline-none"
               >
                 Close Map Preview
               </button>

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { FileText, Clock, RefreshCw, CheckCircle2, Search, MapPin } from "lucide-react";
+import { FileText, Clock, RefreshCw, CheckCircle2, Search, MapPin, Camera } from "lucide-react";
 
 interface Complaint {
   id: string;
@@ -38,18 +38,18 @@ interface ReportsSectionProps {
 const getUrgencyBadgeClass = (urgency: string) => {
   const u = urgency.toUpperCase();
   if (u === "CRITICAL") {
-    return "bg-red-100 text-red-800 border border-red-200";
+    return "bg-red-100 dark:bg-red-950/40 text-red-800 dark:text-red-300 border border-red-200 dark:border-red-900/60";
   }
   if (u === "HIGH" || u === "URGENT") {
-    return "bg-orange-100 text-orange-800 border border-orange-200";
+    return "bg-orange-100 dark:bg-orange-950/40 text-orange-800 dark:text-orange-300 border border-orange-200 dark:border-orange-900/60";
   }
   if (u === "MEDIUM") {
-    return "bg-yellow-100 text-yellow-900 border border-yellow-200";
+    return "bg-yellow-100 dark:bg-yellow-950/40 text-yellow-900 dark:text-yellow-300 border border-yellow-200 dark:border-yellow-900/60";
   }
   if (u === "LOW") {
-    return "bg-slate-100 text-slate-650 border border-slate-200";
+    return "bg-slate-100 dark:bg-slate-800 text-slate-650 dark:text-slate-400 border border-slate-200 dark:border-slate-700";
   }
-  return "bg-slate-100 text-slate-650 border border-slate-200";
+  return "bg-slate-100 dark:bg-slate-800 text-slate-650 dark:text-slate-400 border border-slate-200 dark:border-slate-700";
 };
 
 export default function ReportsSection({
@@ -158,7 +158,7 @@ export default function ReportsSection({
   return (
     <div className="space-y-8">
       {/* Header and Search / Filters */}
-      <div className="flex flex-col xl:flex-row justify-between items-start xl:items-center gap-4 pb-4 border-b border-slate-200">
+      <div className="flex flex-col xl:flex-row justify-between items-start xl:items-center gap-4 pb-4 border-b border-slate-200 dark:border-slate-800">
         <div>
           <h2 className="text-lg font-black text-[#001e66] tracking-tight">Citizen Complaints Database</h2>
           <p className="text-xs text-slate-500 font-bold">Verify AI translation classification and dispatch field operations</p>
@@ -205,46 +205,46 @@ export default function ReportsSection({
       {/* Analytics Stats Cards Grid */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         {/* Total Complaints */}
-        <div className="bg-white/60 backdrop-blur-md border border-slate-200/60 rounded-2xl p-5 shadow-sm flex items-center gap-4 hover:shadow-md transition-all duration-200">
-          <div className="w-12 h-12 rounded-xl bg-blue-50 flex items-center justify-center shrink-0">
+        <div className="bg-white/60 dark:bg-slate-900/60 backdrop-blur-md border border-slate-200/60 dark:border-slate-800 rounded-2xl p-5 shadow-sm flex items-center gap-4 hover:shadow-md transition-all duration-200">
+          <div className="w-12 h-12 rounded-xl bg-blue-50 dark:bg-blue-950/40 flex items-center justify-center shrink-0">
             <FileText className="w-6 h-6 text-[#00aeef] transition-all duration-300 group-hover:scale-110" />
           </div>
           <div>
             <span className="text-[10px] font-extrabold text-slate-400 uppercase tracking-wider">Total Complaints</span>
-            <h4 className="text-2xl font-black text-[#001e66] mt-0.5">{totalCount}</h4>
+            <h4 className="text-2xl font-black text-[#001e66] dark:text-slate-100 mt-0.5">{totalCount}</h4>
           </div>
         </div>
 
         {/* Awaiting Dispatch */}
-        <div className="bg-white/60 backdrop-blur-md border border-slate-200/60 rounded-2xl p-5 shadow-sm flex items-center gap-4 hover:shadow-md transition-all duration-200">
-          <div className="w-12 h-12 rounded-xl bg-amber-50 flex items-center justify-center shrink-0">
+        <div className="bg-white/60 dark:bg-slate-900/60 backdrop-blur-md border border-slate-200/60 dark:border-slate-800 rounded-2xl p-5 shadow-sm flex items-center gap-4 hover:shadow-md transition-all duration-200">
+          <div className="w-12 h-12 rounded-xl bg-amber-50 dark:bg-amber-950/40 flex items-center justify-center shrink-0">
             <Clock className="w-6 h-6 text-[#ffd800] transition-all duration-300 group-hover:scale-110" />
           </div>
           <div>
             <span className="text-[10px] font-extrabold text-slate-400 uppercase tracking-wider">Awaiting Dispatch</span>
-            <h4 className="text-2xl font-black text-[#001e66] mt-0.5">{awaitingDispatchCount}</h4>
+            <h4 className="text-2xl font-black text-[#001e66] dark:text-slate-100 mt-0.5">{awaitingDispatchCount}</h4>
           </div>
         </div>
 
         {/* In Progress */}
-        <div className="bg-white/60 backdrop-blur-md border border-slate-200/60 rounded-2xl p-5 shadow-sm flex items-center gap-4 hover:shadow-md transition-all duration-200">
-          <div className="w-12 h-12 rounded-xl bg-sky-50 flex items-center justify-center shrink-0">
+        <div className="bg-white/60 dark:bg-slate-900/60 backdrop-blur-md border border-slate-200/60 dark:border-slate-800 rounded-2xl p-5 shadow-sm flex items-center gap-4 hover:shadow-md transition-all duration-200">
+          <div className="w-12 h-12 rounded-xl bg-sky-50 dark:bg-sky-950/40 flex items-center justify-center shrink-0">
             <RefreshCw className="w-6 h-6 text-[#00aeef] transition-all duration-500 hover:rotate-180 group-hover:scale-110" />
           </div>
           <div>
             <span className="text-[10px] font-extrabold text-slate-400 uppercase tracking-wider">In Progress</span>
-            <h4 className="text-2xl font-black text-[#001e66] mt-0.5">{inProgressCount}</h4>
+            <h4 className="text-2xl font-black text-[#001e66] dark:text-slate-100 mt-0.5">{inProgressCount}</h4>
           </div>
         </div>
 
         {/* Resolved */}
-        <div className="bg-white/60 backdrop-blur-md border border-slate-200/60 rounded-2xl p-5 shadow-sm flex items-center gap-4 hover:shadow-md transition-all duration-200">
-          <div className="w-12 h-12 rounded-xl bg-red-50 flex items-center justify-center shrink-0">
-            <CheckCircle2 className="w-6 h-6 text-[#970006] transition-all duration-300 group-hover:scale-110" />
+        <div className="bg-white/60 dark:bg-slate-900/60 backdrop-blur-md border border-slate-200/60 dark:border-slate-800 rounded-2xl p-5 shadow-sm flex items-center gap-4 hover:shadow-md transition-all duration-200">
+          <div className="w-12 h-12 rounded-xl bg-red-50 dark:bg-red-950/40 flex items-center justify-center shrink-0">
+            <CheckCircle2 className="w-6 h-6 text-[#970006] dark:text-red-400 transition-all duration-300 group-hover:scale-110" />
           </div>
           <div>
             <span className="text-[10px] font-extrabold text-slate-400 uppercase tracking-wider">Resolved</span>
-            <h4 className="text-2xl font-black text-[#001e66] mt-0.5">{resolvedCount}</h4>
+            <h4 className="text-2xl font-black text-[#001e66] dark:text-slate-100 mt-0.5">{resolvedCount}</h4>
           </div>
         </div>
       </div>
@@ -256,11 +256,11 @@ export default function ReportsSection({
           <p className="text-xs text-slate-400 font-medium">Current active dispatches and pending incidents undergoing evaluation</p>
         </div>
 
-        <div className="overflow-hidden bg-white/40 border border-slate-200/80 rounded-[20px] shadow-sm">
+        <div className="overflow-hidden bg-white/40 dark:bg-slate-900/40 border border-slate-200/80 dark:border-slate-800 rounded-[20px] shadow-sm">
           <div className="overflow-x-auto">
             <table className="w-full text-left border-collapse text-xs">
               <thead>
-                <tr className="border-b border-slate-200/80 bg-[#EEF4FA]/40 text-[#001e66]/80 font-black uppercase tracking-wider">
+                <tr className="border-b border-slate-200/80 dark:border-slate-800 bg-[#EEF4FA]/40 dark:bg-slate-900/60 text-[#001e66]/80 dark:text-slate-300 font-black uppercase tracking-wider">
                   <th className="py-3.5 px-5">ID</th>
                   <th className="py-3.5 px-5">Location</th>
                   <th className="py-3.5 px-5">Description</th>
@@ -269,11 +269,11 @@ export default function ReportsSection({
                   <th className="py-3.5 px-5 text-center">Dispatch Action</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-150/70">
+              <tbody className="divide-y divide-slate-150/70 dark:divide-slate-800/70">
                 {paginatedActive.map((c) => (
-                  <tr key={c.id} className="hover:bg-white/60 transition-colors">
+                  <tr key={c.id} className="hover:bg-white/60 dark:hover:bg-slate-800/40 transition-colors">
                     {/* 1. ID (Unique id referencing database id starting with AQ) */}
-                    <td className="py-4.5 px-5 font-mono font-extrabold text-[#001e66] select-all">
+                    <td className="py-4.5 px-5 font-mono font-extrabold text-[#001e66] dark:text-slate-200 select-all">
                       AQ-{c.id.slice(0, 8).toUpperCase()}
                     </td>
 
@@ -282,7 +282,7 @@ export default function ReportsSection({
                       <div className="flex flex-col gap-1.5 items-start">
                         <span 
                           onClick={() => handleViewLocation(c.id)}
-                          className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-black bg-blue-50 hover:bg-blue-100 text-[#001e66] border border-blue-100 hover:border-blue-200 uppercase tracking-wide cursor-pointer transition-colors shadow-sm active:scale-95"
+                          className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-black bg-blue-50 dark:bg-blue-950/40 hover:bg-blue-100 dark:hover:bg-blue-900/60 text-[#001e66] dark:text-slate-100 border border-blue-100 dark:border-blue-900/50 hover:border-blue-200 dark:hover:border-blue-800 uppercase tracking-wide cursor-pointer transition-colors shadow-sm active:scale-95"
                           title="Click to view on map"
                         >
                           <MapPin className="w-3 h-3 text-[#00aeef] shrink-0 transition-transform duration-200 group-hover:scale-110" />
@@ -293,20 +293,20 @@ export default function ReportsSection({
 
                     {/* 3. Description (Raw text of the complaint, truncated if long) */}
                     <td className="py-4.5 px-5 max-w-xs">
-                      <div className="text-slate-700 font-medium italic leading-relaxed" title={c.rawText}>
+                      <div className="text-slate-700 dark:text-slate-300 font-medium italic leading-relaxed" title={c.rawText}>
                         "{c.rawText.length > 80 ? c.rawText.slice(0, 80) + "..." : c.rawText}"
                       </div>
                       {c.imageUrl && (
                         <div className="mt-1.5">
                           <a href={c.imageUrl} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 text-[10px] font-bold text-[#00aeef] hover:underline">
-                            📸 View Photo
+                            <Camera className="w-3 h-3" /> View Photo
                           </a>
                         </div>
                       )}
                     </td>
 
                     {/* 4. Category & Urgency (Formatted as Pipeline Breach/Pressured Drop style) */}
-                    <td className="py-4.5 px-5 font-bold text-[#001e66] space-y-1">
+                    <td className="py-4.5 px-5 font-bold text-[#001e66] dark:text-slate-200 space-y-1">
                       <span className="capitalize block">{c.category.replace(/_/g, " ").toLowerCase()}</span>
                       <span className={`inline-block px-2.5 py-0.5 rounded-full text-[9px] font-black uppercase tracking-wider ${getUrgencyBadgeClass(c.urgency)}`}>
                         {c.urgency}
@@ -363,25 +363,25 @@ export default function ReportsSection({
         </div>
 
         {activeTotalPages > 1 && (
-          <div className="flex items-center justify-between pt-4 border-t border-slate-100 bg-white px-2">
-            <span className="text-xs font-bold text-slate-500">
+          <div className="flex items-center justify-between pt-4 border-t border-slate-100 dark:border-slate-800 bg-white dark:bg-slate-900/40 px-2">
+            <span className="text-xs font-bold text-slate-500 dark:text-slate-400">
               Showing {activeStart + 1} to {Math.min(activeStart + 5, filteredActive.length)} of {filteredActive.length} active cases
             </span>
             <div className="flex items-center gap-2">
               <button
                 onClick={() => setActivePage(currentActivePage - 1)}
                 disabled={currentActivePage === 1}
-                className="px-3 py-1.5 rounded-lg border border-slate-200 text-xs font-bold text-[#001e66] hover:bg-[#00aeef] hover:text-white disabled:opacity-50 disabled:hover:bg-transparent disabled:hover:text-[#001e66] transition-all cursor-pointer disabled:cursor-not-allowed select-none"
+                className="px-3 py-1.5 rounded-lg border border-slate-200 dark:border-slate-700 text-xs font-bold text-[#001e66] dark:text-slate-200 hover:bg-[#00aeef] hover:text-white disabled:opacity-50 disabled:hover:bg-transparent disabled:hover:text-[#001e66] dark:disabled:hover:text-slate-200 transition-all cursor-pointer disabled:cursor-not-allowed select-none"
               >
                 Previous
               </button>
-              <span className="text-xs font-bold text-[#001e66]">
+              <span className="text-xs font-bold text-[#001e66] dark:text-slate-200">
                 Page {currentActivePage} of {activeTotalPages}
               </span>
               <button
                 onClick={() => setActivePage(currentActivePage + 1)}
                 disabled={currentActivePage === activeTotalPages}
-                className="px-3 py-1.5 rounded-lg border border-slate-200 text-xs font-bold text-[#001e66] hover:bg-[#00aeef] hover:text-white disabled:opacity-50 disabled:hover:bg-transparent disabled:hover:text-[#001e66] transition-all cursor-pointer disabled:cursor-not-allowed select-none"
+                className="px-3 py-1.5 rounded-lg border border-slate-200 dark:border-slate-700 text-xs font-bold text-[#001e66] dark:text-slate-200 hover:bg-[#00aeef] hover:text-white disabled:opacity-50 disabled:hover:bg-transparent disabled:hover:text-[#001e66] dark:disabled:hover:text-slate-200 transition-all cursor-pointer disabled:cursor-not-allowed select-none"
               >
                 Next
               </button>
@@ -391,17 +391,17 @@ export default function ReportsSection({
       </div>
 
       {/* 2. Complaint History (Audit Trail) */}
-      <div className="pt-6 border-t border-slate-200 space-y-4">
+      <div className="pt-6 border-t border-slate-200 dark:border-slate-800 space-y-4">
         <div>
-          <h3 className="text-sm font-black text-[#001e66] uppercase tracking-wider">Complaint History (Audit Trail)</h3>
-          <p className="text-xs text-slate-400">Resolved cases archived for compliance audits and historical performance tracking</p>
+          <h3 className="text-sm font-black text-[#001e66] dark:text-slate-200 uppercase tracking-wider">Complaint History (Audit Trail)</h3>
+          <p className="text-xs text-slate-400 dark:text-slate-400">Resolved cases archived for compliance audits and historical performance tracking</p>
         </div>
 
-        <div className="overflow-hidden bg-white/40 border border-slate-200/80 rounded-[20px] shadow-sm">
+        <div className="overflow-hidden bg-white/40 dark:bg-slate-900/40 border border-slate-200/80 dark:border-slate-800 rounded-[20px] shadow-sm">
           <div className="overflow-x-auto">
             <table className="w-full text-left border-collapse text-xs">
               <thead>
-                <tr className="border-b border-slate-200 bg-slate-100/40 text-slate-500 font-bold uppercase tracking-wider">
+                <tr className="border-b border-slate-200 dark:border-slate-800 bg-slate-100/40 dark:bg-slate-900/60 text-slate-500 dark:text-slate-300 font-bold uppercase tracking-wider">
                   <th className="py-3 px-5">ID</th>
                   <th className="py-3 px-5">Location</th>
                   <th className="py-3 px-5">Description</th>
@@ -410,11 +410,11 @@ export default function ReportsSection({
                   <th className="py-3 px-5 text-center">Dispatch Action</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-150/70 bg-slate-50/10">
+              <tbody className="divide-y divide-slate-150/70 dark:divide-slate-800/70 bg-slate-50/10 dark:bg-slate-950/20">
                 {paginatedResolved.map((c) => {
                   const assignedUser = users.find((u) => u.id === c.assignedToId);
                   return (
-                    <tr key={c.id} className="hover:bg-white/60 transition-colors">
+                    <tr key={c.id} className="hover:bg-white/60 dark:hover:bg-slate-800/40 transition-colors">
                       {/* 1. ID (starts with AQ) */}
                       <td className="py-4.5 px-5 font-mono text-slate-450 font-semibold select-all">
                         AQ-{c.id.slice(0, 8).toUpperCase()}
@@ -425,10 +425,10 @@ export default function ReportsSection({
                         <div className="flex flex-col gap-1.5 items-start">
                           <span 
                             onClick={() => handleViewLocation(c.id)}
-                            className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-black bg-slate-100 hover:bg-slate-200 text-slate-600 hover:text-slate-850 border border-slate-200 hover:border-slate-300 uppercase tracking-wide cursor-pointer transition-colors shadow-sm active:scale-95"
+                            className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-black bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-200 hover:text-slate-850 border border-slate-200 dark:border-slate-700 hover:border-slate-300 uppercase tracking-wide cursor-pointer transition-colors shadow-sm active:scale-95"
                             title="Click to view on map"
                           >
-                            <MapPin className="w-3 h-3 text-slate-400 shrink-0 group-hover:scale-110 group-hover:text-[#00aeef] transition-colors duration-200" />
+                            <MapPin className="w-3 h-3 text-slate-400 dark:text-slate-400 shrink-0 group-hover:scale-110 group-hover:text-[#00aeef] transition-colors duration-200" />
                             <span>{c.barangay || "Outside Service Area"}</span>
                           </span>
                         </div>
@@ -441,15 +441,15 @@ export default function ReportsSection({
                         </div>
                         {c.imageUrl && (
                           <div className="mt-1.5">
-                            <a href={c.imageUrl} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 text-[10px] font-bold text-slate-400 hover:underline">
-                              📸 View Photo
+                            <a href={c.imageUrl} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 text-[10px] font-bold text-slate-400 dark:text-slate-400 hover:underline">
+                              <Camera className="w-3 h-3" /> View Photo
                             </a>
                           </div>
                         )}
                       </td>
 
                       {/* 4. Category & Urgency */}
-                      <td className="py-4.5 px-5 text-slate-400 font-bold space-y-1">
+                      <td className="py-4.5 px-5 text-slate-400 dark:text-slate-400 font-bold space-y-1">
                         <span className="capitalize block">{c.category.replace(/_/g, " ").toLowerCase()}</span>
                         <span className={`inline-block px-2.5 py-0.5 rounded-full text-[9px] font-black uppercase tracking-wider ${getUrgencyBadgeClass(c.urgency)}`}>
                           {c.urgency}
@@ -459,7 +459,7 @@ export default function ReportsSection({
                       {/* 5. Complaint Status */}
                       <td className="py-4.5 px-5 text-center">
                         <div className="flex flex-col gap-1.5 items-center">
-                          <span className="bg-emerald-100 text-emerald-800 font-extrabold text-[9px] px-2 py-0.5 rounded-full uppercase tracking-wider flex items-center shadow-sm">
+                          <span className="bg-emerald-100 dark:bg-emerald-950/40 text-emerald-800 dark:text-emerald-300 font-extrabold text-[9px] px-2 py-0.5 rounded-full uppercase tracking-wider flex items-center shadow-sm">
                             ✓ Resolved
                           </span>
                           <select
@@ -504,25 +504,25 @@ export default function ReportsSection({
         </div>
 
         {resolvedTotalPages > 1 && (
-          <div className="flex items-center justify-between pt-4 border-t border-slate-100 bg-white px-2">
-            <span className="text-xs font-bold text-slate-500">
+          <div className="flex items-center justify-between pt-4 border-t border-slate-100 dark:border-slate-800 bg-white dark:bg-slate-900/40 px-2">
+            <span className="text-xs font-bold text-slate-500 dark:text-slate-400">
               Showing {resolvedStart + 1} to {Math.min(resolvedStart + 5, filteredResolved.length)} of {filteredResolved.length} resolved cases
             </span>
             <div className="flex items-center gap-2">
               <button
                 onClick={() => setResolvedPage(currentResolvedPage - 1)}
                 disabled={currentResolvedPage === 1}
-                className="px-3 py-1.5 rounded-lg border border-slate-200 text-xs font-bold text-[#001e66] hover:bg-[#00aeef] hover:text-white disabled:opacity-50 disabled:hover:bg-transparent disabled:hover:text-[#001e66] transition-all cursor-pointer disabled:cursor-not-allowed select-none"
+                className="px-3 py-1.5 rounded-lg border border-slate-200 dark:border-slate-700 text-xs font-bold text-[#001e66] dark:text-slate-200 hover:bg-[#00aeef] hover:text-white disabled:opacity-50 disabled:hover:bg-transparent disabled:hover:text-[#001e66] dark:disabled:hover:text-slate-200 transition-all cursor-pointer disabled:cursor-not-allowed select-none"
               >
                 Previous
               </button>
-              <span className="text-xs font-bold text-[#001e66]">
+              <span className="text-xs font-bold text-[#001e66] dark:text-slate-200">
                 Page {currentResolvedPage} of {resolvedTotalPages}
               </span>
               <button
                 onClick={() => setResolvedPage(currentResolvedPage + 1)}
                 disabled={currentResolvedPage === resolvedTotalPages}
-                className="px-3 py-1.5 rounded-lg border border-slate-200 text-xs font-bold text-[#001e66] hover:bg-[#00aeef] hover:text-white disabled:opacity-50 disabled:hover:bg-transparent disabled:hover:text-[#001e66] transition-all cursor-pointer disabled:cursor-not-allowed select-none"
+                className="px-3 py-1.5 rounded-lg border border-slate-200 dark:border-slate-700 text-xs font-bold text-[#001e66] dark:text-slate-200 hover:bg-[#00aeef] hover:text-white disabled:opacity-50 disabled:hover:bg-transparent disabled:hover:text-[#001e66] dark:disabled:hover:text-slate-200 transition-all cursor-pointer disabled:cursor-not-allowed select-none"
               >
                 Next
               </button>
