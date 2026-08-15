@@ -1,5 +1,10 @@
 import { z } from "zod";
 
+// NOTE: This schema is duplicated (inlined) inside the Deno edge function at
+// supabase/functions/triage-complaint/index.ts (triageResultSchema), which
+// cannot import from src/lib. KEEP BOTH COPIES IN SYNC when editing enums,
+// fields, or nullability. Mirror changes there or the two triage paths will
+// classify differently.
 export const complaintTriageSchema = z.object({
   category: z.enum([
     "PIPELINE_BREACH_PRESSURE_DROP",

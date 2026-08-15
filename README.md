@@ -440,7 +440,7 @@ Results are ordered by `distance_meters ASC`.
 **Processing flow**:
 
 1. **Parallel fetch**: Simultaneously fetches the complaint from `Complaint` and calls `find_nearby_anomalies()` RPC to get the closest sensor evidence node.
-2. **Gemini AI triage** (`gemini-3.5-flash-lite`, structured JSON schema):
+2. **Gemini AI triage** (`gemini-3.5-flash` with `gemini-3.5-flash-lite` fallback, structured JSON schema):
    - Translates the report from English / Tagalog / Taglish / **Kapampangan** to English
    - Classifies `category` (5 `IssueCategory` enums) and `urgency` (LOW / MEDIUM / HIGH / CRITICAL)
    - Generates a one-sentence `summary`, `probableRootCause`, `confidenceScore`, and `recommendedAction`
@@ -564,7 +564,7 @@ The full schema is defined in [`prisma/schema.prisma`](./prisma/schema.prisma). 
 - **Server-Side Correlation Removed:** Deleted the redundant correlation block from `src/app/api/admin/telemetry-ingest/route.ts` — the Next.js route is now a thin proxy to the Edge Function, which owns all complaint/node correlation.
 
 ### Hardened AI Triage Enum Normalization
-- **Valid Enum Enforcement:** Both the Next.js `/api/triage` route and the `triage-complaint` Edge Function now constrain Gemini output to the 5 canonical `IssueCategory` enums and 4 urgency levels. `/api/triage` adds fuzzy `normalizeCategory` / `normalizeUrgency` fallbacks that map near-miss strings (e.g. `EMERGENCY` → `CRITICAL`, `MUDDY` → `HIGH_TURBIDITY`) before returning, eliminating malformed classifications.
+- **Valid Enum Enforcement:** Both the Next.js `/api/triage` route and the `triage-complaint` Edge Function now constrain Gemini output to the 5 canonical `IssueCategory` enums and 4 urgency levels. Both paths apply fuzzy `normalizeCategory` / `normalizeUrgency` fallbacks that map near-miss strings (e.g. `EMERGENCY` → `CRITICAL`, `MUDDY` → `HIGH_TURBIDITY`) and then validate the normalized result with the shared Zod schema (`complaintTriageSchema` in `src/lib/triage-schema.ts`; inlined as `triageResultSchema` in the Deno edge function). Validation runs inside the model loop, so a schema failure falls back to the next model instead of returning a malformed classification or a 500.
 
 ### Extended Dark Mode Styling
 - **Dashboard-Wide Dark Coverage:** Refactored the Admin, Sub-Admin, and Consumer dashboards with comprehensive `dark:` variants — near-black `#090d16` page backgrounds, dark card/border palettes, tinted status badge surfaces, and dynamic logo swapping (`LOGO3.png` dark / `LOGO2.png` light).
@@ -607,6 +607,16 @@ The full schema is defined in [`prisma/schema.prisma`](./prisma/schema.prisma). 
 ### Production Build & Triage Enhancements
 - **Verified Production Build:** Successfully compiled and validated the entire application using Next.js 16 (Turbopack) and React 19. All 25 system routes resolved correctly without TypeScript or dependency warnings.
 - **Refined Kapampangan Dialect AI Triage:** Expanded the dialect translation mapping in the `triage-complaint` Edge Function prompt (`danum`, `kayna`, `ala danum`, `keni`, `karin`, `agus`, `gripo`, `mabau`, `dilo`, `taya`) to ensure accurate translation of regional dialect complaints.
+
+### Recent Platform Updates (August 16, 2026)
+
+### Gemini Model Upgrade, Failover & Schema Validation for AI Triage
+- **Upgraded Classification Model:** Both the Next.js `/api/triage` route and the `triage-complaint` Edge Function now classify complaints with `gemini-3.5-flash` (up from `gemini-3.5-flash-lite`), with `gemini-3.5-flash-lite` retained as an automatic fallback model. Summary generation stays on flash-lite.
+- **Redis-Backed Flash Cooldown (`/api/triage` only):** When the free-tier flash quota is exhausted (`generate_content_free_tier_requests`), the route arms a Redis cooldown key (`triage:flash_cooldown_until`, plus an in-memory `Map` fallback) parsed from Gemini's "Please retry in Xs" message (clamped 5–120s) and falls back to flash-lite until it clears. Quota detection is strictly limited to real quota errors so other failures still fall back.
+- **Normalize + Zod Validation Pipeline (both paths):** Gemini output is JSON-parsed, run through fuzzy enum normalizers (`normalizeCategory` / `normalizeUrgency`), then validated against `complaintTriageSchema` (`src/lib/triage-schema.ts`) / `triageResultSchema` (inlined in the edge function). Validation lives inside the model loop so an invalid response triggers the fallback model rather than a silent 500 or a malformed database write. **The two schema copies must be kept in sync** — mirror comments in both files point at each other.
+- **Expanded Prompt & Few-Shot Examples:** Added urgency scoring rules, unknown-word / spelling / fragment handling (e.g. `ala dnum` → no water), the `mabau`/`mabaho` smell anchor, confidence-score guidance, and complete few-shot JSON outputs shared by both paths.
+- **Edge Function Network-Error Fallback & Request Timeout:** The `triage-complaint` Edge Function now runs its Gemini `fetch` inside the model-fallback loop, so thrown network errors (DNS / connection resets) fall back to flash-lite instead of skipping straight to a 500. Each Gemini request is also bounded by a 45s `AbortController` timeout (headroom under Supabase's 60s invocation limit), so a hung call aborts and triggers the flash-lite fallback rather than stalling the function.
+- **Verified:** TypeScript clean, 32/32 unit tests pass (1 intentionally skipped rate-limit case), and live `/api/triage` checks classify correctly across Kapampangan, smell-only, and typo-fragment reports. Edge function redeployed after edits.
 
 ---
 
