@@ -178,6 +178,7 @@ Translate the report to English, assign category, urgency (LOW, MEDIUM, HIGH, CR
         .insert({
           id: crypto.randomUUID(),
           nodeId: contextNode.id,
+          complaintId,
           complaintCount: 1,
           geminiAnalysis,
           status: "PENDING"

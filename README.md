@@ -409,9 +409,11 @@ Results are ordered by `distance_meters ASC`.
    - `ph < 6.5` or `ph > 8.5` → anomaly
    - `turbidity > 5 NTU` → anomaly
    - `tds > 500 PPM` → anomaly
-3. **If anomalous**: Inserts a `TelemetryReading` row. Fetches node coordinates. Finds all unresolved complaints within 500m using an inline Haversine function.
-   - **Automated Differential Diagnostic**: If the node is a `HOUSEHOLD_EDGE` (destination), it automatically queries the nearest `PUMP_STATION` node's latest telemetry from the past 1 hour. If the pump is normal, it diagnoses an **`Intermediary Pipeline Breach`** and updates the recommended action to inspect that specific segment. If the pump is also anomalous, it diagnoses a cascading **`Systemic Source Failure`**.
-   - **Dynamic Confidence Score**: Replaces static values with a dynamic decay formula based on distance proximity (using Haversine) and temporal delay (delay since complaint was filed). Clamps the final rating between a safe **80% minimum floor** and a **99% maximum ceiling**.
+3. **If anomalous**: Inserts a `TelemetryReading` row and runs the **cross-differential diagnostics engine** (`runCorrelationForNode` + `findNearestPump`), matching all unresolved complaints within 500m using an inline Haversine function.
+   - **Three-way source status correlation**: If the node is a `HOUSEHOLD_EDGE`, it queries the nearest `PUMP_STATION`'s latest telemetry from the past 1 hour (`PUMP_READING_WINDOW_MS`) and classifies the source as `NORMAL` (isolated downstream fault), `FAILING` (systemic cascading source failure), or `UNCLEAR` (no recent pump telemetry). A `PUMP_STATION` anomaly is always treated as the source itself failing.
+   - **Parameter-specific root causes**: Every matching complaint category is scored independently with its own source-aware anomaly prefix — `Intermediary Pipeline Breach` / `Systemic Source Pressure Drop` (pressure < 30 PSI), `Localized Pipeline Sedimentation / Infiltration` / `Systemic Source Sedimentation Failure` (turbidity > 5 NTU), `Localized Pipe Contamination` / `Systemic Chemical Contamination` (pH < 6.5 or > 8.5), and `Localized Pipe Mineral Leaching` / `Systemic Source Mineral Intrusion` (TDS > 500 PPM), plus `Source Status Unclear` when pump telemetry is missing.
+   - **Priority-weighted matching**: All matches are ranked by parameter-specific `priorityWeight` and Haversine distance; the top match becomes the primary root cause and any remaining concurrent anomalies are appended to `rootCauseAnalysis` as secondary-anomaly notes.
+   - **Dynamic Confidence Score**: Computed from the source-status base (98 isolated / 90 systemic), Haversine distance penalty, temporal decay, and a multi-complaint corroboration bonus. Clamped between a safe **80% minimum floor** and a **99% maximum ceiling**.
    - Creates or updates a `DiagnosticAlert` with a `geminiAnalysis` JSON object containing these metrics. **Node `status` is NOT changed.**
 4. **If normal**: Sets node `status → ONLINE`. Inserts a `TelemetryReading` row.
 
@@ -553,6 +555,22 @@ The full schema is defined in [`prisma/schema.prisma`](./prisma/schema.prisma). 
 - **Improved Spatial Diagnostics:** Fine-tuned the telemetry-ingest differential diagnostic output to format systemic pump failures clearly under `"Systemic Source Anomaly"` classifications.
 
 ### Recent Platform Updates (August 12, 2026)
+
+### Cross-Differential Diagnostics Engine (telemetry-ingest)
+- **Multi-Parameter Correlation Rewrite:** Rewrote the diagnostic correlation engine in `supabase/functions/telemetry-ingest/index.ts` from a single-match loop into a full cross-differential engine (`runCorrelationForNode` + `findNearestPump`). All four water quality parameters (pressure, turbidity, pH, TDS) now generate independent root-cause candidates against all unresolved complaints within the 500m geofence, scored and sorted by parameter-specific priority weights.
+- **Three-Way Source Status Classification:** The nearest `PUMP_STATION` correlate (queried via `findNearestPump` against the last 1 hour of telemetry) is now classified as `NORMAL` (downstream fault isolated), `FAILING` (systemic cascading source failure), or `UNCLEAR` (no recent pump telemetry) — replacing the previous binary local/systemic decision.
+- **Source-Aware Diagnostic Prefixes:** Each parameter resolves to a distinct classification string — `Intermediary Pipeline Breach` vs `Systemic Source Pressure Drop` (pressure), `Localized Pipeline Sedimentation / Infiltration` vs `Systemic Source Sedimentation Failure` (turbidity), `Localized Pipe Contamination` vs `Systemic Chemical Contamination` (pH), and `Localized Pipe Mineral Leaching` vs `Systemic Source Mineral Intrusion` (TDS) — with fallback `Source Status Unclear` prefixes when pump telemetry is absent.
+- **Secondary Anomaly Detection & Multi-Complaint Confidence Bonus:** Concurrent anomalies on the same node are appended to `rootCauseAnalysis` as secondary-anomaly notes, and the dynamic confidence score rewards corroborating nearby complaints with a multi-complaint bonus before clamping to the 80–99% range.
+- **Server-Side Correlation Removed:** Deleted the redundant correlation block from `src/app/api/admin/telemetry-ingest/route.ts` — the Next.js route is now a thin proxy to the Edge Function, which owns all complaint/node correlation.
+
+### Hardened AI Triage Enum Normalization
+- **Valid Enum Enforcement:** Both the Next.js `/api/triage` route and the `triage-complaint` Edge Function now constrain Gemini output to the 5 canonical `IssueCategory` enums and 4 urgency levels. `/api/triage` adds fuzzy `normalizeCategory` / `normalizeUrgency` fallbacks that map near-miss strings (e.g. `EMERGENCY` → `CRITICAL`, `MUDDY` → `HIGH_TURBIDITY`) before returning, eliminating malformed classifications.
+
+### Extended Dark Mode Styling
+- **Dashboard-Wide Dark Coverage:** Refactored the Admin, Sub-Admin, and Consumer dashboards with comprehensive `dark:` variants — near-black `#090d16` page backgrounds, dark card/border palettes, tinted status badge surfaces, and dynamic logo swapping (`LOGO3.png` dark / `LOGO2.png` light).
+- **Dark-Theme CSS Overrides:** Expanded `globals.css` with opacity-suffixed surface overrides (`bg-slate-50/x`, `bg-sky-50/x`, `bg-emerald-50/x`, etc.), tinted badge text colors, dark border variants, and CSS-variable-driven chart tooltips that adapt to dark mode.
+- **Dark-Theme Mapbox Sync:** The File a Complaint map now switches to `mapbox://styles/mapbox/dark-v11` when dark mode is active, and complaint pin pulse cores are pinned to white for visibility.
+- **Logout Confirmation Modal:** Introduced a shared framer-motion `LogoutConfirmModal` (confirm/cancel sign-out) integrated across all dashboard portals.
 
 ### AI Diagnostic Disambiguation & Classification Rules
 - **Strict TDS vs. pH Category Disambiguation:** Updated prompt rules across both the Next.js `/api/triage` route and the Supabase `triage-complaint` Deno Edge Function to explicitly separate `HIGH_MINERAL_CONTENT_TDS` from `CHEMICAL_DISCOLORATION_CONTAMINATION`. High TDS readings ($>500\text{ ppm}$) and mineralized/yellowish water are now strictly classified as `"Localized Pipe Mineral Leaching (High Mineral Content (TDS Exceeded))"` and will no longer default to pH level deviations.

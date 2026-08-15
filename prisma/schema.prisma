@@ -116,17 +116,23 @@ model Complaint {
   @@index([userId])
   @@index([assignedToId])
   @@index([createdAt(sort: Desc)])
+  diagnosticAlerts DiagnosticAlert[]
 }
 
 model DiagnosticAlert {
   id             String        @id @default(uuid())
   nodeId         String
   node           TelemetryNode @relation(fields: [nodeId], references: [id], onDelete: Cascade)
+  complaintId    String?
+  complaint      Complaint?    @relation(fields: [complaintId], references: [id], onDelete: SetNull)
   complaintCount Int           @default(1)
   geminiAnalysis Json
   status         TicketStatus  @default(PENDING)
   createdAt      DateTime      @default(now())
   workOrders     WorkOrder[]
+
+  @@index([nodeId])
+  @@index([complaintId])
 }
 
 model WorkOrder {
