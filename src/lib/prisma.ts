@@ -18,7 +18,7 @@ if (!globalForPrisma.pool) {
     connectionString,
     max: 4, // Increased from 1 to 4 to prevent connection starvation during concurrent Promise.all queries
     idleTimeoutMillis: 10000, // Reclaim connections after 10s idle (reduced from 30s to free up Supabase connection slots)
-    connectionTimeoutMillis: 5000, // Fail fast on connection issues (reduced from 30s to prevent long hangs)
+    connectionTimeoutMillis: 15000, // Increased from 5s to 15s to prevent cold connection timeouts on local-to-remote DB connections
   });
 }
 pool = globalForPrisma.pool;

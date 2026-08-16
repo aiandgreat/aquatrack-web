@@ -91,20 +91,23 @@ export async function POST(req: Request) {
     }
 
     const googleProvider = createGoogle({ apiKey });
-    const models = [googleProvider("gemini-3.5-flash"), googleProvider("gemini-3.5-flash-lite")];
+    const models = [googleProvider("gemini-3.5-flash-lite")];
 
     let finalResult: any;
-    const flashCooledDown = await isFlashInCooldown();
-    const startIndex = flashCooledDown ? 1 : 0;
+    const startIndex = 0;
 
     for (let i = startIndex; i < models.length; i++) {
       const model = models[i];
       try {
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 6000); // 6s timeout
+
         const result = await generateText({
           model,
           temperature: 0.0,
-          maxRetries: 1,
-          prompt: `You are an AI engineer for a municipal water district. Analyze this citizen complaint: "${text}".
+          maxRetries: 0, // Fail fast, jump to fallback immediately
+          abortSignal: controller.signal,
+          system: `You are an AI engineer for a municipal water district.
       
       Instruction: The report may be written in English, Tagalog, Taglish, or Kapampangan dialect. Use this Kapampangan translation guide to translate accurately to English:
       - "danum" = water
@@ -179,7 +182,9 @@ export async function POST(req: Request) {
         "recommendedAction": "string (strictly match mapping rules above)",
         "confidenceScore": "integer 0-100 (how certain you are of this classification)"
       }`,
+          prompt: `Citizen complaint: "${text}"`,
         });
+        clearTimeout(timeoutId);
         const cleanJson = result.text.replace(/```json|```/g, "").trim();
         const parsed = JSON.parse(cleanJson);
 

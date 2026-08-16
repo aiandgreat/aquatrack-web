@@ -159,7 +159,7 @@ Few-shot examples (complete valid JSON outputs):
 
 Translate the report to English, assign category, urgency (LOW, MEDIUM, HIGH, CRITICAL), summary (1 sentence), probableRootCause, recommendedAction, and confidenceScore based on the rules above.`;
 
-    const modelIds = ["gemini-3.5-flash", "gemini-3.5-flash-lite"];
+    const modelIds = ["gemini-3.5-flash-lite"];
     let result: {
       category: string;
       urgency: string;
@@ -174,13 +174,16 @@ Translate the report to English, assign category, urgency (LOW, MEDIUM, HIGH, CR
       const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/${modelId}:generateContent?key=${GEMINI_API_KEY}`;
       try {
         const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 45000);
+        const timeoutId = setTimeout(() => controller.abort(), 6000); // 6s timeout
         const aiResponse = await fetch(geminiUrl, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           signal: controller.signal,
           body: JSON.stringify({
-            contents: [{ parts: [{ text: `${systemPrompt}\nReport: "${complaint.rawText}"\nNearby Sensor: ${contextNode ? JSON.stringify(contextNode) : "None"}` }] }],
+            contents: [{ parts: [{ text: `Report: "${complaint.rawText}"\nNearby Sensor: ${contextNode ? JSON.stringify(contextNode) : "None"}` }] }],
+            systemInstruction: {
+              parts: [{ text: systemPrompt }]
+            },
             generationConfig: {
               responseMimeType: "application/json",
               temperature: 0.0,
