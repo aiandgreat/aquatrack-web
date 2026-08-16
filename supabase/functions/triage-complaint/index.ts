@@ -1,13 +1,15 @@
 import { serve } from "https://deno.land/std@0.177.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.8";
 import { z } from "https://esm.sh/zod@3.22.4";
+import * as jose from "https://esm.sh/jose@5.2.2";
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL");
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
 const GEMINI_API_KEY = Deno.env.get("GEMINI_API_KEY");
+const GOOGLE_VERTEX_CREDENTIALS = Deno.env.get("GOOGLE_VERTEX_CREDENTIALS");
 
-if (!SUPABASE_URL || !SUPABASE_SERVICE_ROLE_KEY || !GEMINI_API_KEY) {
-  throw new Error("Missing required environment variables.");
+if (!SUPABASE_URL || !SUPABASE_SERVICE_ROLE_KEY || (!GEMINI_API_KEY && !GOOGLE_VERTEX_CREDENTIALS)) {
+  throw new Error("Missing required environment variables (SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, and either GEMINI_API_KEY or GOOGLE_VERTEX_CREDENTIALS).");
 }
 
 const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
@@ -52,6 +54,53 @@ const triageResultSchema = z.object({
   translatedText: z.string().nullable(),
   summary: z.string(),
 });
+
+// Cache token to prevent generating a new token for every request if they happen close together
+let cachedToken: { token: string; expires: number } | null = null;
+
+async function getVertexAccessToken(saJsonStr: string): Promise<string> {
+  if (cachedToken && cachedToken.expires > Date.now() + 60000) {
+    return cachedToken.token;
+  }
+  
+  const trimmed = saJsonStr.trim();
+  const decodedCreds = (trimmed.startsWith("{") || trimmed.startsWith("'") || trimmed.startsWith('"'))
+    ? trimmed.replace(/^['"]|['"]$/g, "")
+    : atob(trimmed);
+  const sa = JSON.parse(decodedCreds);
+  const privateKey = await jose.importPKCS8(sa.private_key, "RS256");
+
+  const jwt = await new jose.SignJWT({
+    scope: "https://www.googleapis.com/auth/cloud-platform"
+  })
+    .setProtectedHeader({ alg: "RS256" })
+    .setIssuedAt()
+    .setIssuer(sa.client_email)
+    .setAudience("https://oauth2.googleapis.com/token")
+    .setExpirationTime("1h")
+    .sign(privateKey);
+
+  const res = await fetch("https://oauth2.googleapis.com/token", {
+    method: "POST",
+    headers: { "Content-Type": "application/x-www-form-urlencoded" },
+    body: new URLSearchParams({
+      grant_type: "urn:ietf:params:oauth:grant-type:jwt-bearer",
+      assertion: jwt
+    })
+  });
+
+  const data = await res.json();
+  if (!res.ok) {
+    throw new Error(`Failed to get OAuth token: ${JSON.stringify(data)}`);
+  }
+
+  cachedToken = {
+    token: data.access_token,
+    expires: Date.now() + (data.expires_in || 3600) * 1000
+  };
+
+  return data.access_token;
+}
 
 serve(async (req) => {
   if (req.method !== "POST") return new Response("Method not allowed", { status: 405 });
@@ -159,7 +208,29 @@ Few-shot examples (complete valid JSON outputs):
 
 Translate the report to English, assign category, urgency (LOW, MEDIUM, HIGH, CRITICAL), summary (1 sentence), probableRootCause, recommendedAction, and confidenceScore based on the rules above.`;
 
-    const modelIds = ["gemini-3.5-flash-lite"];
+    let oauthToken = "";
+    let usingVertex = false;
+    let project = "";
+    let location = "";
+
+    if (GOOGLE_VERTEX_CREDENTIALS) {
+      try {
+        oauthToken = await getVertexAccessToken(GOOGLE_VERTEX_CREDENTIALS);
+        const trimmed = GOOGLE_VERTEX_CREDENTIALS.trim();
+        const decodedCreds = (trimmed.startsWith("{") || trimmed.startsWith("'") || trimmed.startsWith('"'))
+          ? trimmed.replace(/^['"]|['"]$/g, "")
+          : atob(trimmed);
+        const sa = JSON.parse(decodedCreds);
+        project = sa.project_id || Deno.env.get("GOOGLE_VERTEX_PROJECT") || "aquatrack-prod";
+        location = Deno.env.get("GOOGLE_VERTEX_LOCATION") || "us-central1";
+        usingVertex = true;
+      } catch (err) {
+        console.error("[Triage Edge Function] Vertex auth failed, falling back to AI Studio:", (err as Error).message);
+      }
+    }
+
+    const modelIds = ["gemini-3.7-flash", "gemini-3.5-flash-lite"];
+
     let result: {
       category: string;
       urgency: string;
@@ -171,13 +242,21 @@ Translate the report to English, assign category, urgency (LOW, MEDIUM, HIGH, CR
     } | null = null;
 
     for (const modelId of modelIds) {
-      const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/${modelId}:generateContent?key=${GEMINI_API_KEY}`;
+      const url = usingVertex
+        ? `https://${location}-aiplatform.googleapis.com/v1/projects/${project}/locations/${location}/publishers/google/models/${modelId}:generateContent`
+        : `https://generativelanguage.googleapis.com/v1beta/models/${modelId}:generateContent?key=${GEMINI_API_KEY}`;
+
+      const headers: Record<string, string> = { "Content-Type": "application/json" };
+      if (usingVertex && oauthToken) {
+        headers["Authorization"] = `Bearer ${oauthToken}`;
+      }
+
       try {
         const controller = new AbortController();
         const timeoutId = setTimeout(() => controller.abort(), 6000); // 6s timeout
-        const aiResponse = await fetch(geminiUrl, {
+        const aiResponse = await fetch(url, {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
+          headers,
           signal: controller.signal,
           body: JSON.stringify({
             contents: [{ parts: [{ text: `Report: "${complaint.rawText}"\nNearby Sensor: ${contextNode ? JSON.stringify(contextNode) : "None"}` }] }],

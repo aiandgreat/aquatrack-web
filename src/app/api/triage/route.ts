@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { generateText } from "ai";
 import { createGoogle } from "@ai-sdk/google";
+import { createVertex } from "@ai-sdk/google-vertex";
 import { redis } from "../../../lib/redis";
 import { complaintTriageSchema } from "../../../lib/triage-schema";
 
@@ -86,15 +87,42 @@ export async function POST(req: Request) {
     }
 
     const apiKey = process.env.GOOGLE_GENERATIVE_AI_API_KEY || process.env.GEMINI_API_KEY;
-    if (!apiKey) {
-      return NextResponse.json({ error: "Missing Gemini API key configurations" }, { status: 500 });
+    const vertexCredentials = process.env.GOOGLE_VERTEX_CREDENTIALS;
+    
+    let models: any[] = [];
+    let usingVertex = false;
+
+    if (vertexCredentials) {
+      try {
+        const trimmed = vertexCredentials.trim();
+        const decodedCreds = (trimmed.startsWith("{") || trimmed.startsWith("'") || trimmed.startsWith('"'))
+          ? trimmed.replace(/^['"]|['"]$/g, "") // strip quotes if wrapped
+          : atob(trimmed);
+        const vertex = createVertex({
+          project: process.env.GOOGLE_VERTEX_PROJECT || "aquatrack-prod",
+          location: process.env.GOOGLE_VERTEX_LOCATION || "us-central1",
+          googleAuthOptions: {
+            credentials: JSON.parse(decodedCreds)
+          }
+        });
+        models = [vertex("gemini-3.7-flash"), vertex("gemini-3.5-flash-lite")];
+        usingVertex = true;
+      } catch (err: any) {
+        console.error("[Triage API] Failed to parse Vertex credentials, falling back to AI Studio:", err.message);
+      }
     }
 
-    const googleProvider = createGoogle({ apiKey });
-    const models = [googleProvider("gemini-3.5-flash-lite")];
+    if (!usingVertex || models.length === 0) {
+      if (!apiKey) {
+        return NextResponse.json({ error: "Missing Gemini API key configurations or Vertex credentials" }, { status: 500 });
+      }
+      const googleProvider = createGoogle({ apiKey });
+      models = [googleProvider("gemini-3.7-flash"), googleProvider("gemini-3.5-flash-lite")];
+    }
 
     let finalResult: any;
-    const startIndex = 0;
+    const flashCooledDown = usingVertex ? false : await isFlashInCooldown();
+    const startIndex = flashCooledDown ? 1 : 0;
 
     for (let i = startIndex; i < models.length; i++) {
       const model = models[i];

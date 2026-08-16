@@ -27,7 +27,7 @@ A production-ready municipal water district command center for real-time IoT tel
 - **Real-time Streaming**: Supabase Realtime (WebSockets) for pushing live system updates (new complaints and status changes) to the dashboard interface without page refreshes.
 
 ### AI & Communications
-- **AI Integration Core**: Google Gemini API integrated via the Vercel AI SDK using Structured JSON Schema mode for multi-lingual complaint triaging.
+- **AI Integration Core**: Vertex AI (Gemini Enterprise Agent Platform) + Google AI Studio fallback integrated via the Vercel AI SDK and REST APIs using Structured JSON Schema mode for multi-lingual complaint triaging.
 - **Transactional Email Layer**: Brevo (Sendinblue) API + React Email for immediate structural breakdown routing and engineer dispatches.
 
 ## Setup Instructions
@@ -63,11 +63,11 @@ NEXT_PUBLIC_SUPABASE_ANON_KEY="eyJ..."
 UPSTASH_REDIS_REST_URL="https://[instance].upstash.io"
 UPSTASH_REDIS_REST_TOKEN="AX..."
 
-# Google Gemini AI
-GEMINI_API_KEY="AIza..."
-
-# Vercel AI SDK (optional; falls back to GEMINI_API_KEY if omitted)
-GOOGLE_GENERATIVE_AI_API_KEY="AIza..."
+# Google Gemini AI & Vertex AI
+GEMINI_API_KEY="your-free-ai-studio-api-key"
+GOOGLE_VERTEX_PROJECT="your-gcp-project-id"
+GOOGLE_VERTEX_LOCATION="global"
+GOOGLE_VERTEX_CREDENTIALS="base64-encoded-service-account-json"
 
 # Brevo (Sendinblue) Email Service
 BREVO_API_KEY="xkeysib-..."
@@ -440,7 +440,7 @@ Results are ordered by `distance_meters ASC`.
 **Processing flow**:
 
 1. **Parallel fetch**: Simultaneously fetches the complaint from `Complaint` and calls `find_nearby_anomalies()` RPC to get the closest sensor evidence node.
-2. **Gemini AI triage** (`gemini-3.5-flash-lite` with context caching, structured JSON schema):
+2. **Gemini AI triage** (`gemini-3.7-flash` with `gemini-3.5-flash-lite` fallback, context caching, structured JSON schema):
    - Translates the report from English / Tagalog / Taglish / **Kapampangan** to English
    - Classifies `category` (5 `IssueCategory` enums) and `urgency` (LOW / MEDIUM / HIGH / CRITICAL)
    - Generates a one-sentence `summary`, `probableRootCause`, `confidenceScore`, and `recommendedAction`
@@ -610,8 +610,9 @@ The full schema is defined in [`prisma/schema.prisma`](./prisma/schema.prisma). 
 
 ### Recent Platform Updates (August 16, 2026)
 
-### AI Triage Performance & Latency Tuning
-- **Primary Classification Model**: Settled on `gemini-3.5-flash-lite` for the entire triage pipeline (both Next.js `/api/triage` route and Deno `triage-complaint` Edge Function) for its superior speed, high free-tier rate limits, and accurate dialect classification. Summary generation also remains on `gemini-3.5-flash-lite`.
+### AI Triage Performance, Latency Tuning & Vertex AI Integration
+- **Hybrid AI Engine (Vertex AI & AI Studio)**: Upgraded the entire Gemini AI pipeline (Next.js `/api/triage`, `/api/admin/system-summary`, `/api/admin/barangay-summary`, and the Deno `triage-complaint` Edge Function) to support Vertex AI Enterprise calling (leveraging the $300 GCP free trial credit on the postpaid billing tier using the `global` region endpoint) with an automatic fail-safe fallback to Google AI Studio if credentials are not configured.
+- **Model Architecture**: Configured `gemini-3.7-flash` as the primary model and `gemini-3.5-flash-lite` as the automatic failover/backup model for triage. System operations summaries and localized barangay summaries continue to run on `gemini-3.5-flash-lite`.
 - **System Instruction & Context Caching**: Relocated the large prompt instructions (translation guides, rules, and few-shot JSON examples) to the `system` parameter in Next.js and the `systemInstruction` body parameter in the Deno fetch payloads. This allows Gemini to leverage context caching, greatly reducing request processing times.
 - **Fail-Fast Request Timeout**: Bounded all triage API calls by a strict **6-second timeout** via `AbortController` to prevent requests from hanging, ensuring responsiveness during API network spikes.
 - **Normalize + Zod Validation Pipeline (both paths)**: Gemini output is JSON-parsed, run through fuzzy enum normalizers (`normalizeCategory` / `normalizeUrgency`), then validated against `complaintTriageSchema` (`src/lib/triage-schema.ts`) / `triageResultSchema` (inlined in the Edge Function). Validation failures are caught safely without 500 errors.

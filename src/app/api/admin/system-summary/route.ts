@@ -3,6 +3,7 @@ import { prisma } from "../../../../lib/prisma";
 import { redis } from "../../../../lib/redis";
 import { generateText } from "ai";
 import { createGoogle } from "@ai-sdk/google";
+import { createVertex } from "@ai-sdk/google-vertex";
 
 export async function GET(request: Request) {
   try {
@@ -149,9 +150,38 @@ ${sortedHotspots.map(b => `- **Barangay ${b.split(" (")[0]}**: Resolve active pi
     // 4. Generate using Gemini AI with actual database telemetry
     try {
       const apiKey = process.env.GOOGLE_GENERATIVE_AI_API_KEY || process.env.GEMINI_API_KEY;
-      if (apiKey) {
+      const vertexCredentials = process.env.GOOGLE_VERTEX_CREDENTIALS;
+      
+      let model: any;
+      let usingVertex = false;
+
+      if (vertexCredentials) {
+        try {
+          const trimmed = vertexCredentials.trim();
+          const decodedCreds = (trimmed.startsWith("{") || trimmed.startsWith("'") || trimmed.startsWith('"'))
+            ? trimmed.replace(/^['"]|['"]$/g, "")
+            : atob(trimmed);
+          const vertex = createVertex({
+            project: process.env.GOOGLE_VERTEX_PROJECT || "aquatrack-prod",
+            location: process.env.GOOGLE_VERTEX_LOCATION || "global",
+            googleAuthOptions: {
+              credentials: JSON.parse(decodedCreds)
+            }
+          });
+          model = vertex("gemini-3.5-flash-lite");
+          usingVertex = true;
+        } catch (err: any) {
+          console.error("[System Summary API] Failed to parse Vertex credentials, falling back to AI Studio:", err.message);
+        }
+      }
+
+      if (!usingVertex || !model) {
+        if (!apiKey) {
+          throw new Error("Missing Gemini API key configurations or Vertex credentials");
+        }
         const googleProvider = createGoogle({ apiKey });
-        const model = googleProvider("gemini-3.5-flash-lite");
+        model = googleProvider("gemini-3.5-flash-lite");
+      }
 
         const prompt = `You are a municipal utility analyst for the City of San Fernando Water District.
 Generate a concise, professional, data-driven system status summary and action plan.
@@ -189,7 +219,6 @@ Output only the raw text, do not wrap in markdown or quotes. Keep it concise (ma
         if (aiResponse && aiResponse.trim().length > 10) {
           summaryText = aiResponse.trim();
         }
-      }
     } catch (aiErr) {
       console.warn("Gemini AI system-summary generation failed, using standard fallback:", aiErr);
     }

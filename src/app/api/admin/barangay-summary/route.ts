@@ -3,6 +3,7 @@ import { prisma } from "../../../../lib/prisma";
 import { redis } from "../../../../lib/redis";
 import { generateText } from "ai";
 import { createGoogle } from "@ai-sdk/google";
+import { createVertex } from "@ai-sdk/google-vertex";
 
 export async function GET(req: Request) {
   try {
@@ -54,12 +55,38 @@ export async function GET(req: Request) {
 
     try {
       const apiKey = process.env.GOOGLE_GENERATIVE_AI_API_KEY || process.env.GEMINI_API_KEY;
-      if (!apiKey) {
-        throw new Error("Missing Gemini API key configurations");
+      const vertexCredentials = process.env.GOOGLE_VERTEX_CREDENTIALS;
+      
+      let model: any;
+      let usingVertex = false;
+
+      if (vertexCredentials) {
+        try {
+          const trimmed = vertexCredentials.trim();
+          const decodedCreds = (trimmed.startsWith("{") || trimmed.startsWith("'") || trimmed.startsWith('"'))
+            ? trimmed.replace(/^['"]|['"]$/g, "")
+            : atob(trimmed);
+          const vertex = createVertex({
+            project: process.env.GOOGLE_VERTEX_PROJECT || "aquatrack-prod",
+            location: process.env.GOOGLE_VERTEX_LOCATION || "global",
+            googleAuthOptions: {
+              credentials: JSON.parse(decodedCreds)
+            }
+          });
+          model = vertex("gemini-3.5-flash-lite");
+          usingVertex = true;
+        } catch (err: any) {
+          console.error("[Barangay Summary API] Failed to parse Vertex credentials, falling back to AI Studio:", err.message);
+        }
       }
 
-      const googleProvider = createGoogle({ apiKey });
-      const model = googleProvider("gemini-3.5-flash-lite");
+      if (!usingVertex || !model) {
+        if (!apiKey) {
+          throw new Error("Missing Gemini API key configurations or Vertex credentials");
+        }
+        const googleProvider = createGoogle({ apiKey });
+        model = googleProvider("gemini-3.5-flash-lite");
+      }
 
       const prompt = `You are a municipal utility analyst. Here is a list of citizen complaints for Barangay ${barangay} in San Fernando, Pampanga:
 ${complaints.map((c, i) => `${i + 1}. [Urgency: ${c.urgency}, Category: ${c.category}] "${c.rawText}"`).join("\n")}
