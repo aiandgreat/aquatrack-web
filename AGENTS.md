@@ -48,3 +48,26 @@ AquaTrack Web — municipal water district command center. Next.js 16 (App Route
 - The entire Gemini AI pipeline (the Next.js `/api/triage` route, the Deno `triage-complaint` Edge Function, `/api/admin/system-summary`, and `/api/admin/barangay-summary`) natively supports Vertex AI calling (via Base64-encoded Service Account JSON in `GOOGLE_VERTEX_CREDENTIALS` using the `global` location to draw from the $300 GCP credit) with an automatic fail-safe fallback to Google AI Studio if credentials are not configured. Triage uses `gemini-3.7-flash` (with `gemini-3.5-flash-lite` fallback) while dashboard and barangay summaries use `gemini-3.5-flash-lite`. Enums are normalized and validated with Zod in the request loop so schema failures are caught gracefully.
 - The `pg.Pool` connection pool in `src/lib/prisma.ts` uses `connectionTimeoutMillis: 15000` (15 seconds) to prevent cold-start connection timeouts when connecting to the remote database from a local development environment.
 - README.md is authoritative for the domain/AI/SQL details but its changelog is historical — verify current behavior in code.
+
+## Realtime Architecture
+
+- **Admin Dashboard** (`DashboardAdmin.tsx`): Three Supabase Realtime channels — `admin-complaints-realtime` (all `Complaint` events → calls `fetchComplaints()` + `fetchStats()` + `fetchDiagnosticAlerts()`), `admin-readings-realtime` (`TelemetryReading` INSERTs → optimistic node state patch + `fetchStats()`), `admin-users-realtime` (`User` UPDATEs → `fetchUsers()`). All set up in a single `useEffect([currentUserRole])`.
+- **Sub-Admin Dashboard** (`DashboardSubAdmin.tsx`): One channel — `subadmin-complaints-realtime` (all `Complaint` events → `fetchComplaints()` + `fetchStats()`). UPDATE events additionally check if `payload.new.assignedToId` matches the logged-in user's ID (tracked via `userProfileIdRef`) to trigger assignment notifications.
+- **Cache-busting**: All `fetch()` calls in both Admin and Sub-Admin dashboards use `?t=${Date.now()}` query parameters and `{ cache: "no-store" }` to prevent Next.js from serving stale cached responses when realtime events trigger re-fetches.
+- **Raw payload limitation**: Supabase Realtime CDC payloads for the `Complaint` table do NOT include PostGIS-computed coordinates (`latitude`/`longitude`) or SQL JOIN fields (user names, technician names). Never patch state directly from `payload.new` for complaints — always call `fetchComplaints()` to get the fully-resolved API response.
+- **REPLICA IDENTITY**: `payload.old` is only populated for UPDATE events when `ALTER TABLE "Complaint" REPLICA IDENTITY FULL` has been run. The code defensively uses `payload.old?.assignedToId ?? null` so assignment detection works regardless.
+
+## Notification System (Sub-Admin)
+
+- `assignmentNotifications` state: an in-memory array of `{ id, text, timestamp, read }` objects. Populated when a realtime UPDATE fires with `assignedToId === userProfileIdRef.current`. Persists for the session lifetime only — clears on page reload.
+- `readAdvisoryIds` state: a `Set<string>` tracking which advisory IDs have been clicked/viewed in the bell dropdown. Used to compute the unread badge count independently from `assignmentNotifications`.
+- Badge count = `unread assignmentNotifications` + `unread advisories` (those not in `readAdvisoryIds`).
+- Clicking a **Task Assignment** notification → marks it read + navigates to `complaints` tab + closes dropdown.
+- Clicking an **Advisory** notification → adds its ID to `readAdvisoryIds` + navigates to `advisories` tab + closes dropdown.
+- `playNotificationSound()`: a module-level helper using the Web Audio API (`AudioContext`) to synthesize a soft two-tone chime (D5 + A5) without any static audio file dependency.
+- `userProfileIdRef`: a `useRef` kept in sync with `userProfile?.id` via a `useEffect([userProfile])`. Used inside realtime callbacks to safely access the current user's ID without stale closure issues.
+
+## Logout Loading Screen
+
+- `LogoutConfirmModal` (`src/components/LogoutConfirmModal.tsx`) accepts an optional `isLoading?: boolean` prop. When `true`, it renders a full-screen branded loader (matching the dashboard loader: AquaTrack logo at 120px, `#00aeef` spinning ring, "Signing Out…" label) instead of the confirm/cancel modal. z-index is `z-[200]` — above all other overlays.
+- Each dashboard (`DashboardAdmin`, `DashboardSubAdmin`, `DashboardClient`) declares a `signingOut` state, sets it to `true` at the start of `handleLogout`, and passes it as `isLoading={signingOut}` to the modal.

@@ -621,6 +621,32 @@ The full schema is defined in [`prisma/schema.prisma`](./prisma/schema.prisma). 
 
 ---
 
+### Platform Updates (August 19, 2026)
+
+### Realtime Dashboard Fixes
+
+- **Admin Complaint Realtime Fixed:** Replaced the raw `payload.new` state-patching approach in `DashboardAdmin.tsx` with a `fetchComplaints()` call on every Supabase Realtime event. The raw CDC payload does not include PostGIS-computed coordinates (`latitude`/`longitude` via `ST_X`/`ST_Y`) or SQL JOIN fields (user names, technician names), causing map markers and complaint cards to silently fail. Fetching from the API ensures all fields are fully resolved.
+- **Cache-Busting Fetch Calls:** All data-fetch functions in `DashboardAdmin.tsx` and `DashboardSubAdmin.tsx` (`fetchComplaints`, `fetchStats`, `fetchNodes`, `fetchUsers`, `fetchAdvisories`, `fetchDiagnosticAlerts`) now append `?t=${Date.now()}` and set `{ cache: "no-store" }` to bypass the Next.js router cache on realtime-triggered re-fetches.
+
+### Sub-Admin Assignment Notification System
+
+- **Realtime Task Assignment Alerts:** When the Admin dispatches a technician to a complaint, the technician's Sub-Admin Dashboard instantly receives an in-session notification via Supabase Realtime. Detection compares `payload.new.assignedToId` against the logged-in user's ID tracked via `userProfileIdRef` (a `useRef` synced to `userProfile?.id`). The code defensively uses `payload.old?.assignedToId ?? null` so detection works regardless of whether `REPLICA IDENTITY FULL` is set on the `Complaint` table.
+- **Chime Sound:** A `playNotificationSound()` module-level helper synthesizes a soft two-tone chime (D5 + A5) using the Web Audio API `AudioContext` — no static audio file required.
+- **Assignment Banner:** A green success alert banner appears at the top of the Sub-Admin dashboard with the complaint ticket short ID, auto-dismissing after 12 seconds.
+- **Interactive Bell Dropdown:** The notification bell dropdown was fully rebuilt:
+  - `assignmentNotifications` state (`{ id, text, timestamp, read }[]`) — in-memory, session-only, populated on realtime assignment.
+  - `readAdvisoryIds` state (`Set<string>`) — tracks which advisory IDs have been viewed.
+  - Badge count = unread assignments + unread advisories combined.
+  - Clicking a **Task Assignment** item marks it read and navigates to the Complaints tab.
+  - Clicking an **Advisory** item marks it read and navigates to the Advisories tab.
+  - Unread items show a small coloured dot on the icon; read items are faded.
+
+### Branded Logout Loading Screen
+
+- **`LogoutConfirmModal` Extended:** Added an optional `isLoading?: boolean` prop. When `true`, the modal renders a full-screen branded loader (AquaTrack logo at 120px, `#00aeef` spinning ring, pulsing "Signing Out…" label, z-index `z-[200]`) matching the dashboard initial load screen. Applied consistently across `DashboardAdmin`, `DashboardSubAdmin`, and `DashboardClient` via a `signingOut` state set to `true` at the start of `handleLogout`.
+
+---
+
 ## 📁 Related Repositories
 
 | Repository | Description |
