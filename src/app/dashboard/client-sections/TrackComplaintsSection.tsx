@@ -20,6 +20,7 @@ interface TrackComplaintsSectionProps {
 export default function TrackComplaintsSection({ myComplaints }: TrackComplaintsSectionProps) {
   const formatCategory = (cat: string) => {
     if (!cat) return "Unclassified";
+    if (cat === "HIGH_MINERAL_CONTENT_TDS") return "High Mineral Content/TDS";
     return cat
       .replace(/_/g, " ")
       .toLowerCase()

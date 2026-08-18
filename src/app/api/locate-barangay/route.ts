@@ -63,6 +63,15 @@ async function nominatimLookup(latitude: number, longitude: number): Promise<str
     const data = await res.json();
     const addr = data?.address ?? {};
 
+    const city = addr.city || addr.town || addr.municipality || addr.city_district || "";
+    const isSanFernando = city.toLowerCase().includes("san fernando");
+    
+    // Reject addresses that belong to other cities/municipalities
+    if (city && !isSanFernando) {
+      console.warn(`Location is in ${city}, which is outside San Fernando service area.`);
+      return null;
+    }
+
     // Try each field that Nominatim uses for barangay-level admin
     const candidates = [
       addr.village,

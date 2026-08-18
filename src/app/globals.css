@@ -326,3 +326,32 @@ html.dark .realistic-droplet, .dark .realistic-droplet {
     6px 12px 16px rgba(0, 0, 0, 0.2),
     3px 6px 6px rgba(0, 0, 0, 0.15) !important;
 }
+
+/* --- Mapbox Watermark and Attribution Optimization --- */
+.mapboxgl-ctrl-logo {
+  width: 58px !important;
+  height: 15px !important;
+  background-size: contain !important;
+  opacity: 0.35 !important;
+  transition: opacity 0.2s ease-in-out !important;
+}
+
+.mapboxgl-ctrl-logo:hover {
+  opacity: 0.8 !important;
+}
+
+.mapboxgl-ctrl-attrib {
+  font-size: 8px !important;
+  opacity: 0.35 !important;
+  background-color: rgba(255, 255, 255, 0.3) !important;
+  transition: opacity 0.2s ease-in-out !important;
+}
+
+.mapboxgl-ctrl-attrib:hover {
+  opacity: 0.8 !important;
+}
+
+html.dark .mapboxgl-ctrl-attrib, .dark .mapboxgl-ctrl-attrib {
+  background-color: rgba(15, 23, 42, 0.3) !important;
+  color: #94a3b8 !important;
+}

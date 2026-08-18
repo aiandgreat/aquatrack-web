@@ -48,6 +48,7 @@ const statusConfig = {
 
 export default function FieldCrewPortal() {
   const [isDark, setIsDark] = useState(false);
+  const [themeLoaded, setThemeLoaded] = useState(false);
   const [currentJob, setCurrentJob] = useState<WorkOrder>({
     id: "job-101",
     status: "ASSIGNED",
@@ -79,9 +80,11 @@ export default function FieldCrewPortal() {
     const initialDark =
       root.classList.contains("dark") || localStorage.getItem("theme") === "dark";
     setIsDark(initialDark);
+    setThemeLoaded(true);
   }, []);
 
   useEffect(() => {
+    if (!themeLoaded) return;
     if (isDark) {
       document.documentElement.classList.add("dark");
       localStorage.setItem("theme", "dark");
@@ -89,7 +92,7 @@ export default function FieldCrewPortal() {
       document.documentElement.classList.remove("dark");
       localStorage.setItem("theme", "light");
     }
-  }, [isDark]);
+  }, [isDark, themeLoaded]);
 
   useEffect(() => {
     const getSession = async () => {

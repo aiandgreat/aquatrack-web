@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import Link from "next/link";
 import { getSupabaseClient } from "../../lib/supabase";
 import { motion, AnimatePresence } from "framer-motion";
@@ -12,6 +12,42 @@ import TelemetrySection from "./admin-sections/TelemetrySection";
 import HomeSection from "./sub-admin-sections/HomeSection";
 import ComplaintsSection from "./sub-admin-sections/ComplaintsSection";
 import MapPreviewModal from "../../components/MapPreviewModal";
+
+const playNotificationSound = () => {
+  try {
+    const AudioContextClass = window.AudioContext || (window as any).webkitAudioContext;
+    if (!AudioContextClass) return;
+    const ctx = new AudioContextClass();
+    
+    // Note 1: High crisp tone
+    const osc1 = ctx.createOscillator();
+    const gain1 = ctx.createGain();
+    osc1.type = "sine";
+    osc1.frequency.setValueAtTime(587.33, ctx.currentTime); // D5
+    gain1.gain.setValueAtTime(0.1, ctx.currentTime);
+    gain1.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.4);
+    osc1.connect(gain1);
+    gain1.connect(ctx.destination);
+    osc1.start();
+    osc1.stop(ctx.currentTime + 0.4);
+
+    // Note 2: Slightly delayed harmony
+    setTimeout(() => {
+      const osc2 = ctx.createOscillator();
+      const gain2 = ctx.createGain();
+      osc2.type = "sine";
+      osc2.frequency.setValueAtTime(880.00, ctx.currentTime); // A5
+      gain2.gain.setValueAtTime(0.08, ctx.currentTime);
+      gain2.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.5);
+      osc2.connect(gain2);
+      gain2.connect(ctx.destination);
+      osc2.start();
+      osc2.stop(ctx.currentTime + 0.5);
+    }, 80);
+  } catch (e) {
+    console.error("Audio notification failed:", e);
+  }
+};
 
 interface User {
   id: string;
@@ -88,6 +124,17 @@ export default function DashboardSubAdmin({
   // Navigation
   const [activeTab, setActiveTab] = useState<"home" | "map" | "complaints" | "telemetry" | "advisories">("home");
 
+  // Assignment notifications for the bell dropdown
+  const [assignmentNotifications, setAssignmentNotifications] = useState<{
+    id: string;
+    text: string;
+    timestamp: Date;
+    read: boolean;
+  }[]>([]);
+
+  // Track which advisory IDs have been viewed via the bell dropdown
+  const [readAdvisoryIds, setReadAdvisoryIds] = useState<Set<string>>(new Set());
+
   // Advisories state
   const [advisories, setAdvisories] = useState<{
     id: string;
@@ -117,6 +164,7 @@ export default function DashboardSubAdmin({
   const [filterAssignedOnly, setFilterAssignedOnly] = useState(true);
   const [advisoriesPage, setAdvisoriesPage] = useState(1);
   const [isDark, setIsDark] = useState(false);
+  const [themeLoaded, setThemeLoaded] = useState(false);
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
 
@@ -143,6 +191,10 @@ export default function DashboardSubAdmin({
     address: string | null;
     serviceAccountNo: string | null;
   } | null>(null);
+  const userProfileIdRef = useRef<string | null>(null);
+  useEffect(() => {
+    userProfileIdRef.current = userProfile?.id || null;
+  }, [userProfile]);
   const [isAccountDetailsOpen, setIsAccountDetailsOpen] = useState(false);
   const [accountModalTab, setAccountModalTab] = useState<"profile" | "security">("profile");
   const [profileName, setProfileName] = useState("");
@@ -169,9 +221,11 @@ export default function DashboardSubAdmin({
     const root = window.document.documentElement;
     const initialDark = root.classList.contains("dark") || localStorage.getItem("theme") === "dark";
     setIsDark(initialDark);
+    setThemeLoaded(true);
   }, []);
 
   useEffect(() => {
+    if (!themeLoaded) return;
     const root = window.document.documentElement;
     if (isDark) {
       root.classList.add("dark");
@@ -180,7 +234,7 @@ export default function DashboardSubAdmin({
       root.classList.remove("dark");
       localStorage.setItem("theme", "light");
     }
-  }, [isDark]);
+  }, [isDark, themeLoaded]);
 
   // Auth and Role check
   useEffect(() => {
@@ -245,9 +299,48 @@ export default function DashboardSubAdmin({
           "postgres_changes",
           { event: "*", schema: "public", table: "Complaint" },
           (payload) => {
-            console.log("Realtime complaint update received:", payload);
             fetchComplaints(); // Refresh the list dynamically!
             fetchStats(); // Update dashboard metric counters!
+
+            if (payload.eventType === "UPDATE") {
+              const newAssignedId = payload.new?.assignedToId;
+              // payload.old is only populated when REPLICA IDENTITY FULL is set on the table.
+              // Fall back to checking only payload.new when old is unavailable.
+              const oldAssignedId = payload.old?.assignedToId ?? null;
+              const myId = userProfileIdRef.current;
+
+              // Fire only when newly assigned to this user (not already assigned)
+              const isNewlyAssigned = myId && newAssignedId === myId && oldAssignedId !== myId;
+
+              if (isNewlyAssigned) {
+                const complaintId = payload.new.id as string;
+                const shortId = `AQ-COMP-${complaintId.slice(0, 8).toUpperCase()}`;
+
+                // Guard against duplicate notifications for the same complaint
+                setAssignmentNotifications((prev) => {
+                  if (prev.some((n) => n.id === complaintId)) return prev;
+                  // Play gentle chime sound
+                  playNotificationSound();
+                  return [
+                    {
+                      id: complaintId,
+                      text: `You were assigned to complaint ${shortId}`,
+                      timestamp: new Date(),
+                      read: false,
+                    },
+                    ...prev,
+                  ];
+                });
+
+                // Set alert message banner
+                setAlertMessage({
+                  type: "success",
+                  text: `New Task Assignment: You have been assigned to a new complaint ticket! (ID: ${shortId})`
+                });
+                // Auto-clear notification banner after 12 seconds
+                setTimeout(() => setAlertMessage(null), 12000);
+              }
+            }
           }
         )
         .subscribe();
@@ -346,7 +439,7 @@ export default function DashboardSubAdmin({
 
   const fetchAdvisories = async () => {
     try {
-      const res = await fetch("/api/advisories");
+      const res = await fetch(`/api/advisories?t=${Date.now()}`, { cache: "no-store" });
       const data = await res.json();
       if (data.success) setAdvisories(data.advisories);
     } catch (err) {
@@ -356,7 +449,7 @@ export default function DashboardSubAdmin({
 
   const fetchUsers = async () => {
     try {
-      const res = await fetch("/api/admin/users");
+      const res = await fetch(`/api/admin/users?t=${Date.now()}`, { cache: "no-store" });
       const data = await res.json();
       if (data.success) setUsers(data.users);
     } catch (err) {
@@ -366,7 +459,7 @@ export default function DashboardSubAdmin({
 
   const fetchNodes = async () => {
     try {
-      const res = await fetch("/api/admin/nodes");
+      const res = await fetch(`/api/admin/nodes?t=${Date.now()}`, { cache: "no-store" });
       const data = await res.json();
       if (data.success) setNodes(data.nodes);
     } catch (err) {
@@ -376,7 +469,7 @@ export default function DashboardSubAdmin({
 
   const fetchComplaints = async () => {
     try {
-      const res = await fetch("/api/admin/complaints");
+      const res = await fetch(`/api/admin/complaints?t=${Date.now()}`, { cache: "no-store" });
       const data = await res.json();
       if (data.success) setComplaints(data.complaints);
     } catch (err) {
@@ -386,7 +479,7 @@ export default function DashboardSubAdmin({
 
   const fetchStats = async () => {
     try {
-      const res = await fetch("/api/admin/stats");
+      const res = await fetch(`/api/admin/stats?t=${Date.now()}`, { cache: "no-store" });
       const data = await res.json();
       if (data.success) {
         setStats({
@@ -452,7 +545,10 @@ export default function DashboardSubAdmin({
     }
   };
 
+  const [signingOut, setSigningOut] = useState(false);
+
   const handleLogout = async () => {
+    setSigningOut(true);
     const client = getSupabaseClient();
     await client.auth.signOut();
     window.location.href = "/login";
@@ -466,18 +562,22 @@ export default function DashboardSubAdmin({
   // ── Loading Screen ──────────────────────────────────────────────────────────
   if (loading) {
     return (
-      <div className="min-h-screen bg-[#F8FAFC] flex items-center justify-center">
-        <div className="flex flex-col items-center gap-4">
-          <div className="relative w-14 h-14">
-            <div className="absolute inset-0 rounded-full border-4 border-slate-100" />
-            <div className="absolute inset-0 rounded-full border-4 border-t-[#00aeef] border-r-transparent border-b-transparent border-l-transparent animate-spin" />
+      <div className="min-h-screen bg-[#F8FAFC] dark:bg-[#090d16] flex flex-col items-center justify-center">
+        {/* Top accent bar */}
+        <div className="absolute inset-x-0 top-0 h-0.5 bg-[#001e66] dark:bg-[#00aeef] z-50" aria-hidden="true" />
+        <div className="text-center space-y-3">
+          <div className="flex items-center justify-center mb-1">
+            <img src="/LOGO2.png" alt="AquaTrack" className="h-[120px] w-auto object-contain dark:hidden" />
+            <img src="/LOGO3.png" alt="AquaTrack" className="h-[120px] w-auto object-contain hidden dark:block" />
           </div>
-          <div className="text-center">
-            <p className="text-sm font-semibold text-[#001e66] tracking-wide">
-              Loading Field Technician Portal
-            </p>
-            <p className="text-xs text-slate-400 mt-1">Verifying session and syncing data...</p>
+          <div className="relative w-12 h-12 mx-auto">
+            <div className="absolute inset-0 rounded-full border-[3px] border-slate-200 dark:border-slate-800" />
+            <div className="absolute inset-0 rounded-full border-[3px] border-t-[#00aeef] animate-spin" />
           </div>
+          <p className="text-slate-400 dark:text-slate-500 text-[11px] font-semibold tracking-widest uppercase animate-pulse">
+            Loading Field Technician Portal…
+          </p>
+          <p className="text-xs text-slate-400 dark:text-slate-500 mt-1">Verifying session and syncing data...</p>
         </div>
       </div>
     );
@@ -556,17 +656,26 @@ export default function DashboardSubAdmin({
               className="w-9 h-9 rounded-xl border border-slate-200/80 dark:border-white/10 bg-slate-50/80 dark:bg-white/5 hover:bg-slate-100 dark:hover:bg-white/10 flex items-center justify-center text-slate-500 dark:text-slate-400 hover:text-[#970006] dark:hover:text-red-400 transition-all focus:outline-none relative cursor-pointer"
             >
               <Bell className="w-4.5 h-4.5" />
-              {advisories.filter(ad => ad.type === "warning" && (ad.targetRole === "broadcast" || ad.targetRole === "technicians")).length > 0 && (
-                <span className="absolute -top-0.5 -right-0.5 flex h-4 w-4">
-                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
-                  <span className="relative inline-flex rounded-full h-4 w-4 bg-red-500 text-white font-black text-[8px] items-center justify-center border-2 border-white dark:border-slate-900 shadow-sm">
-                    {advisories.filter(ad => ad.type === "warning" && (ad.targetRole === "broadcast" || ad.targetRole === "technicians")).length}
+              {(() => {
+                const unreadAssignments = assignmentNotifications.filter(n => !n.read).length;
+                const unreadAdvisories = advisories.filter(ad =>
+                  ad.type === "warning" &&
+                  (ad.targetRole === "broadcast" || ad.targetRole === "technicians") &&
+                  !readAdvisoryIds.has(ad.id)
+                ).length;
+                const total = unreadAssignments + unreadAdvisories;
+                return total > 0 ? (
+                  <span className="absolute -top-0.5 -right-0.5 flex h-4 w-4">
+                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
+                    <span className="relative inline-flex rounded-full h-4 w-4 bg-red-500 text-white font-black text-[8px] items-center justify-center border-2 border-white dark:border-slate-900 shadow-sm">
+                      {total}
+                    </span>
                   </span>
-                </span>
-              )}
+                ) : null;
+              })()}
             </button>
 
-            {/* Alerts Dropdown */}
+            {/* Notifications Dropdown */}
             <AnimatePresence>
               {showNotificationMenu && (
                 <>
@@ -579,39 +688,96 @@ export default function DashboardSubAdmin({
                     className="absolute right-0 mt-2 w-80 bg-white dark:bg-slate-900 rounded-2xl border border-slate-150 dark:border-slate-800 shadow-[0_10px_35px_rgba(0,30,102,0.12)] z-50 overflow-hidden text-left"
                   >
                     <div className="p-4 border-b border-slate-100 dark:border-slate-800 flex justify-between items-center bg-slate-50/50 dark:bg-slate-900/50">
-                      <span className="font-black text-[#001e66] dark:text-slate-200 uppercase tracking-wider text-[10px]">Active System Alarms</span>
+                      <span className="font-black text-[#001e66] dark:text-slate-200 uppercase tracking-wider text-[10px]">Notifications</span>
                       <span className="text-[9px] text-[#00aeef] font-black uppercase tracking-wider">
-                        {advisories.filter(ad => ad.type === "warning" && (ad.targetRole === "broadcast" || ad.targetRole === "technicians")).length} Alerts
+                        {advisories.filter(ad => ad.type === "warning" && (ad.targetRole === "broadcast" || ad.targetRole === "technicians")).length + assignmentNotifications.length} Total
                       </span>
                     </div>
-                    
-                    <div className="divide-y divide-slate-55 dark:divide-slate-800/80 max-h-72 overflow-y-auto p-2 space-y-1.5 bg-slate-50/30 dark:bg-slate-950/20">
+
+                    <div className="divide-y divide-slate-55 dark:divide-slate-800/80 max-h-80 overflow-y-auto p-2 space-y-1.5 bg-slate-50/30 dark:bg-slate-950/20">
+
+                      {/* Assignment Notifications */}
+                      {assignmentNotifications.map((notif) => (
+                        <button
+                          key={notif.id}
+                          onClick={() => {
+                            // Mark this notification as read
+                            setAssignmentNotifications((prev) =>
+                              prev.map((n) => n.id === notif.id ? { ...n, read: true } : n)
+                            );
+                            // Navigate to complaints tab
+                            setActiveTab("complaints");
+                            setShowNotificationMenu(false);
+                          }}
+                          className={`w-full p-2.5 border rounded-xl flex gap-3 transition-all duration-200 hover:-translate-y-0.5 hover:shadow-xs text-left cursor-pointer ${
+                            notif.read
+                              ? "bg-slate-50 dark:bg-slate-800/40 border-slate-100 dark:border-slate-800/40 opacity-60"
+                              : "bg-white dark:bg-slate-900 border-[#00aeef]/20 dark:border-[#00aeef]/10 hover:bg-blue-50/50 dark:hover:bg-[#00aeef]/5"
+                          }`}
+                        >
+                          <div className="w-8 h-8 rounded-lg bg-[#00aeef]/10 flex items-center justify-center shrink-0 relative">
+                            <ClipboardList className="w-4 h-4 text-[#00aeef]" />
+                            {!notif.read && (
+                              <span className="absolute -top-0.5 -right-0.5 w-2 h-2 rounded-full bg-[#00aeef]" />
+                            )}
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <div className="flex justify-between items-start gap-2">
+                              <span className="font-bold text-[#001e66] dark:text-[#00aeef] text-[11px]">Task Assignment</span>
+                              <span className="text-[8px] text-slate-400 dark:text-slate-500 font-mono shrink-0 mt-0.5">
+                                {notif.timestamp.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+                              </span>
+                            </div>
+                            <p className="text-slate-500 dark:text-slate-400 mt-0.5 text-[9.5px] leading-relaxed text-left">
+                              {notif.text}
+                            </p>
+                          </div>
+                        </button>
+                      ))}
+
+                      {/* System Alarm Advisories */}
                       {advisories
                         .filter(ad => ad.type === "warning" && (ad.targetRole === "broadcast" || ad.targetRole === "technicians"))
-                        .map((ad) => (
-                          <div 
-                            key={ad.id} 
-                            className="p-2.5 bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800/60 rounded-xl flex gap-3 hover:bg-slate-50 dark:hover:bg-slate-800/40 transition-all duration-200 hover:-translate-y-0.5 hover:shadow-xs text-left"
-                          >
-                            {/* Icon Box */}
-                            <div className="w-8 h-8 rounded-lg bg-red-500/10 flex items-center justify-center shrink-0">
-                              <AlertTriangle className="w-4 h-4 text-red-500" />
-                            </div>
-
-                            <div className="flex-1 min-w-0">
-                              <div className="flex justify-between items-start gap-2">
-                                <span className="font-bold text-red-650 dark:text-red-400 text-[11px] truncate">{ad.title}</span>
-                                <span className="text-[8px] text-slate-400 dark:text-slate-500 font-mono shrink-0 mt-0.5">{ad.date}</span>
+                        .map((ad) => {
+                          const isRead = readAdvisoryIds.has(ad.id);
+                          return (
+                            <button
+                              key={ad.id}
+                              onClick={() => {
+                                // Mark advisory as read
+                                setReadAdvisoryIds((prev) => new Set([...prev, ad.id]));
+                                // Navigate to advisories tab
+                                setActiveTab("advisories");
+                                setShowNotificationMenu(false);
+                              }}
+                              className={`w-full p-2.5 border rounded-xl flex gap-3 transition-all duration-200 hover:-translate-y-0.5 hover:shadow-xs text-left cursor-pointer ${
+                                isRead
+                                  ? "bg-slate-50 dark:bg-slate-800/40 border-slate-100 dark:border-slate-800/40 opacity-60"
+                                  : "bg-white dark:bg-slate-900 border-slate-100 dark:border-slate-800/60 hover:bg-slate-50 dark:hover:bg-slate-800/40"
+                              }`}
+                            >
+                              <div className="w-8 h-8 rounded-lg bg-red-500/10 flex items-center justify-center shrink-0 relative">
+                                <AlertTriangle className="w-4 h-4 text-red-500" />
+                                {!isRead && (
+                                  <span className="absolute -top-0.5 -right-0.5 w-2 h-2 rounded-full bg-red-500" />
+                                )}
                               </div>
-                              <p className="text-slate-500 dark:text-slate-400 mt-0.5 text-[9.5px] leading-relaxed line-clamp-2">
-                                {ad.text}
-                              </p>
-                            </div>
-                          </div>
-                        ))}
-                      {advisories.filter(ad => ad.type === "warning" && (ad.targetRole === "broadcast" || ad.targetRole === "technicians")).length === 0 && (
+                              <div className="flex-1 min-w-0">
+                                <div className="flex justify-between items-start gap-2">
+                                  <span className="font-bold text-red-650 dark:text-red-400 text-[11px] truncate">{ad.title}</span>
+                                  <span className="text-[8px] text-slate-400 dark:text-slate-500 font-mono shrink-0 mt-0.5">{ad.date}</span>
+                                </div>
+                                <p className="text-slate-500 dark:text-slate-400 mt-0.5 text-[9.5px] leading-relaxed line-clamp-2 text-left">
+                                  {ad.text}
+                                </p>
+                              </div>
+                            </button>
+                          );
+                        })}
+
+                      {advisories.filter(ad => ad.type === "warning" && (ad.targetRole === "broadcast" || ad.targetRole === "technicians")).length === 0 && assignmentNotifications.length === 0 && (
                         <div className="p-6 text-center text-slate-400 dark:text-slate-500 italic text-[11px]">
-                          No active system alarms.
+                          No notifications.
                         </div>
                       )}
                     </div>
@@ -1344,6 +1510,7 @@ export default function DashboardSubAdmin({
         open={showLogoutModal}
         onCancel={() => setShowLogoutModal(false)}
         onConfirm={handleLogout}
+        isLoading={signingOut}
         message="Are you sure you want to end your executive session and log out of the command center?"
       />
 

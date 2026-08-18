@@ -28,6 +28,19 @@ interface MapPreviewModalProps {
   onDispatch?: (alertId: string, crewId: string, complaintId: string) => void;
 }
 
+const getCategoryLabel = (category: string | null) => {
+  if (!category) return "UNCLASSIFIED";
+  const upper = category.toUpperCase();
+  const map: Record<string, string> = {
+    PIPELINE_BREACH_PRESSURE_DROP: "PIPELINE BREACH/PRESSURE DROP",
+    HIGH_TURBIDITY: "HIGH TURBIDITY/CLOUDINESS",
+    HIGH_MINERAL_CONTENT_TDS: "HIGH TDS/MINERAL CONTENT",
+    CHEMICAL_DISCOLORATION_CONTAMINATION: "CHEMICAL DISCOLORATION/CONTAMINATION",
+    UNCLASSIFIED_INFRASTRUCTURE_ANOMALY: "UNCLASSIFIED INFRASTRUCTURE ANOMALY",
+  };
+  return map[upper] || category.replace(/_/g, " ").toUpperCase();
+};
+
 export default function MapPreviewModal({ 
   isOpen, 
   onClose, 
@@ -217,8 +230,8 @@ export default function MapPreviewModal({
                 </div>
                 <div>
                   <strong className="text-slate-400 uppercase tracking-wider block mb-0.5 text-[8px]">Category</strong>
-                  <span className="font-bold text-slate-700 dark:text-slate-200 uppercase">
-                    {complaint.category || "Unclassified"}
+                  <span className="font-bold text-slate-700 dark:text-slate-200 uppercase break-words leading-tight block">
+                    {getCategoryLabel(complaint.category)}
                   </span>
                 </div>
                 <div>

@@ -8,6 +8,7 @@ interface LogoutConfirmModalProps {
   open: boolean;
   onCancel: () => void;
   onConfirm: () => void;
+  isLoading?: boolean;
   title?: string;
   message?: string;
 }
@@ -16,9 +17,34 @@ export default function LogoutConfirmModal({
   open,
   onCancel,
   onConfirm,
+  isLoading = false,
   title = "Confirm Sign Out",
   message = "Are you sure you want to end your session and log out?",
 }: LogoutConfirmModalProps) {
+  // When signing out, show the branded full-screen loader matching the dashboard loader style
+  if (isLoading) {
+    return (
+      <div className="fixed inset-0 z-[200] min-h-screen bg-[#F8FAFC] dark:bg-[#090d16] flex flex-col items-center justify-center">
+        {/* Top accent bar */}
+        <div className="absolute inset-x-0 top-0 h-0.5 bg-[#001e66] dark:bg-[#00aeef]" aria-hidden="true" />
+        <div className="text-center space-y-3">
+          <div className="flex items-center justify-center mb-1">
+            <img src="/LOGO2.png" alt="AquaTrack" className="h-[120px] w-auto object-contain dark:hidden" />
+            <img src="/LOGO3.png" alt="AquaTrack" className="h-[120px] w-auto object-contain hidden dark:block" />
+          </div>
+          <div className="relative w-12 h-12 mx-auto">
+            <div className="absolute inset-0 rounded-full border-[3px] border-slate-200 dark:border-slate-800" />
+            <div className="absolute inset-0 rounded-full border-[3px] border-t-[#00aeef] animate-spin" />
+          </div>
+          <p className="text-slate-400 dark:text-slate-500 text-[11px] font-semibold tracking-widest uppercase animate-pulse">
+            Signing Out…
+          </p>
+          <p className="text-xs text-slate-400 dark:text-slate-500 mt-1">Ending your session securely...</p>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <AnimatePresence>
       {open && (

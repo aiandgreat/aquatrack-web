@@ -1022,14 +1022,14 @@ export default function AnalyticsSection({
                   {insights.text}
                 </p>
               </div>
-              <div className="mt-4 pt-3 border-t border-slate-150 dark:border-slate-800 grid grid-cols-2 gap-2 text-xxs font-bold text-slate-400 dark:text-slate-400 uppercase tracking-wider">
-                <div>
+              <div className="mt-4 pt-3 border-t border-slate-150 dark:border-slate-800 flex flex-row justify-between gap-4 text-xxs font-bold text-slate-400 dark:text-slate-400 uppercase tracking-wider">
+                <div className="flex-1 min-w-[100px]">
                   <span>District Hotspot</span>
-                  <span className="block text-slate-700 dark:text-slate-100 font-black text-[10px] mt-0.5">{insights.hotspot}</span>
+                  <span className="block text-slate-700 dark:text-slate-100 font-black text-[10px] mt-0.5 break-words leading-tight">{insights.hotspot}</span>
                 </div>
-                <div>
+                <div className="flex-1 min-w-[120px] text-right">
                   <span>Prevalent Issue</span>
-                  <span className="block text-slate-700 dark:text-slate-100 font-black text-[10px] mt-0.5">{insights.topIssue}</span>
+                  <span className="block text-slate-700 dark:text-slate-100 font-black text-[10px] mt-0.5 break-words leading-tight">{insights.topIssue}</span>
                 </div>
               </div>
             </div>
@@ -1132,7 +1132,7 @@ export default function AnalyticsSection({
               <div className="h-3 bg-white/10 rounded w-4/5"></div>
             </div>
           ) : (
-            <p className="text-xs font-bold text-slate-100 leading-relaxed font-sans max-w-4xl text-justify">
+            <p className="text-xs font-bold text-slate-100 leading-relaxed font-sans w-full max-w-none text-justify">
               {(() => {
                 if (!aiSummary) return "";
                 const parts = aiSummary.split("**");

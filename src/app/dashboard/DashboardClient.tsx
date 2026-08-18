@@ -106,6 +106,7 @@ export default function DashboardClient({
 
   // Local state
   const [isDark, setIsDark] = useState(false);
+  const [themeLoaded, setThemeLoaded] = useState(false);
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
   const [viewedAdvisoryIds, setViewedAdvisoryIds] = useState<string[]>([]);
   const [isNotificationOpen, setIsNotificationOpen] = useState(false);
@@ -216,6 +217,7 @@ export default function DashboardClient({
 
   const formatCategory = (cat: string) => {
     if (!cat) return "Unclassified";
+    if (cat === "HIGH_MINERAL_CONTENT_TDS") return "High Mineral Content/TDS";
     return cat
       .replace(/_/g, " ")
       .toLowerCase()
@@ -283,9 +285,11 @@ export default function DashboardClient({
       window.matchMedia("(prefers-color-scheme: dark)").matches;
     const initialDark = stored ? stored === "dark" : prefersDark;
     setIsDark(initialDark);
+    setThemeLoaded(true);
   }, []);
 
   useEffect(() => {
+    if (!themeLoaded) return;
     if (isDark) {
       document.documentElement.classList.add("dark");
       localStorage.setItem("theme", "dark");
@@ -293,7 +297,7 @@ export default function DashboardClient({
       document.documentElement.classList.remove("dark");
       localStorage.setItem("theme", "light");
     }
-  }, [isDark]);
+  }, [isDark, themeLoaded]);
 
   const [myComplaints, setMyComplaints] = useState<Complaint[]>(initialComplaints);
   const [advisories, setAdvisories] = useState<Advisory[]>([]);
@@ -1362,7 +1366,10 @@ export default function DashboardClient({
     }
   };
 
+  const [signingOut, setSigningOut] = useState(false);
+
   const handleLogout = async () => {
+    setSigningOut(true);
     const client = getSupabaseClient();
     await client.auth.signOut();
     window.location.href = "/login";
@@ -1372,20 +1379,17 @@ export default function DashboardClient({
     return (
       <div className="min-h-screen bg-[#F8FAFC] dark:bg-[#090d16] flex flex-col items-center justify-center">
         {/* Top accent bar */}
-        <div className="absolute inset-x-0 top-0 h-0.5 bg-[#001e66] z-50" aria-hidden="true" />
-        <div className="text-center space-y-5">
-          {/* Logo lockup */}
-          <div className="flex items-center justify-center space-x-3 mb-2">
-            <img src="/LOGO2.png" alt="AquaTrack" className="h-10 w-auto object-contain" />
-            <span className="text-xl font-black tracking-tight text-[#001e66]">
-              AQUA<span className="text-[#00aeef]">TRACK</span>
-            </span>
+        <div className="absolute inset-x-0 top-0 h-0.5 bg-[#001e66] dark:bg-[#00aeef] z-50" aria-hidden="true" />
+        <div className="text-center space-y-3">
+          <div className="flex items-center justify-center mb-1">
+            <img src="/LOGO2.png" alt="AquaTrack" className="h-[120px] w-auto object-contain dark:hidden" />
+            <img src="/LOGO3.png" alt="AquaTrack" className="h-[120px] w-auto object-contain hidden dark:block" />
           </div>
           <div className="relative w-12 h-12 mx-auto">
-            <div className="absolute inset-0 rounded-full border-[3px] border-slate-200" />
+            <div className="absolute inset-0 rounded-full border-[3px] border-slate-200 dark:border-slate-800" />
             <div className="absolute inset-0 rounded-full border-[3px] border-t-[#00aeef] animate-spin" />
           </div>
-          <p className="text-slate-400 text-[11px] font-semibold tracking-widest uppercase animate-pulse">
+          <p className="text-slate-400 dark:text-slate-500 text-[11px] font-semibold tracking-widest uppercase animate-pulse">
             Loading Resident Portal…
           </p>
         </div>
@@ -2921,6 +2925,24 @@ export default function DashboardClient({
                         )}
                       </div>
 
+                      {/* Branding/Engine Attribution Footer */}
+                      <div className="flex items-center justify-center gap-3 pt-3 border-t border-slate-100 dark:border-slate-800/80 shrink-0 text-slate-400 dark:text-slate-550 font-black select-none text-[9px] uppercase tracking-wider">
+                        <span>Powered By:</span>
+                        <div className="flex items-center gap-2">
+                          <img
+                            src="/mapbox.png"
+                            alt="Mapbox"
+                            className="h-10 w-auto object-contain dark:brightness-[1.2] dark:contrast-[1.2]"
+                          />
+                          <span className="text-slate-200 dark:text-slate-800 text-[16px] font-normal font-sans">|</span>
+                          <img
+                            src="/gmaps.png"
+                            alt="Google Maps"
+                            className="h-8 w-auto object-contain rounded-[2px]"
+                          />
+                        </div>
+                      </div>
+
                     </div>
                   </div>
                 </div>
@@ -3524,6 +3546,7 @@ export default function DashboardClient({
           open={showLogoutModal}
           onCancel={() => setShowLogoutModal(false)}
           onConfirm={handleLogout}
+          isLoading={signingOut}
           message="Are you sure you want to end your session and log out of the AquaTrack portal?"
         />
 

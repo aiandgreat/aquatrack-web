@@ -52,6 +52,18 @@ const getUrgencyBadgeClass = (urgency: string) => {
   return "bg-slate-100 dark:bg-slate-800 text-slate-650 dark:text-slate-400 border border-slate-200 dark:border-slate-700";
 };
 
+const formatCategory = (cat: string) => {
+  if (!cat) return "Unclassified";
+  const upper = cat.toUpperCase();
+  if (upper === "HIGH_MINERAL_CONTENT_TDS") return "High Mineral Content/TDS";
+  return cat
+    .replace(/_/g, " ")
+    .toLowerCase()
+    .split(" ")
+    .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+    .join(" ");
+};
+
 export default function ReportsSection({
   complaints,
   complaintSearchQuery,
@@ -307,7 +319,7 @@ export default function ReportsSection({
 
                     {/* 4. Category & Urgency (Formatted as Pipeline Breach/Pressured Drop style) */}
                     <td className="py-4.5 px-5 font-bold text-[#001e66] dark:text-slate-200 space-y-1">
-                      <span className="capitalize block">{c.category.replace(/_/g, " ").toLowerCase()}</span>
+                      <span className="block">{formatCategory(c.category)}</span>
                       <span className={`inline-block px-2.5 py-0.5 rounded-full text-[9px] font-black uppercase tracking-wider ${getUrgencyBadgeClass(c.urgency)}`}>
                         {c.urgency}
                       </span>
@@ -450,7 +462,7 @@ export default function ReportsSection({
 
                       {/* 4. Category & Urgency */}
                       <td className="py-4.5 px-5 text-slate-400 dark:text-slate-400 font-bold space-y-1">
-                        <span className="capitalize block">{c.category.replace(/_/g, " ").toLowerCase()}</span>
+                        <span className="block">{formatCategory(c.category)}</span>
                         <span className={`inline-block px-2.5 py-0.5 rounded-full text-[9px] font-black uppercase tracking-wider ${getUrgencyBadgeClass(c.urgency)}`}>
                           {c.urgency}
                         </span>

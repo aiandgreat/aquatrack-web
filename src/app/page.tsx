@@ -161,38 +161,38 @@ export default function Homepage() {
   const districtOffices = [
     {
       name: "CSFWD Main Office (Sto. Rosario)",
-      address: "2MMQ+68 San Fernando, Pampanga, Philippines",
+      address: "Consunji St, Santo Rosario, City of San Fernando, Pampanga, Philippines",
       phone: "(045) 961-3546",
       hours: "8:00 AM - 5:00 PM (Mon-Fri)",
-      query: "2MMQ+68 San Fernando, Pampanga, Philippines"
+      query: "City of San Fernando Water District, Consunji St, San Fernando, Pampanga, Philippines"
     },
     {
       name: "Saguin Sub-Office",
       address: "Fortune Square Bldg. (in front of Coke), Saguin, City of San Fernando, Pampanga",
       phone: "(045) 961-5804",
       hours: "8:00 AM - 5:00 PM (Mon-Fri)",
-      query: "Fortune Square Bldg Saguin City of San Fernando Pampanga"
+      query: "Fortune Square, Saguin, City of San Fernando, Pampanga, Philippines"
     },
     {
       name: "Sindalan Sub-Office",
       address: "Sindalan Payment Center, Brgy. Sindalan, City of San Fernando, Pampanga",
       phone: "0968-854-1343",
       hours: "8:00 AM - 3:00 PM (Mon-Fri)",
-      query: "Sindalan City of San Fernando Pampanga"
+      query: "Sindalan Payment Center, Sindalan, City of San Fernando, Pampanga, Philippines"
     },
     {
       name: "Bulaon Sub-Office",
       address: "Bulaon Payment Center, Brgy. Bulaon, City of San Fernando, Pampanga",
       phone: "0933-814-6585",
       hours: "8:00 AM - 3:00 PM (Mon-Fri)",
-      query: "Bulaon City of San Fernando Pampanga"
+      query: "Bulaon Payment Center, Bulaon, City of San Fernando, Pampanga, Philippines"
     },
     {
       name: "Teopaco Sub-Office",
       address: "P. Gomez St., Teopaco, City of San Fernando, Pampanga",
       phone: "(045) 961-3546",
       hours: "8:00 AM - 4:00 PM (Mon-Fri)",
-      query: "P. Gomez St City of San Fernando Pampanga"
+      query: "Teopaco Sub-Office, P. Gomez St, City of San Fernando, Pampanga, Philippines"
     }
   ];
 
@@ -651,7 +651,7 @@ export default function Homepage() {
                       <button
                         key={idx}
                         onClick={() => setActiveOffice(office)}
-                        className={`w-full text-left p-5 rounded-2xl border transition-all duration-200 flex flex-col space-y-2 cursor-pointer ${
+                        className={`w-full text-left p-5 rounded-2xl border transition-all duration-200 flex flex-col space-y-2 cursor-pointer group ${
                           isActive 
                             ? "bg-[#001e66] dark:bg-[#00aeef] border-[#001e66] dark:border-[#00aeef] text-white dark:text-[#001e66] shadow-lg dark:shadow-[0_4px_12px_rgba(0,174,239,0.1)] scale-[1.02]" 
                             : "bg-white/40 dark:bg-white/5 backdrop-blur-sm dark:backdrop-blur-md border border-white/50 dark:border-white/10 text-[#001e66] dark:text-slate-350 hover:bg-white/70 dark:hover:bg-white/10 hover:border-slate-200 dark:hover:border-[#00aeef]/40"
@@ -659,7 +659,7 @@ export default function Homepage() {
                       >
                         <div className="flex justify-between items-start w-full">
                           <span className="font-extrabold text-sm md:text-base leading-snug flex items-center">
-                            <MapPin className="w-5 h-5 text-[#00aeef] mr-2 shrink-0" />
+                            <MapPin className={`w-5 h-5 mr-2 shrink-0 ${isActive ? "text-white dark:text-[#001e66]" : "text-[#00aeef]"}`} />
                             {office.name}
                           </span>
                           {isActive && (
@@ -681,6 +681,22 @@ export default function Homepage() {
                             <span className={isActive ? "text-slate-300 dark:text-[#001e66]/80" : "text-slate-500 dark:text-slate-400"}>{office.hours}</span>
                           </span>
                         </div>
+
+                        {/* Expandable Satellite Preview Image Drawer on Hover */}
+                        {process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY && (
+                          <div className="w-full overflow-hidden transition-all duration-500 ease-out max-h-0 group-hover:max-h-[140px] rounded-xl border border-white/20 dark:border-white/10 shadow-inner relative mt-0 group-hover:mt-3">
+                            <div className="absolute inset-0 bg-[#001e66]/10 dark:bg-[#00aeef]/10 animate-pulse pointer-events-none" />
+                            <img
+                              src={`https://maps.googleapis.com/maps/api/staticmap?center=${encodeURIComponent(office.query)}&zoom=18&size=450x160&maptype=hybrid&key=${process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY}`}
+                              alt={`${office.name} Satellite View`}
+                              className="w-full h-[140px] object-cover relative z-10 transition-transform duration-700 group-hover:scale-105"
+                              loading="lazy"
+                            />
+                            <div className="absolute bottom-2 right-2 z-20 bg-black/60 text-[9px] text-white font-bold px-1.5 py-0.5 rounded uppercase tracking-wider backdrop-blur-sm">
+                              🛰️ Satellite Preview
+                            </div>
+                          </div>
+                        )}
                       </button>
                     );
                   })}
@@ -703,7 +719,11 @@ export default function Homepage() {
                       style={{ border: 0, minHeight: "420px" }}
                       loading="lazy"
                       allowFullScreen
-                      src={`https://maps.google.com/maps?q=${encodeURIComponent(activeOffice.query)}&t=&z=16&ie=UTF8&iwloc=&output=embed`}
+                      src={
+                        process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY
+                          ? `https://www.google.com/maps/embed/v1/place?key=${process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY}&q=${encodeURIComponent(activeOffice.query)}`
+                          : `https://maps.google.com/maps?q=${encodeURIComponent(activeOffice.query)}&t=&z=16&ie=UTF8&iwloc=&output=embed`
+                      }
                     ></iframe>
                   </div>
                 </div>

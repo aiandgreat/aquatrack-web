@@ -197,6 +197,7 @@ export default function DashboardAdmin({
   const [emailAlertsEnabled, setEmailAlertsEnabled] = useState(true);
   const [hotCacheTTL, setHotCacheTTL] = useState(60);
   const [isDark, setIsDark] = useState(false);
+  const [themeLoaded, setThemeLoaded] = useState(false);
   const [maintenanceMode, setMaintenanceMode] = useState(false);
 
   // Diagnostic Alerts
@@ -384,9 +385,11 @@ export default function DashboardAdmin({
     const root = window.document.documentElement;
     const initialDark = root.classList.contains("dark") || localStorage.getItem("theme") === "dark";
     setIsDark(initialDark);
+    setThemeLoaded(true);
   }, []);
 
   useEffect(() => {
+    if (!themeLoaded) return;
     const root = window.document.documentElement;
     if (isDark) {
       root.classList.add("dark");
@@ -395,7 +398,7 @@ export default function DashboardAdmin({
       root.classList.remove("dark");
       localStorage.setItem("theme", "light");
     }
-  }, [isDark]);
+  }, [isDark, themeLoaded]);
 
   // Preset config handler
   useEffect(() => {
@@ -501,30 +504,20 @@ export default function DashboardAdmin({
           "postgres_changes",
           { event: "*", schema: "public", table: "Complaint" },
           (payload) => {
-            if (payload.eventType === "INSERT") {
-              // Prepend new complaint directly — avoids full fetchComplaints() HTTP round-trip
-              setComplaints((prev) => [payload.new as any, ...prev]);
-            } else if (payload.eventType === "UPDATE") {
-              // Patch the updated complaint in-place
-              setComplaints((prev) =>
-                prev.map((c) => (c.id === (payload.new as any).id ? { ...c, ...(payload.new as any) } : c))
-              );
-            } else if (payload.eventType === "DELETE") {
-              setComplaints((prev) => prev.filter((c) => c.id !== (payload.old as any).id));
-            }
+            fetchComplaints();
             fetchStats();
             fetchDiagnosticAlerts();
           }
-        )
-        .subscribe();
-
+        );
+      
+      channel.subscribe();
+ 
       const readingsChannel = client
         .channel("admin-readings-realtime")
         .on(
           "postgres_changes",
           { event: "INSERT", schema: "public", table: "TelemetryReading" },
           (payload) => {
-            console.log("Realtime telemetry reading received:", payload);
             const newReading = payload.new as {
               nodeId: string;
               ph: number;
@@ -554,20 +547,21 @@ export default function DashboardAdmin({
             fetchStats();
             fetchDiagnosticAlerts();
           }
-        )
-        .subscribe();
-
+        );
+      
+      readingsChannel.subscribe();
+ 
       const usersChannel = client
         .channel("admin-users-realtime")
         .on(
           "postgres_changes",
           { event: "UPDATE", schema: "public", table: "User" },
           (payload) => {
-            console.log("Realtime user profile update received:", payload);
             fetchUsers(); // Re-fetch users to update live locations!
           }
-        )
-        .subscribe();
+        );
+      
+      usersChannel.subscribe();
 
       return () => {
         client.removeChannel(channel);
@@ -581,7 +575,7 @@ export default function DashboardAdmin({
 
   const fetchUsers = async () => {
     try {
-      const res = await fetch("/api/admin/users");
+      const res = await fetch(`/api/admin/users?t=${Date.now()}`, { cache: "no-store" });
       const data = await res.json();
       if (data.success) setUsers(data.users);
     } catch (err) {
@@ -591,7 +585,7 @@ export default function DashboardAdmin({
 
   const fetchNodes = async () => {
     try {
-      const res = await fetch("/api/admin/nodes");
+      const res = await fetch(`/api/admin/nodes?t=${Date.now()}`, { cache: "no-store" });
       const data = await res.json();
       if (data.success) {
         setNodes(data.nodes);
@@ -606,7 +600,7 @@ export default function DashboardAdmin({
 
   const fetchComplaints = async () => {
     try {
-      const res = await fetch("/api/admin/complaints");
+      const res = await fetch(`/api/admin/complaints?t=${Date.now()}`, { cache: "no-store" });
       const data = await res.json();
       if (data.success) setComplaints(data.complaints);
     } catch (err) {
@@ -616,7 +610,7 @@ export default function DashboardAdmin({
 
   const fetchStats = async () => {
     try {
-      const res = await fetch("/api/admin/stats");
+      const res = await fetch(`/api/admin/stats?t=${Date.now()}`, { cache: "no-store" });
       const data = await res.json();
       if (data.success) {
         setStats({
@@ -631,7 +625,7 @@ export default function DashboardAdmin({
 
   const fetchAdvisories = async () => {
     try {
-      const res = await fetch("/api/advisories");
+      const res = await fetch(`/api/advisories?t=${Date.now()}`, { cache: "no-store" });
       const data = await res.json();
       if (data.success) {
         setAdvisories(data.advisories);
@@ -643,7 +637,7 @@ export default function DashboardAdmin({
 
   const fetchDiagnosticAlerts = async () => {
     try {
-      const res = await fetch("/api/admin/diagnostic-alerts");
+      const res = await fetch(`/api/admin/diagnostic-alerts?t=${Date.now()}`, { cache: "no-store" });
       const data = await res.json();
       if (data.success) {
         setDiagnosticAlerts(data.alerts);
@@ -675,7 +669,10 @@ export default function DashboardAdmin({
     }
   };
 
+  const [signingOut, setSigningOut] = useState(false);
+
   const handleLogout = async () => {
+    setSigningOut(true);
     const client = getSupabaseClient();
     await client.auth.signOut();
     window.location.href = "/login";
@@ -1090,18 +1087,22 @@ export default function DashboardAdmin({
   // ── Loading Screen ──────────────────────────────────────────────────────────
   if (loading) {
     return (
-      <div className="min-h-screen bg-[#F8FAFC] flex items-center justify-center">
-        <div className="flex flex-col items-center gap-4">
-          <div className="relative w-14 h-14">
-            <div className="absolute inset-0 rounded-full border-4 border-slate-100" />
-            <div className="absolute inset-0 rounded-full border-4 border-t-[#00aeef] border-r-transparent border-b-transparent border-l-transparent animate-spin" />
+      <div className="min-h-screen bg-[#F8FAFC] dark:bg-[#090d16] flex flex-col items-center justify-center">
+        {/* Top accent bar */}
+        <div className="absolute inset-x-0 top-0 h-0.5 bg-[#001e66] dark:bg-[#00aeef] z-50" aria-hidden="true" />
+        <div className="text-center space-y-3">
+          <div className="flex items-center justify-center mb-1">
+            <img src="/LOGO2.png" alt="AquaTrack" className="h-[120px] w-auto object-contain dark:hidden" />
+            <img src="/LOGO3.png" alt="AquaTrack" className="h-[120px] w-auto object-contain hidden dark:block" />
           </div>
-          <div className="text-center">
-            <p className="text-sm font-semibold text-[#001e66] tracking-wide">
-              Loading Executive Command Center
-            </p>
-            <p className="text-xs text-slate-400 mt-1">Authenticating administrative privileges...</p>
+          <div className="relative w-12 h-12 mx-auto">
+            <div className="absolute inset-0 rounded-full border-[3px] border-slate-200 dark:border-slate-800" />
+            <div className="absolute inset-0 rounded-full border-[3px] border-t-[#00aeef] animate-spin" />
           </div>
+          <p className="text-slate-400 dark:text-slate-500 text-[11px] font-semibold tracking-widest uppercase animate-pulse">
+            Loading Executive Command Center…
+          </p>
+          <p className="text-xs text-slate-400 dark:text-slate-500 mt-1">Authenticating administrative privileges...</p>
         </div>
       </div>
     );
@@ -1826,6 +1827,7 @@ export default function DashboardAdmin({
         open={showLogoutModal}
         onCancel={() => setShowLogoutModal(false)}
         onConfirm={handleLogout}
+        isLoading={signingOut}
         message="Are you sure you want to end your executive session and log out of the command center?"
       />
 
