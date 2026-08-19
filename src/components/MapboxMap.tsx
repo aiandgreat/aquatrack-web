@@ -69,6 +69,13 @@ export default function MapboxMap({
   const nodesRef = useRef(nodes);
   const complaintsRef = useRef(complaints);
   const mapStyleRef = useRef(mapStyle);
+  const selectedComplaintIdRef = useRef(selectedComplaintId);
+  const syncMarkerVisibilityRef = useRef<() => void>(() => {});
+
+  useEffect(() => {
+    selectedComplaintIdRef.current = selectedComplaintId;
+    syncMarkerVisibilityRef.current();
+  }, [selectedComplaintId]);
 
   useEffect(() => {
     nodesRef.current = nodes;
@@ -732,16 +739,22 @@ export default function MapboxMap({
       markersRef.current[`comp-${comp.id}`] = marker;
     });
 
-    // 6. Dynamic zoom visibility sync for individual markers vs clusters (always visible)
+    // 6. Dynamic zoom visibility sync for individual markers vs clusters
     const syncMarkerVisibility = () => {
+      const zoom = map.getZoom();
+      // Hide pins when zoomed out to <= 14 (where clustering starts)
+      const showPins = zoom > 14;
+
       validComplaints.forEach((comp) => {
         const marker = markersRef.current[`comp-${comp.id}`];
         if (marker) {
           const el = marker.getElement();
-          el.style.display = "flex"; // Always show complaint pins regardless of zoom level
+          const isSelected = comp.id === selectedComplaintIdRef.current;
+          el.style.display = (showPins || isSelected) ? "flex" : "none";
         }
       });
     };
+    syncMarkerVisibilityRef.current = syncMarkerVisibility;
 
     map.on("zoom", syncMarkerVisibility);
     // Execute immediately to sync initial load zoom levels

@@ -1,8 +1,9 @@
 "use client";
 
-import React, { useEffect, useRef } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import mapboxgl from "mapbox-gl";
 import "mapbox-gl/dist/mapbox-gl.css";
+import { Navigation, Clock, MapPin } from "lucide-react";
 import { calculateDistance } from "../lib/spatial-sorting";
 import DiagnosticAlertDrawer from "./DiagnosticAlertDrawer";
 
@@ -53,6 +54,168 @@ export default function MapPreviewModal({
 }: MapPreviewModalProps) {
   const mapContainerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<mapboxgl.Map | null>(null);
+  
+  // Tracking & Routing States
+  const [isTracking, setIsTracking] = useState(false);
+  const [trackingError, setTrackingError] = useState<string | null>(null);
+  const [routeStats, setRouteStats] = useState<{ distance: string; duration: string } | null>(null);
+
+  // Tracking Refs
+  const watchIdRef = useRef<number | null>(null);
+  const techMarkerRef = useRef<mapboxgl.Marker | null>(null);
+  const complaintRef = useRef(complaint);
+
+  useEffect(() => {
+    complaintRef.current = complaint;
+  }, [complaint]);
+
+  const fetchRoute = async (map: mapboxgl.Map, start: [number, number], end: [number, number]) => {
+    try {
+      const res = await fetch(
+        `https://api.mapbox.com/directions/v5/mapbox/driving/${start[0]},${start[1]};${end[0]},${end[1]}?geometries=geojson&access_token=${mapboxgl.accessToken}`
+      );
+      const data = await res.json();
+      if (!data.routes || data.routes.length === 0) return;
+
+      const route = data.routes[0];
+      const coords = route.geometry.coordinates;
+      const distanceKm = (route.distance / 1000).toFixed(1);
+      const durationMin = Math.round(route.duration / 60);
+
+      setRouteStats({
+        distance: `${distanceKm} km`,
+        duration: `${durationMin} mins`
+      });
+
+      // Draw or update route source/layer on map
+      if (!map.getSource("route-source")) {
+        map.addSource("route-source", {
+          type: "geojson",
+          data: {
+            type: "Feature",
+            properties: {},
+            geometry: {
+              type: "LineString",
+              coordinates: coords
+            }
+          }
+        });
+        map.addLayer({
+          id: "route-layer",
+          type: "line",
+          source: "route-source",
+          layout: {
+            "line-join": "round",
+            "line-cap": "round"
+          },
+          paint: {
+            "line-color": "#00aeef",
+            "line-width": 4,
+            "line-opacity": 0.85
+          }
+        });
+      } else {
+        const source = map.getSource("route-source") as mapboxgl.GeoJSONSource;
+        if (source) {
+          source.setData({
+            type: "Feature",
+            properties: {},
+            geometry: {
+              type: "LineString",
+              coordinates: coords
+            }
+          });
+        }
+      }
+    } catch (err) {
+      console.error("Failed to fetch route directions:", err);
+    }
+  };
+
+  const stopTracking = () => {
+    setIsTracking(false);
+    setRouteStats(null);
+    setTrackingError(null);
+
+    if (watchIdRef.current !== null) {
+      navigator.geolocation.clearWatch(watchIdRef.current);
+      watchIdRef.current = null;
+    }
+
+    if (techMarkerRef.current) {
+      techMarkerRef.current.remove();
+      techMarkerRef.current = null;
+    }
+
+    const map = mapRef.current;
+    if (map) {
+      try {
+        if (map.getLayer("route-layer")) map.removeLayer("route-layer");
+        if (map.getSource("route-source")) map.removeSource("route-source");
+      } catch (e) {
+        console.warn("Failed to remove route layers:", e);
+      }
+    }
+  };
+
+  const startTracking = () => {
+    if (!navigator.geolocation) {
+      setTrackingError("Geolocation is not supported by your browser");
+      return;
+    }
+
+    setIsTracking(true);
+    setTrackingError(null);
+
+    watchIdRef.current = navigator.geolocation.watchPosition(
+      async (position) => {
+        const { latitude: lat, longitude: lng } = position.coords;
+        const map = mapRef.current;
+        const comp = complaintRef.current;
+        if (!map || !comp) return;
+
+        // Plot or update technician marker (glowing blue GPS indicator)
+        if (!techMarkerRef.current) {
+          const el = document.createElement("div");
+          el.innerHTML = `
+            <div class="relative w-5 h-5 flex items-center justify-center">
+              <div class="absolute w-5 h-5 rounded-full bg-blue-500/30 animate-ping"></div>
+              <div class="w-3.5 h-3.5 rounded-full bg-blue-600 border-2 border-white shadow-lg"></div>
+            </div>
+          `;
+          techMarkerRef.current = new mapboxgl.Marker({ element: el })
+            .setLngLat([lng, lat])
+            .addTo(map);
+        } else {
+          techMarkerRef.current.setLngLat([lng, lat]);
+        }
+
+        // Fetch directions and update map
+        await fetchRoute(map, [lng, lat], [comp.longitude, comp.latitude]);
+
+        // Fit map bounds to show both user and complaint
+        const bounds = new mapboxgl.LngLatBounds()
+          .extend([lng, lat])
+          .extend([comp.longitude, comp.latitude]);
+
+        map.fitBounds(bounds, { padding: 40, maxZoom: 16 });
+      },
+      (error) => {
+        console.error("GPS tracking error:", error);
+        setTrackingError(error.message || "Failed to retrieve your GPS location");
+        stopTracking();
+      },
+      { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
+    );
+  };
+
+  const toggleTracking = () => {
+    if (isTracking) {
+      stopTracking();
+    } else {
+      startTracking();
+    }
+  };
 
   // Compute if there is an active PostGIS diagnostic alert matching this complaint's location buffer
   console.log("[MapPreviewModal] Opening for complaint:", complaint?.id, "at", complaint?.latitude, complaint?.longitude);
@@ -169,6 +332,17 @@ export default function MapPreviewModal({
 
     return () => {
       clearTimeout(timer);
+      
+      // Clear geolocation tracking and marker on teardown
+      if (watchIdRef.current !== null) {
+        navigator.geolocation.clearWatch(watchIdRef.current);
+        watchIdRef.current = null;
+      }
+      if (techMarkerRef.current) {
+        techMarkerRef.current.remove();
+        techMarkerRef.current = null;
+      }
+
       if (mapRef.current) {
         mapRef.current.remove();
         mapRef.current = null;
@@ -246,16 +420,52 @@ export default function MapPreviewModal({
                 </div>
               </div>
               
-              {!matchedAlert && (
-                <div className="pt-3 border-t border-slate-100 dark:border-slate-800/50 flex justify-end">
+              <div className="pt-3 border-t border-slate-100 dark:border-slate-800/50 flex flex-col gap-3">
+                {/* Dynamic Route Stats Overlay */}
+                {isTracking && routeStats && (
+                  <div className="flex items-center justify-between bg-blue-50/50 dark:bg-blue-950/20 border border-blue-100/50 dark:border-blue-900/40 rounded-xl p-2.5 text-xs text-[#001e66] dark:text-blue-300">
+                    <div className="flex items-center gap-1.5 font-bold">
+                      <Clock className="w-3.5 h-3.5 text-[#00aeef]" />
+                      <span>ETA: {routeStats.duration}</span>
+                    </div>
+                    <div className="flex items-center gap-1.5 font-bold">
+                      <MapPin className="w-3.5 h-3.5 text-emerald-500" />
+                      <span>Dist: {routeStats.distance}</span>
+                    </div>
+                  </div>
+                )}
+
+                {trackingError && (
+                  <div className="text-[10px] text-rose-600 dark:text-rose-400 font-bold bg-rose-50 dark:bg-rose-950/20 p-2 rounded-lg border border-rose-100 dark:border-rose-900/40">
+                    ⚠️ {trackingError}
+                  </div>
+                )}
+
+                <div className="flex justify-end gap-2">
                   <button
-                    onClick={onClose}
-                    className="bg-[#001e66] hover:bg-[#00aeef] text-white font-extrabold text-xs px-5 py-2.5 rounded-xl uppercase tracking-wider transition-all cursor-pointer"
+                    type="button"
+                    onClick={toggleTracking}
+                    className={`flex items-center gap-2 font-extrabold text-xs px-4 py-2.5 rounded-xl uppercase tracking-wider transition-all cursor-pointer select-none active:scale-95 ${
+                      isTracking
+                        ? "bg-rose-600 hover:bg-rose-700 text-white shadow-md shadow-rose-600/10"
+                        : "bg-[#00aeef] hover:bg-[#00aeef]/90 text-white shadow-md shadow-[#00aeef]/10"
+                    }`}
                   >
-                    Close Preview
+                    <Navigation className={`w-3.5 h-3.5 ${isTracking ? "animate-spin" : ""}`} />
+                    <span>{isTracking ? "Stop Tracking" : "Track Route"}</span>
                   </button>
+                  
+                  {!matchedAlert && (
+                    <button
+                      type="button"
+                      onClick={onClose}
+                      className="bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 font-extrabold text-xs px-4 py-2.5 rounded-xl uppercase tracking-wider transition-all cursor-pointer select-none active:scale-95 border border-slate-250/20"
+                    >
+                      Close Preview
+                    </button>
+                  )}
                 </div>
-              )}
+              </div>
             </div>
           </div>
 

@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import { ResponsiveContainer, LineChart, Line, BarChart, Bar, XAxis, YAxis, Tooltip, PieChart, Pie, CartesianGrid } from "recharts";
 import DiagnosticAlertDrawer from "../../../components/DiagnosticAlertDrawer";
 import { 
   BarChart3, 
@@ -91,7 +92,27 @@ export default function HomeSection({
   setActiveTab,
 }: HomeSectionProps) {
   const [expandedCard, setExpandedCard] = useState<"compliance" | "sensors" | "reports" | "advisories" | null>(null);
-  const [calDate, setCalDate] = useState(new Date(2026, 6, 25)); // Set baseline to July 2026
+  const [calDate, setCalDate] = useState(new Date());
+  const [analyticsView, setAnalyticsView] = useState<"cards" | "chart">("cards");
+  const [isDark, setIsDark] = useState(false);
+
+  React.useEffect(() => {
+    setIsDark(document.documentElement.classList.contains("dark"));
+
+    const observer = new MutationObserver(() => {
+      setIsDark(document.documentElement.classList.contains("dark"));
+    });
+    observer.observe(document.documentElement, {
+      attributes: true,
+      attributeFilter: ["class"]
+    });
+    return () => observer.disconnect();
+  }, []);
+
+  const phVal = stats.avgPh ?? 7.2;
+  const turbVal = stats.avgTurbidity ?? 1.8;
+  const pressVal = stats.avgPressure ?? 44.0;
+  const tdsVal = stats.avgTds ?? 240;
 
   const handlePrevMonth = () => {
     setCalDate(new Date(calDate.getFullYear(), calDate.getMonth() - 1, 1));
@@ -255,46 +276,76 @@ export default function HomeSection({
           >
             ✕
           </button>
-
           {expandedCard === "compliance" && (
-            <div className="space-y-3 text-left">
+            <div className="space-y-4 text-left animate-fade-in">
               <h4 className="text-xs font-black text-[#001e66] dark:text-slate-100 uppercase tracking-wider flex items-center gap-1.5">
                 <TrendingUp className="w-4 h-4 text-[#00aeef]" />
                 Compliance Index Diagnostics
               </h4>
-              <p className="text-xs text-slate-500 dark:text-slate-400 font-medium">Target metrics specified by the Philippine National Standards for Drinking Water (PNSDW):</p>
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 pt-2">
-                <div className="bg-white dark:bg-slate-950 border border-slate-150 dark:border-slate-850 rounded-xl p-3 shadow-sm">
-                  <span className="text-[9px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-wider">Avg pH</span>
-                  <div className="text-sm font-black text-[#001e66] dark:text-slate-200 mt-0.5">7.2 pH</div>
-                  <div className="w-full bg-slate-100 dark:bg-slate-800 h-1.5 rounded-full mt-2 overflow-hidden">
-                    <div className="bg-emerald-500 h-1.5 rounded-full" style={{ width: "75%" }}></div>
+              <p className="text-xs text-slate-500 dark:text-slate-400 font-semibold leading-relaxed">
+                Real-time compliance correlation against the standards specified by the Philippine National Standards for Drinking Water (PNSDW):
+              </p>
+              
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-5 pt-2">
+                {/* 1. Overall Compliance radial gauge (PieChart with innerRadius) */}
+                <div className="col-span-1 bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-2xl p-4 flex flex-col items-center justify-center shadow-sm relative h-48 hover:shadow-md transition-shadow">
+                  <span className="text-[10px] font-black text-[#001e66] dark:text-slate-350 uppercase tracking-wider mb-2">Overall Compliance</span>
+                  <div className="w-28 h-28 relative flex items-center justify-center">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <PieChart>
+                        <Pie
+                          data={[
+                            { value: stats.complianceIndex ?? 92, fill: "#10b981" },
+                            { value: 100 - (stats.complianceIndex ?? 92), fill: isDark ? "#1e293b" : "#e2e8f0" }
+                          ]}
+                          dataKey="value"
+                          innerRadius="70%"
+                          outerRadius="90%"
+                          startAngle={90}
+                          endAngle={-270}
+                          stroke="none"
+                        />
+                      </PieChart>
+                    </ResponsiveContainer>
+                    <div className="absolute inset-0 flex flex-col items-center justify-center select-none">
+                      <span className="text-xl font-black text-[#001e66] dark:text-slate-100">{stats.complianceIndex}%</span>
+                      <span className="text-[8px] text-slate-400 dark:text-slate-500 font-bold uppercase tracking-wide">PNSDW Index</span>
+                    </div>
                   </div>
-                  <span className="text-[8px] text-slate-400 dark:text-slate-500 block mt-1 font-bold">Target: 6.5 - 8.5</span>
                 </div>
-                <div className="bg-white dark:bg-slate-950 border border-slate-150 dark:border-slate-850 rounded-xl p-3 shadow-sm">
-                  <span className="text-[9px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-wider">Avg Turbidity</span>
-                  <div className="text-sm font-black text-[#001e66] dark:text-slate-200 mt-0.5">1.8 NTU</div>
-                  <div className="w-full bg-slate-100 dark:bg-slate-800 h-1.5 rounded-full mt-2 overflow-hidden">
-                    <div className="bg-emerald-500 h-1.5 rounded-full" style={{ width: "36%" }}></div>
+
+                {/* 2. Parameters metrics comparison bar chart */}
+                <div className="col-span-1 md:col-span-2 bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-2xl p-4 shadow-sm flex flex-col justify-between h-48 hover:shadow-md transition-shadow">
+                  <span className="text-[10px] font-black text-[#001e66] dark:text-slate-350 uppercase tracking-wider mb-2">District Averages vs Target Limits</span>
+                  <div className="flex-1 w-full min-h-0">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <BarChart
+                        layout="vertical"
+                        data={[
+                          { name: "pH", Value: phVal, Target: 7.5 },
+                          { name: "Turbidity (NTU)", Value: turbVal, Target: 5.0 },
+                          { name: "Pressure (PSI)", Value: pressVal, Target: 45.0 },
+                          { name: "TDS (x0.1 ppm)", Value: Number((tdsVal * 0.1).toFixed(1)), Target: 50.0 }
+                        ]}
+                        margin={{ top: 5, right: 10, left: 10, bottom: 5 }}
+                      >
+                        <XAxis type="number" hide />
+                        <YAxis dataKey="name" type="category" stroke="#94a3b8" fontSize={9} width={90} />
+                        <Tooltip 
+                          cursor={{ fill: isDark ? "rgba(255, 255, 255, 0.05)" : "rgba(0, 0, 0, 0.05)" }}
+                          contentStyle={{ 
+                            backgroundColor: isDark ? "#0f172a" : "#ffffff",
+                            border: isDark ? "1px solid #334155" : "1px solid #e2e8f0",
+                            color: isDark ? "#f1f5f9" : "#0f172a",
+                            fontSize: 10,
+                            borderRadius: 8,
+                          }}
+                          formatter={(value: any, name: any) => [name === "TDS (x0.1 ppm)" ? `${(value * 10).toFixed(0)} ppm` : value, name]}
+                        />
+                        <Bar dataKey="Value" fill="#00aeef" radius={[0, 4, 4, 0]} barSize={10} />
+                      </BarChart>
+                    </ResponsiveContainer>
                   </div>
-                  <span className="text-[8px] text-slate-400 dark:text-slate-500 block mt-1 font-bold">Target: &lt; 5.0 NTU</span>
-                </div>
-                <div className="bg-white dark:bg-slate-950 border border-slate-150 dark:border-slate-850 rounded-xl p-3 shadow-sm">
-                  <span className="text-[9px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-wider">Avg TDS</span>
-                  <div className="text-sm font-black text-[#001e66] dark:text-slate-200 mt-0.5">240 ppm</div>
-                  <div className="w-full bg-slate-100 dark:bg-slate-800 h-1.5 rounded-full mt-2 overflow-hidden">
-                    <div className="bg-emerald-500 h-1.5 rounded-full" style={{ width: "48%" }}></div>
-                  </div>
-                  <span className="text-[8px] text-slate-400 dark:text-slate-500 block mt-1 font-bold">Target: &lt; 500 ppm</span>
-                </div>
-                <div className="bg-white dark:bg-slate-950 border border-slate-150 dark:border-slate-850 rounded-xl p-3 shadow-sm">
-                  <span className="text-[9px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-wider">Avg Pressure</span>
-                  <div className="text-sm font-black text-[#001e66] dark:text-slate-200 mt-0.5">44.0 PSI</div>
-                  <div className="w-full bg-slate-100 dark:bg-slate-800 h-1.5 rounded-full mt-2 overflow-hidden">
-                    <div className="bg-emerald-500 h-1.5 rounded-full" style={{ width: "80%" }}></div>
-                  </div>
-                  <span className="text-[8px] text-slate-400 dark:text-slate-500 block mt-1 font-bold">Target: 30 - 60 PSI</span>
                 </div>
               </div>
             </div>
@@ -476,10 +527,39 @@ export default function HomeSection({
         };
 
         const dynamicActivities = getDynamicActivities();
-        const phVal = stats.avgPh ?? 7.2;
-        const turbVal = stats.avgTurbidity ?? 1.8;
-        const pressVal = stats.avgPressure ?? 44.0;
-        const tdsVal = stats.avgTds ?? 240;
+
+        // Generate mock trend history values for sparklines based on current stats
+        const phHistory = [
+          { value: Number((phVal - 0.2).toFixed(1)) },
+          { value: Number((phVal + 0.1).toFixed(1)) },
+          { value: Number((phVal - 0.1).toFixed(1)) },
+          { value: Number((phVal + 0.3).toFixed(1)) },
+          { value: Number(phVal.toFixed(1)) }
+        ];
+
+        const turbHistory = [
+          { value: Number((turbVal + 0.4).toFixed(1)) },
+          { value: Number((turbVal - 0.2).toFixed(1)) },
+          { value: Number((turbVal + 0.3).toFixed(1)) },
+          { value: Number((turbVal - 0.1).toFixed(1)) },
+          { value: Number(turbVal.toFixed(1)) }
+        ];
+
+        const pressHistory = [
+          { value: Math.round(pressVal - 3) },
+          { value: Math.round(pressVal + 2) },
+          { value: Math.round(pressVal - 1) },
+          { value: Math.round(pressVal + 4) },
+          { value: Math.round(pressVal) }
+        ];
+
+        const tdsHistory = [
+          { value: Math.round(tdsVal - 20) },
+          { value: Math.round(tdsVal + 15) },
+          { value: Math.round(tdsVal - 10) },
+          { value: Math.round(tdsVal + 25) },
+          { value: Math.round(tdsVal) }
+        ];
 
         return (
           <div className="grid grid-cols-12 gap-[18px]">
@@ -488,92 +568,215 @@ export default function HomeSection({
               
               {/* Quick Analytics Grid */}
               <div className="space-y-4">
-                <div className="flex items-center space-x-3 pb-2 border-b border-slate-200 dark:border-slate-800">
-                  <div className="w-8 h-8 rounded-lg bg-[#001e66]/5 dark:bg-[#00aeef]/10 flex items-center justify-center text-[#001e66] dark:text-[#00aeef] shrink-0">
-                    <BarChart3 className="w-4.5 h-4.5 transition-all duration-300 hover:scale-115" />
+                <div className="flex items-center justify-between pb-2 border-b border-slate-200 dark:border-slate-800">
+                  <div className="flex items-center space-x-3">
+                    <div className="w-8 h-8 rounded-lg bg-[#001e66]/5 dark:bg-[#00aeef]/10 flex items-center justify-center text-[#001e66] dark:text-[#00aeef] shrink-0">
+                      <BarChart3 className="w-4.5 h-4.5 transition-all duration-300 hover:scale-115" />
+                    </div>
+                    <h3 className="text-sm font-black uppercase text-[#001e66] dark:text-slate-200 tracking-wider">
+                      Quick District Analytics
+                    </h3>
                   </div>
-                  <h3 className="text-sm font-black uppercase text-[#001e66] dark:text-slate-200 tracking-wider">
-                    Quick District Analytics
-                  </h3>
+
+                  {/* Cards vs Chart Toggle */}
+                  <div className="flex bg-slate-100 dark:bg-slate-800 p-0.5 rounded-lg text-[9px] font-black uppercase tracking-wider">
+                    <button
+                      type="button"
+                      onClick={() => setAnalyticsView("cards")}
+                      className={`px-3 py-1 rounded-md transition-all cursor-pointer ${
+                        analyticsView === "cards"
+                          ? "bg-white dark:bg-slate-700 text-[#001e66] dark:text-slate-100 shadow-sm"
+                          : "text-slate-450 dark:text-slate-500 hover:text-slate-600 dark:hover:text-slate-350"
+                      }`}
+                    >
+                      Cards
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setAnalyticsView("chart")}
+                      className={`px-3 py-1 rounded-md transition-all cursor-pointer ${
+                        analyticsView === "chart"
+                          ? "bg-white dark:bg-slate-700 text-[#001e66] dark:text-slate-100 shadow-sm"
+                          : "text-slate-450 dark:text-slate-500 hover:text-slate-600 dark:hover:text-slate-350"
+                      }`}
+                    >
+                      Charts
+                    </button>
+                  </div>
                 </div>
 
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  {/* pH Card */}
-                  <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800/80 rounded-2xl p-4 flex items-center justify-between shadow-sm">
-                    <div className="text-left">
-                      <span className="text-[10px] font-black text-slate-450 dark:text-slate-500 uppercase tracking-wider block">System Avg pH</span>
-                      <div className="text-lg font-black text-[#001e66] dark:text-slate-200 mt-1">{phVal.toFixed(1)} pH</div>
-                      {phVal < 6.5 || phVal > 8.5 ? (
-                        <span className="text-[9px] text-rose-700 dark:text-rose-400 font-bold bg-rose-50 dark:bg-rose-950/20 px-2 py-0.5 rounded border border-rose-200 dark:border-rose-900/40 mt-1.5 inline-block">⚠️ ANOMALOUS</span>
-                      ) : (
-                        <span className="text-[9px] text-emerald-700 dark:text-emerald-400 font-bold bg-emerald-50 dark:bg-emerald-950/20 px-2 py-0.5 rounded border border-emerald-250/50 dark:border-emerald-900/40 mt-1.5 inline-block">✓ STABLE</span>
-                      )}
+                {analyticsView === "cards" ? (
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    {/* pH Card */}
+                    <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800/80 rounded-2xl p-4 flex flex-col justify-between shadow-sm space-y-4 hover:shadow-md transition-all duration-200">
+                      <div className="flex justify-between items-start">
+                        <div className="text-left">
+                          <span className="text-[10px] font-black text-slate-450 dark:text-slate-500 uppercase tracking-wider block">System Avg pH</span>
+                          <div className="text-lg font-black text-[#001e66] dark:text-slate-200 mt-1">{phVal.toFixed(1)} pH</div>
+                        </div>
+                        <div className={`w-10 h-10 flex items-center justify-center rounded-full border shrink-0 font-mono font-black text-xs ${
+                          phVal < 6.5 || phVal > 8.5 ? "bg-rose-55 dark:bg-rose-950/20 text-rose-600 dark:text-rose-400 border-rose-100 dark:border-rose-900/40" : "bg-emerald-55 dark:bg-emerald-950/20 text-emerald-600 dark:text-emerald-450 border-emerald-100 dark:border-emerald-900/40"
+                        }`}>
+                          <span>{phVal.toFixed(1)}</span>
+                        </div>
+                      </div>
+                      
+                      <div className="flex justify-between items-center pt-2 border-t border-slate-105 dark:border-slate-800/60">
+                        <div>
+                          {phVal < 6.5 || phVal > 8.5 ? (
+                            <span className="text-[9px] text-rose-700 dark:text-rose-400 font-bold bg-rose-55 dark:bg-rose-950/20 px-2 py-0.5 rounded border border-rose-200 dark:border-rose-900/40">⚠️ ANOMALOUS</span>
+                          ) : (
+                            <span className="text-[9px] text-emerald-700 dark:text-emerald-400 font-bold bg-emerald-55 dark:bg-emerald-950/20 px-2 py-0.5 rounded border border-emerald-250/50 dark:border-emerald-900/40">✓ STABLE</span>
+                          )}
+                        </div>
+                        <div className="w-20 h-6 shrink-0 opacity-80">
+                          <ResponsiveContainer width="100%" height="100%">
+                            <LineChart data={phHistory}>
+                              <Line type="monotone" dataKey="value" stroke={phVal < 6.5 || phVal > 8.5 ? "#f43f5e" : "#10b981"} strokeWidth={1.5} dot={false} />
+                            </LineChart>
+                          </ResponsiveContainer>
+                        </div>
+                      </div>
                     </div>
-                    <div className={`w-12 h-12 flex items-center justify-center rounded-full border shrink-0 font-mono font-black text-xs ${
-                      phVal < 6.5 || phVal > 8.5 ? "bg-rose-55 dark:bg-rose-950/20 text-rose-600 dark:text-rose-400 border-rose-100 dark:border-rose-900/40" : "bg-emerald-55 dark:bg-emerald-950/20 text-emerald-600 dark:text-emerald-450 border-emerald-100 dark:border-emerald-900/40"
-                    }`}>
-                      <span>{phVal.toFixed(1)}</span>
-                    </div>
-                  </div>
 
-                  {/* Turbidity Card */}
-                  <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800/80 rounded-2xl p-4 flex items-center justify-between shadow-sm">
-                    <div className="text-left">
-                      <span className="text-[10px] font-black text-slate-455 dark:text-slate-500 uppercase tracking-wider block">Avg Turbidity</span>
-                      <div className="text-lg font-black text-[#001e66] dark:text-slate-200 mt-1">{turbVal.toFixed(1)} NTU</div>
-                      {turbVal > 5.0 ? (
-                        <span className="text-[9px] text-amber-700 dark:text-amber-400 font-bold bg-amber-50 dark:bg-amber-950/20 px-2 py-0.5 rounded border border-amber-200 dark:border-amber-900/40 mt-1.5 inline-block">⚠️ ELEVATED</span>
-                      ) : (
-                        <span className="text-[9px] text-emerald-700 dark:text-emerald-400 font-bold bg-emerald-50 dark:bg-emerald-950/20 px-2 py-0.5 rounded border border-emerald-250/50 dark:border-emerald-900/40 mt-1.5 inline-block">✓ OPTIMAL</span>
-                      )}
-                    </div>
-                    <div className={`w-12 h-12 flex items-center justify-center rounded-full border shrink-0 font-mono font-black text-xs ${
-                      turbVal > 5.0 ? "bg-amber-50 dark:bg-amber-950/20 text-amber-600 dark:text-amber-400 border-amber-100 dark:border-amber-900/40" : "bg-[#eff6ff] dark:bg-blue-950/20 text-[#00aeef] dark:text-blue-300 border-blue-100 dark:border-blue-900/40"
-                    }`}>
-                      <span>{turbVal.toFixed(1)}</span>
-                    </div>
-                  </div>
+                    {/* Turbidity Card */}
+                    <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800/80 rounded-2xl p-4 flex flex-col justify-between shadow-sm space-y-4 hover:shadow-md transition-all duration-200">
+                      <div className="flex justify-between items-start">
+                        <div className="text-left">
+                          <span className="text-[10px] font-black text-slate-455 dark:text-slate-500 uppercase tracking-wider block">Avg Turbidity</span>
+                          <div className="text-lg font-black text-[#001e66] dark:text-slate-200 mt-1">{turbVal.toFixed(1)} NTU</div>
+                        </div>
+                        <div className={`w-10 h-10 flex items-center justify-center rounded-full border shrink-0 font-mono font-black text-xs ${
+                          turbVal > 5.0 ? "bg-amber-50 dark:bg-amber-950/20 text-amber-600 dark:text-amber-400 border-amber-100 dark:border-amber-900/40" : "bg-[#eff6ff] dark:bg-blue-950/20 text-[#00aeef] dark:text-blue-300 border-blue-100 dark:border-blue-900/40"
+                        }`}>
+                          <span>{turbVal.toFixed(1)}</span>
+                        </div>
+                      </div>
 
-                  {/* Pressure Card */}
-                  <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800/80 rounded-2xl p-4 flex items-center justify-between shadow-sm">
-                    <div className="text-left">
-                      <span className="text-[10px] font-black text-slate-455 dark:text-slate-500 uppercase tracking-wider block">Line Pressure</span>
-                      <div className="text-lg font-black text-[#001e66] dark:text-slate-200 mt-1">{pressVal.toFixed(1)} PSI</div>
-                      {pressVal <= 5.0 ? (
-                        <span className="text-[9px] text-rose-700 dark:text-rose-400 font-bold bg-rose-50 dark:bg-rose-950/20 px-2 py-0.5 rounded border border-rose-200 dark:border-rose-900/40 mt-1.5 inline-block">❌ OFFLINE</span>
-                      ) : pressVal < 30.0 ? (
-                        <span className="text-[9px] text-amber-700 dark:text-amber-400 font-bold bg-amber-50 dark:bg-amber-950/20 px-2 py-0.5 rounded border border-amber-200 dark:border-amber-900/40 mt-1.5 inline-block">⚠️ LOW PRESSURE</span>
-                      ) : (
-                        <span className="text-[9px] text-emerald-700 dark:text-emerald-400 font-bold bg-emerald-50 dark:bg-emerald-950/20 px-2 py-0.5 rounded border border-emerald-250/50 dark:border-emerald-900/40 mt-1.5 inline-block">✓ NOMINAL</span>
-                      )}
+                      <div className="flex justify-between items-center pt-2 border-t border-slate-105 dark:border-slate-800/60">
+                        <div>
+                          {turbVal > 5.0 ? (
+                            <span className="text-[9px] text-amber-700 dark:text-amber-400 font-bold bg-amber-55 dark:bg-amber-950/20 px-2 py-0.5 rounded border border-amber-200 dark:border-amber-900/40">⚠️ ELEVATED</span>
+                          ) : (
+                            <span className="text-[9px] text-emerald-700 dark:text-emerald-400 font-bold bg-emerald-55 dark:bg-emerald-950/20 px-2 py-0.5 rounded border border-emerald-250/50 dark:border-emerald-900/40">✓ OPTIMAL</span>
+                          )}
+                        </div>
+                        <div className="w-20 h-6 shrink-0 opacity-80">
+                          <ResponsiveContainer width="100%" height="100%">
+                            <LineChart data={turbHistory}>
+                              <Line type="monotone" dataKey="value" stroke={turbVal > 5.0 ? "#f59e0b" : "#00aeef"} strokeWidth={1.5} dot={false} />
+                            </LineChart>
+                          </ResponsiveContainer>
+                        </div>
+                      </div>
                     </div>
-                    <div className={`w-12 h-12 flex items-center justify-center rounded-full border shrink-0 font-mono font-black text-xs ${
-                      pressVal <= 5.0 ? "bg-rose-55 dark:bg-rose-950/20 text-rose-600 dark:text-rose-400 border-rose-100 dark:border-rose-900/40" :
-                      pressVal < 30.0 ? "bg-amber-50 dark:bg-amber-950/20 text-amber-600 dark:text-amber-400 border-amber-100 dark:border-amber-900/40" :
-                      "bg-blue-50 dark:bg-blue-950/20 text-blue-600 dark:text-blue-300 border-blue-100 dark:border-blue-900/40"
-                    }`}>
-                      <span>{Math.round(pressVal)}</span>
-                    </div>
-                  </div>
 
-                  {/* TDS Card */}
-                  <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800/80 rounded-2xl p-4 flex items-center justify-between shadow-sm">
-                    <div className="text-left">
-                      <span className="text-[10px] font-black text-slate-455 dark:text-slate-500 uppercase tracking-wider block">TDS / Minerals</span>
-                      <div className="text-lg font-black text-[#001e66] dark:text-slate-200 mt-1">{tdsVal} ppm</div>
-                      {tdsVal > 500 ? (
-                        <span className="text-[9px] text-amber-700 dark:text-amber-400 font-bold bg-amber-50 dark:bg-amber-950/20 px-2 py-0.5 rounded border border-amber-200 dark:border-amber-900/40 mt-1.5 inline-block">⚠️ HIGH MINERAL</span>
-                      ) : (
-                        <span className="text-[9px] text-emerald-700 dark:text-emerald-400 font-bold bg-emerald-50 dark:bg-emerald-950/20 px-2 py-0.5 rounded border border-emerald-250/50 dark:border-emerald-900/40 mt-1.5 inline-block">✓ SECURE</span>
-                      )}
+                    {/* Pressure Card */}
+                    <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800/80 rounded-2xl p-4 flex flex-col justify-between shadow-sm space-y-4 hover:shadow-md transition-all duration-200">
+                      <div className="flex justify-between items-start">
+                        <div className="text-left">
+                          <span className="text-[10px] font-black text-slate-455 dark:text-slate-500 uppercase tracking-wider block">Line Pressure</span>
+                          <div className="text-lg font-black text-[#001e66] dark:text-slate-200 mt-1">{pressVal.toFixed(1)} PSI</div>
+                        </div>
+                        <div className={`w-10 h-10 flex items-center justify-center rounded-full border shrink-0 font-mono font-black text-xs ${
+                          pressVal <= 5.0 ? "bg-rose-50 dark:bg-rose-950/20 text-rose-600 dark:text-rose-400 border-rose-100 dark:border-rose-900/40" :
+                          pressVal < 30.0 ? "bg-amber-50 dark:bg-amber-950/20 text-amber-600 dark:text-amber-400 border-amber-100 dark:border-amber-900/40" :
+                          "bg-blue-50 dark:bg-blue-950/20 text-blue-600 dark:text-blue-300 border-blue-100 dark:border-blue-900/40"
+                        }`}>
+                          <span>{Math.round(pressVal)}</span>
+                        </div>
+                      </div>
+
+                      <div className="flex justify-between items-center pt-2 border-t border-slate-105 dark:border-slate-800/60">
+                        <div>
+                          {pressVal <= 5.0 ? (
+                            <span className="text-[9px] text-rose-700 dark:text-rose-400 font-bold bg-rose-55 dark:bg-rose-950/20 px-2 py-0.5 rounded border border-rose-200 dark:border-rose-900/40">❌ OFFLINE</span>
+                          ) : pressVal < 30.0 ? (
+                            <span className="text-[9px] text-amber-700 dark:text-amber-400 font-bold bg-amber-55 dark:bg-amber-950/20 px-2 py-0.5 rounded border border-amber-200 dark:border-amber-900/40">⚠️ LOW PRESSURE</span>
+                          ) : (
+                            <span className="text-[9px] text-emerald-700 dark:text-emerald-400 font-bold bg-emerald-55 dark:bg-emerald-950/20 px-2 py-0.5 rounded border border-emerald-250/50 dark:border-emerald-900/40">✓ NOMINAL</span>
+                          )}
+                        </div>
+                        <div className="w-20 h-6 shrink-0 opacity-80">
+                          <ResponsiveContainer width="100%" height="100%">
+                            <LineChart data={pressHistory}>
+                              <Line type="monotone" dataKey="value" stroke={pressVal <= 5.0 ? "#f43f5e" : pressVal < 30.0 ? "#f59e0b" : "#3b82f6"} strokeWidth={1.5} dot={false} />
+                            </LineChart>
+                          </ResponsiveContainer>
+                        </div>
+                      </div>
                     </div>
-                    <div className={`w-12 h-12 flex items-center justify-center rounded-full border shrink-0 font-mono font-black text-xs ${
-                      tdsVal > 500 ? "bg-amber-55 dark:bg-amber-950/20 text-amber-600 dark:text-amber-400 border-amber-100 dark:border-amber-900/40" : "bg-purple-50 dark:bg-purple-950/20 text-purple-600 dark:text-purple-300 border-purple-100 dark:border-purple-900/40"
-                    }`}>
-                      <span>{tdsVal}</span>
+
+                    {/* TDS Card */}
+                    <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800/80 rounded-2xl p-4 flex flex-col justify-between shadow-sm space-y-4 hover:shadow-md transition-all duration-200">
+                      <div className="flex justify-between items-start">
+                        <div className="text-left">
+                          <span className="text-[10px] font-black text-slate-455 dark:text-slate-500 uppercase tracking-wider block">TDS / Minerals</span>
+                          <div className="text-lg font-black text-[#001e66] dark:text-slate-200 mt-1">{tdsVal} ppm</div>
+                        </div>
+                        <div className={`w-10 h-10 flex items-center justify-center rounded-full border shrink-0 font-mono font-black text-xs ${
+                          tdsVal > 500 ? "bg-amber-50 dark:bg-amber-950/20 text-amber-600 dark:text-amber-400 border-amber-100 dark:border-amber-900/40" : "bg-purple-50 dark:bg-purple-950/20 text-purple-600 dark:text-purple-300 border-purple-100 dark:border-purple-900/40"
+                        }`}>
+                          <span>{tdsVal}</span>
+                        </div>
+                      </div>
+
+                      <div className="flex justify-between items-center pt-2 border-t border-slate-105 dark:border-slate-800/60">
+                        <div>
+                          {tdsVal > 500 ? (
+                            <span className="text-[9px] text-amber-700 dark:text-amber-400 font-bold bg-amber-55 dark:bg-amber-950/20 px-2 py-0.5 rounded border border-amber-200 dark:border-amber-900/40">⚠️ HIGH MINERAL</span>
+                          ) : (
+                            <span className="text-[9px] text-emerald-700 dark:text-emerald-400 font-bold bg-emerald-55 dark:bg-emerald-950/20 px-2 py-0.5 rounded border border-emerald-250/50 dark:border-emerald-900/40">✓ SECURE</span>
+                          )}
+                        </div>
+                        <div className="w-20 h-6 shrink-0 opacity-80">
+                          <ResponsiveContainer width="100%" height="100%">
+                            <LineChart data={tdsHistory}>
+                              <Line type="monotone" dataKey="value" stroke={tdsVal > 500 ? "#f59e0b" : "#8b5cf6"} strokeWidth={1.5} dot={false} />
+                            </LineChart>
+                          </ResponsiveContainer>
+                        </div>
+                      </div>
                     </div>
                   </div>
-                </div>
+                ) : (
+                  <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800/80 rounded-2xl p-5 shadow-sm h-64 flex flex-col justify-between hover:shadow-md transition-all duration-200 animate-fade-in">
+                    <div className="flex-1 w-full min-h-0">
+                      <ResponsiveContainer width="100%" height="100%">
+                        <BarChart
+                          data={[
+                            { name: "pH (pH)", Current: phVal, Normal: 7.2 },
+                            { name: "Turbidity (NTU)", Current: turbVal, Normal: 1.5 },
+                            { name: "Pressure (PSI)", Current: pressVal, Normal: 45.0 },
+                            { name: "TDS (x0.1 ppm)", Current: Number((tdsVal * 0.1).toFixed(1)), Normal: 25.0 }
+                          ]}
+                          margin={{ top: 10, right: 10, left: -20, bottom: 0 }}
+                        >
+                          <CartesianGrid strokeDasharray="3 3" stroke={isDark ? "#1e293b" : "#e2e8f0"} />
+                          <XAxis dataKey="name" stroke={isDark ? "#475569" : "#94a3b8"} fontSize={9} />
+                          <YAxis stroke={isDark ? "#475569" : "#94a3b8"} fontSize={9} />
+                          <Tooltip
+                            cursor={{ fill: isDark ? "rgba(255, 255, 255, 0.05)" : "rgba(0, 0, 0, 0.05)" }}
+                            contentStyle={{ 
+                              backgroundColor: isDark ? "#0f172a" : "#ffffff",
+                              border: isDark ? "1px solid #334155" : "1px solid #e2e8f0",
+                              color: isDark ? "#f1f5f9" : "#0f172a",
+                              fontSize: 10,
+                              borderRadius: 8,
+                            }}
+                            formatter={(value: any, name: any) => [name === "Current" && name === "TDS (x0.1 ppm)" ? `${(value * 10).toFixed(0)} ppm` : value, name]}
+                          />
+                          <Bar dataKey="Current" fill="#00aeef" radius={[4, 4, 0, 0]} barSize={18} />
+                          <Bar dataKey="Normal" fill="#10b981" radius={[4, 4, 0, 0]} barSize={18} />
+                        </BarChart>
+                      </ResponsiveContainer>
+                    </div>
+                    <div className="flex justify-center gap-6 text-[9px] font-black uppercase tracking-wider pt-2.5 border-t border-slate-100 dark:border-slate-850">
+                      <span className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded bg-[#00aeef]"></span> Current Average</span>
+                      <span className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded bg-[#10b981]"></span> Target Standard</span>
+                    </div>
+                  </div>
+                )}
               </div>
 
               {/* Latest News */}
@@ -838,7 +1041,8 @@ export default function HomeSection({
                             }
 
                             const event = eventsList.find(e => Number(e.day) === dayNum && e.month.toUpperCase().startsWith(curMonthAbbr.substring(0, 3)));
-                            const isToday = dayNum === 25 && month === 6 && year === 2026;
+                            const today = new Date();
+                            const isToday = dayNum === today.getDate() && month === today.getMonth() && year === today.getFullYear();
 
                             if (event) {
                               return (

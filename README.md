@@ -8,7 +8,8 @@ A production-ready municipal water district command center for real-time IoT tel
 - **Framework**: Next.js 16 (App Router) using React Server Components (RSC) for pre-rendering administrative dashboards.
 - **Styling & UI**: Tailwind CSS + shadcn/ui custom styling utilities + Lucide React
 - **Data Visualization**: Tremor + Recharts for displaying historical and live telemetry metrics.
-- **Geospatial Rendering**: Mapbox GL JS for client-side rendering of coordinate arrays, pipeline network layers, and active 500m PostGIS scan rings.
+- **Geospatial Rendering**: Mapbox GL JS for client-side rendering of coordinate arrays and pipeline network layers, **Mapbox Directions API** for routing/ETA calculation, and **Mapbox Static Images API** for satellite preview images. Backed by **Google Geocoding & Places API** and **Google Static Maps API** as resilient fallback mapping services.
+- **Browser Integrations**: Native **Geolocation API** for live technician tracking and the **Web Audio API** for real-time sound chime synthesis.
 - **Reporting Utility**: jsPDF + jsPDF-AutoTable for compiling and generating client-side downloadable water quality compliance documentation.
 - **Testing**: Vitest (33 tests, 11 suites).
 
@@ -22,12 +23,12 @@ A production-ready municipal water district command center for real-time IoT tel
 
 ### Database Layer
 - **Core Engine**: Supabase PostgreSQL (Cloud-managed relational database).
-- **Spatial Extension**: PostGIS for native handling of geometry data types, boundary indexing, and coordinate proximity analytics.
+- **Spatial Extension**: PostGIS for native handling of geometry data types, boundary indexing, and 500m coordinate proximity analytics.
 - **Connection Pooler**: PgBouncer configured on port 6543 to preserve thread capacity.
 - **Real-time Streaming**: Supabase Realtime (WebSockets) for pushing live system updates (new complaints and status changes) to the dashboard interface without page refreshes.
 
 ### AI & Communications
-- **AI Integration Core**: Vertex AI (Gemini Enterprise Agent Platform) + Google AI Studio fallback integrated via the Vercel AI SDK and REST APIs using Structured JSON Schema mode for multi-lingual complaint triaging.
+- **AI Integration Core**: **Google Vertex AI** (Enterprise Agent Platform) + **Google AI Studio** fallback integrated via the Vercel AI SDK and REST APIs using Structured JSON Schema mode (`gemini-3.7-flash` and `gemini-3.5-flash-lite`) for multi-lingual Kapampangan complaint triaging.
 - **Transactional Email Layer**: Brevo (Sendinblue) API + React Email for immediate structural breakdown routing and engineer dispatches.
 
 ## Setup Instructions
@@ -623,27 +624,37 @@ The full schema is defined in [`prisma/schema.prisma`](./prisma/schema.prisma). 
 
 ### Platform Updates (August 19, 2026)
 
-### Realtime Dashboard Fixes
+#### Realtime Dashboard Fixes & UI Enhancements
+- **Admin Complaint Realtime Fixed:** Replaced raw `payload.new` state-patching in `DashboardAdmin.tsx` with `fetchComplaints()` on realtime events. The raw CDC payload lacks coordinates (`latitude`/`longitude` via `ST_X`/`ST_Y`) and SQL JOIN fields (user names, technician names), causing map markers and complaint cards to fail. Fetching from the API ensures all fields are fully resolved.
+- **Cache-Busting Fetch Calls:** All dashboard data-fetch functions now append `?t=${Date.now()}` and use `{ cache: "no-store" }` to bypass the Next.js cache.
+- **Dynamic Zoom Map Marker Stacking:** In `MapboxMap.tsx`, individual complaint markers are dynamically hidden when the map zoom is $\le 14$ to prevent markers from stacking and occluding WebGL-rendered cluster circles, while keeping the currently selected complaint pin visible.
+- **Dynamic Calendar Initialization:** Upgraded `HomeSection.tsx` calendar states to initialize using `new Date()`, dynamically highlighting current dates in August 2026 instead of static July baselines.
 
-- **Admin Complaint Realtime Fixed:** Replaced the raw `payload.new` state-patching approach in `DashboardAdmin.tsx` with a `fetchComplaints()` call on every Supabase Realtime event. The raw CDC payload does not include PostGIS-computed coordinates (`latitude`/`longitude` via `ST_X`/`ST_Y`) or SQL JOIN fields (user names, technician names), causing map markers and complaint cards to silently fail. Fetching from the API ensures all fields are fully resolved.
-- **Cache-Busting Fetch Calls:** All data-fetch functions in `DashboardAdmin.tsx` and `DashboardSubAdmin.tsx` (`fetchComplaints`, `fetchStats`, `fetchNodes`, `fetchUsers`, `fetchAdvisories`, `fetchDiagnosticAlerts`) now append `?t=${Date.now()}` and set `{ cache: "no-store" }` to bypass the Next.js router cache on realtime-triggered re-fetches.
+#### Sub-Admin Assignment Notification System
+- **Realtime Task Assignment Alerts:** Sub-Admin Dashboards instantly receive in-session notifications via Supabase Realtime when dispatched. The code defensively parses `payload.old?.assignedToId ?? null` alongside a `userProfileIdRef` check.
+- **Synthesized Audio Chime:** A `playNotificationSound()` helper synthesizes a two-tone chime (D5 + A5) using the Web Audio API `AudioContext` to avoid file loading delays.
+- **Interactive Bell Dropdown:** Rebuilt the notification dropdown:
+  - `assignmentNotifications` state tracks in-memory assignments.
+  - `readAdvisoryIds` state tracks clicked advisories.
+  - Badge counts combine unread assignments and unread warnings.
+  - Interactive click handlers route users to their respective tabs (`complaints` or `advisories`) and mark notifications read.
 
-### Sub-Admin Assignment Notification System
+#### Branded Logout Loading Screen
+- **`LogoutConfirmModal` Extended:** Added `isLoading` support. When `true`, it displays a full-screen branded spinner (`#00aeef` spin ring, AquaTrack logo, pulsing "Signing Out..." label, z-index `z-[200]`). Integrated across `DashboardAdmin`, `DashboardSubAdmin`, and `DashboardClient`.
 
-- **Realtime Task Assignment Alerts:** When the Admin dispatches a technician to a complaint, the technician's Sub-Admin Dashboard instantly receives an in-session notification via Supabase Realtime. Detection compares `payload.new.assignedToId` against the logged-in user's ID tracked via `userProfileIdRef` (a `useRef` synced to `userProfile?.id`). The code defensively uses `payload.old?.assignedToId ?? null` so detection works regardless of whether `REPLICA IDENTITY FULL` is set on the `Complaint` table.
-- **Chime Sound:** A `playNotificationSound()` module-level helper synthesizes a soft two-tone chime (D5 + A5) using the Web Audio API `AudioContext` — no static audio file required.
-- **Assignment Banner:** A green success alert banner appears at the top of the Sub-Admin dashboard with the complaint ticket short ID, auto-dismissing after 12 seconds.
-- **Interactive Bell Dropdown:** The notification bell dropdown was fully rebuilt:
-  - `assignmentNotifications` state (`{ id, text, timestamp, read }[]`) — in-memory, session-only, populated on realtime assignment.
-  - `readAdvisoryIds` state (`Set<string>`) — tracks which advisory IDs have been viewed.
-  - Badge count = unread assignments + unread advisories combined.
-  - Clicking a **Task Assignment** item marks it read and navigates to the Complaints tab.
-  - Clicking an **Advisory** item marks it read and navigates to the Advisories tab.
-  - Unread items show a small coloured dot on the icon; read items are faded.
+#### Modernized Quick Analytics & Dark Mode Charts
+- **Analytics Toggle Views:** Upgraded `HomeSection.tsx` with a capsule toggle switcher. Displays water quality metrics as sparkline cards or a Recharts grouped `<BarChart>` comparing District Averages to Target Safe Standards.
+- **Theme-Aware Chart rendering:** Integrated a `MutationObserver` on `document.documentElement` to track theme toggles dynamically. Updates the compliance PieChart radial backgrounds, BarChart grids, axis labels, and tooltip wrappers to look gorgeous in both dark and light modes.
 
-### Branded Logout Loading Screen
+#### Dynamic Compliance Index Engine
+- **Calculated Core Index:** Replaced hardcoded stats templates (`0` and `98.4`) in `/api/admin/dashboard` and `/api/admin/stats` with a dynamic PostGIS-inspired calculation. Automatically queries the database for total readings vs stable readings in the past 24 hours.
 
-- **`LogoutConfirmModal` Extended:** Added an optional `isLoading?: boolean` prop. When `true`, the modal renders a full-screen branded loader (AquaTrack logo at 120px, `#00aeef` spinning ring, pulsing "Signing Out…" label, z-index `z-[200]`) matching the dashboard initial load screen. Applied consistently across `DashboardAdmin`, `DashboardSubAdmin`, and `DashboardClient` via a `signingOut` state set to `true` at the start of `handleLogout`.
+#### Geolocation Routing & Directions (Sub-Admin Side)
+- **Live Route Tracking:** Implemented live directions tracking inside `MapPreviewModal.tsx`.
+- **Browser Geolocation API:** Uses `navigator.geolocation.watchPosition` to plot a pulsing blue indicator representing the sub-admin's real-time position.
+- **Mapbox Directions API:** Fetching and overlaying custom cyan (`#00aeef`) route geometries dynamically as the user moves.
+- **Real-time Navigation Stats:** Renders a dynamic ETA duration and distance status card overlay.
+- **Safety Teardown:** Added strict listeners to clear geolocation watch IDs and remove map layers on unmount/dismissal to prevent mobile battery drainage.
 
 ---
 

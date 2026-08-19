@@ -71,3 +71,24 @@ AquaTrack Web — municipal water district command center. Next.js 16 (App Route
 
 - `LogoutConfirmModal` (`src/components/LogoutConfirmModal.tsx`) accepts an optional `isLoading?: boolean` prop. When `true`, it renders a full-screen branded loader (matching the dashboard loader: AquaTrack logo at 120px, `#00aeef` spinning ring, "Signing Out…" label) instead of the confirm/cancel modal. z-index is `z-[200]` — above all other overlays.
 - Each dashboard (`DashboardAdmin`, `DashboardSubAdmin`, `DashboardClient`) declares a `signingOut` state, sets it to `true` at the start of `handleLogout`, and passes it as `isLoading={signingOut}` to the modal.
+
+## Dynamic Maps & Dynamic Zoom Stacking
+
+- In `MapboxMap.tsx`, individual complaint markers are dynamically hidden when the map zoom is $\le 14$ to prevent markers from stacking and occluding WebGL-rendered cluster circles. When the map is zoomed out, the active selection marker remains visible, and clicking a cluster zooms the map in.
+
+## Live GPS Directions & Routing (Sub-Admin)
+
+- In the sub-admin's `MapPreviewModal.tsx`, a **"Track Route"** engine is implemented using:
+  - **Browser Geolocation API**: Initiated by `navigator.geolocation.watchPosition` to trace technician coordinate changes. Renders a pulsing blue GPS indicator.
+  - **Mapbox Directions API**: Requests route lines (`LineString`) dynamically. Highlights navigation paths with a custom cyan (`#00aeef`) SVG layer.
+  - **Auto Bounds Zoom**: Maps automatically reposition to frame both the sub-admin and the complaint.
+  - **Lifecycle Cleanup**: Teardown checks are in place to clear watches and markers on modal close or unmount to save battery life.
+
+## Dynamic Compliance Index & Live Charts
+
+- **Dynamic Statistics Backend**: Calculated inside `/api/admin/dashboard` and `/api/admin/stats` by counting total sensor readings in the past 24 hours vs stable readings satisfying PNSDW thresholds (pH $6.5\text{--}8.5$, Turbidity $\le 5\text{ NTU}$, TDS $\le 500\text{ ppm}$).
+- **Dark Mode Aware Recharts**:
+  - Implements a theme-aware state `isDark` driven by a `MutationObserver` watching `document.documentElement` class shifts.
+  - Dynamically updates radial donut (PieChart) backgrounds (`#1e293b` vs `#e2e8f0`), grouped column grids (`#1e293b` vs `#e2e8f0`), chart text/axes labels, and tooltip wrappers to match the theme.
+  - Configures hover state translucent overlays (cursors) to look high-contrast and soft in both themes.
+

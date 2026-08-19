@@ -86,6 +86,18 @@ export async function GET() {
           _avg: { ph: true, turbidity: true, tds: true, pressure: true },
           where: { timestamp: { gte: new Date(Date.now() - 24 * 60 * 60 * 1000) } },
         }),
+        // Add total and stable readings count for dynamic compliance index
+        prisma.telemetryReading.count({
+          where: { timestamp: { gte: new Date(Date.now() - 24 * 60 * 60 * 1000) } }
+        }),
+        prisma.telemetryReading.count({
+          where: {
+            timestamp: { gte: new Date(Date.now() - 24 * 60 * 60 * 1000) },
+            ph: { gte: 6.5, lte: 8.5 },
+            turbidity: { lte: 5.0 },
+            tds: { lte: 500 }
+          }
+        })
       ]),
     ]);
 
@@ -158,11 +170,15 @@ export async function GET() {
     });
 
     // Unpack stats
-    const [totalUsers, onlineNodes, totalNodes, unresolvedComplaints, readingAverages] = statsData;
+    const [totalUsers, onlineNodes, totalNodes, unresolvedComplaints, readingAverages, totalReadingsCount, stableReadingsCount] = statsData;
     const avgPh = readingAverages._avg.ph ?? 7.2;
     const avgTurbidity = readingAverages._avg.turbidity ?? 1.8;
     const avgTds = readingAverages._avg.tds ?? 240;
     const avgPressure = readingAverages._avg.pressure ?? 44.0;
+
+    const complianceIndex = totalReadingsCount > 0
+      ? Math.round((stableReadingsCount / totalReadingsCount) * 100)
+      : 100;
 
     return NextResponse.json({
       success: true,
@@ -176,7 +192,7 @@ export async function GET() {
         onlineNodes,
         totalNodes,
         unresolvedComplaints,
-        complianceIndex: 0,
+        complianceIndex,
         avgPh: parseFloat(avgPh.toFixed(2)),
         avgTurbidity: parseFloat(avgTurbidity.toFixed(2)),
         avgTds: Math.round(avgTds),

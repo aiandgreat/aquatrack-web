@@ -4,7 +4,7 @@ import { prisma } from "../../../../lib/prisma";
 export async function GET() {
   try {
     // Query counts and telemetry averages in parallel to optimize latency
-    const [totalUsers, onlineNodes, totalNodes, unresolvedComplaints, readingAverages] = await Promise.all([
+    const [totalUsers, onlineNodes, totalNodes, unresolvedComplaints, readingAverages, totalReadingsCount, stableReadingsCount] = await Promise.all([
       prisma.user.count(),
       prisma.telemetryNode.count({
         where: { status: "ONLINE" },
@@ -29,6 +29,23 @@ export async function GET() {
             gte: new Date(Date.now() - 24 * 60 * 60 * 1000) // past 24 hours
           }
         }
+      }),
+      prisma.telemetryReading.count({
+        where: {
+          timestamp: {
+            gte: new Date(Date.now() - 24 * 60 * 60 * 1000)
+          }
+        }
+      }),
+      prisma.telemetryReading.count({
+        where: {
+          timestamp: {
+            gte: new Date(Date.now() - 24 * 60 * 60 * 1000)
+          },
+          ph: { gte: 6.5, lte: 8.5 },
+          turbidity: { lte: 5.0 },
+          tds: { lte: 500 }
+        }
       })
     ]);
 
@@ -37,6 +54,10 @@ export async function GET() {
     const avgTds = readingAverages._avg.tds ?? 240;
     const avgPressure = readingAverages._avg.pressure ?? 44.0;
 
+    const complianceIndex = totalReadingsCount > 0
+      ? Math.round((stableReadingsCount / totalReadingsCount) * 100)
+      : 100;
+
     return NextResponse.json({
       success: true,
       stats: {
@@ -44,7 +65,7 @@ export async function GET() {
         onlineNodes,
         totalNodes,
         unresolvedComplaints,
-        complianceIndex: 98.4,
+        complianceIndex,
         avgPh: parseFloat(avgPh.toFixed(2)),
         avgTurbidity: parseFloat(avgTurbidity.toFixed(2)),
         avgTds: Math.round(avgTds),
