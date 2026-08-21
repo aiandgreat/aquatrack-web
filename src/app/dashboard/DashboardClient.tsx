@@ -924,12 +924,12 @@ export default function DashboardClient({
     if (userProfile?.address) {
       const geocodeAddr = async () => {
         try {
-          const geocodeUrl = `https://api.mapbox.com/geocoding/v5/mapbox.places/${encodeURIComponent(userProfile.address)}.json?access_token=${mapboxgl.accessToken || process.env.NEXT_PUBLIC_MAPBOX_TOKEN || ""}&limit=1`;
-          const res = await fetch(geocodeUrl);
+          const res = await fetch(`/api/geocode?q=${encodeURIComponent(userProfile.address)}`);
           if (res.ok) {
             const data = await res.json();
-            if (data.features && data.features.length > 0) {
-              const [lng, lat] = data.features[0].center;
+            if (data.success) {
+              const lat = data.latitude;
+              const lng = data.longitude;
               setCustomLat(lat.toFixed(6));
               setCustomLng(lng.toFixed(6));
               setGpsPinpointActive(true);
@@ -1112,67 +1112,28 @@ export default function DashboardClient({
         }
       }
       const fullQuery = `${query}, Pampanga, Philippines`;
-      const geocodeUrl = `https://api.mapbox.com/geocoding/v5/mapbox.places/${encodeURIComponent(fullQuery)}.json?access_token=${mapboxgl.accessToken || process.env.NEXT_PUBLIC_MAPBOX_TOKEN || ""}&limit=1`;
       
-      const res = await fetch(geocodeUrl);
-      let mapboxMatched = false;
-      let matchedFeature = null;
-
+      const res = await fetch(`/api/geocode?q=${encodeURIComponent(fullQuery)}`);
       if (res.ok) {
         const data = await res.json();
-        if (data.features && data.features.length > 0) {
-          const firstFeature = data.features[0];
-          const placeTypes = firstFeature.place_type || [];
-          const isBroad = placeTypes.includes("region") || placeTypes.includes("country");
+        if (data.success) {
+          const lat = data.latitude;
+          const lng = data.longitude;
           
-          if (!(firstFeature.relevance !== undefined && firstFeature.relevance < 0.4) && !isBroad) {
-            mapboxMatched = true;
-            matchedFeature = firstFeature;
+          setCustomLat(lat.toFixed(6));
+          setCustomLng(lng.toFixed(6));
+          setGpsPinpointActive(true);
+          
+          const map = clientMapRef.current;
+          const marker = clientMarkerRef.current;
+          if (map && marker) {
+            marker.setLngLat([lng, lat]);
+            map.easeTo({ center: [lng, lat], zoom: 17 });
           }
+          return;
         }
       }
-
-      const applyLocation = (lat: number, lng: number) => {
-        const latStr = lat.toFixed(6);
-        const lngStr = lng.toFixed(6);
-        setCustomLat(latStr);
-        setCustomLng(lngStr);
-        setGpsPinpointActive(true);
-        
-        const map = clientMapRef.current;
-        const marker = clientMarkerRef.current;
-        if (map && marker) {
-          marker.setLngLat([lng, lat]);
-          map.easeTo({ center: [lng, lat], zoom: 17 });
-        }
-      };
-
-      if (mapboxMatched && matchedFeature) {
-        const lng = matchedFeature.center[0];
-        const lat = matchedFeature.center[1];
-        applyLocation(lat, lng);
-      } else {
-        // Fallback to Nominatim OpenStreetMap API
-        const nominatimUrl = `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(fullQuery)}&format=json&limit=1`;
-        const nomRes = await fetch(nominatimUrl, {
-          headers: {
-            "User-Agent": "AquaTrack-Client-Portal"
-          }
-        });
-        if (nomRes.ok) {
-          const nomData = await nomRes.json();
-          if (nomData && nomData.length > 0) {
-            const nomMatch = nomData[0];
-            const lat = parseFloat(nomMatch.lat);
-            const lng = parseFloat(nomMatch.lon);
-            applyLocation(lat, lng);
-          } else {
-            setSearchErrorModalOpen(true);
-          }
-        } else {
-          setSearchErrorModalOpen(true);
-        }
-      }
+      setSearchErrorModalOpen(true);
     } catch (err) {
       console.error("Address search failed:", err);
       setSearchErrorModalOpen(true);
@@ -1257,14 +1218,12 @@ export default function DashboardClient({
       if (!geoSuccess && userProfile?.address?.trim()) {
         try {
           console.log("Filing complaint location pinning failed. Using address failover:", userProfile.address);
-          const geocodeUrl = `https://api.mapbox.com/geocoding/v5/mapbox.places/${encodeURIComponent(userProfile.address)}.json?access_token=${mapboxgl.accessToken || process.env.NEXT_PUBLIC_MAPBOX_TOKEN || ""}&limit=1`;
-          const geoRes = await fetch(geocodeUrl);
+          const geoRes = await fetch(`/api/geocode?q=${encodeURIComponent(userProfile.address)}`);
           if (geoRes.ok) {
             const geoData = await geoRes.json();
-            if (geoData.features && geoData.features.length > 0) {
-              const [failoverLng, failoverLat] = geoData.features[0].center;
-              lat = failoverLat;
-              lng = failoverLng;
+            if (geoData.success) {
+              lat = geoData.latitude;
+              lng = geoData.longitude;
               geoSuccess = true;
               console.log("Geocoded failover address successfully:", lat, lng);
               // Pin it automatically on the map:
